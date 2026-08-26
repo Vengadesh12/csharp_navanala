@@ -7,9 +7,12 @@ using MyBackend.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Bind to dynamic PORT environment variable (Render sets PORT, default to 8080)
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://+:{port}");
+// Bind to dynamic PORT environment variable on cloud (Render/Railway), otherwise default to launchSettings.json (port 5125)
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+{
+    builder.WebHost.UseUrls($"http://+:{port}");
+}
 
 // 1. Initialize centralized application configuration
 Config.Load(builder.Configuration);
