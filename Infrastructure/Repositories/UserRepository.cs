@@ -97,17 +97,6 @@ namespace MyBackend.Infrastructure.Repositories
 
             if (!userRoleId.HasValue) return [];
 
-            // Super Admin role ID = 2 has all permissions
-            if (userRoleId.Value == 2)
-            {
-                return await _context.Permissions
-                    .AsNoTracking()
-                    .Where(p => p.DeletedFlag == 1)
-                    .OrderBy(p => p.Id)
-                    .Select(p => p.PermissionKey)
-                    .ToListAsync();
-            }
-
             return await _context.Database.SqlQueryRaw<string>("""
                 SELECT p."PermissionKey" AS "Value"
                 FROM permissions p

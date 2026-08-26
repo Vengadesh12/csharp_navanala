@@ -42,9 +42,6 @@ namespace MyBackend.Api.Middlewares
                 {
                     var token = context.Request.Headers.Authorization.ToString().Replace("Bearer ", "").Trim();
 
-                    // Check if session is active
-                    var isSessionActive = true;
-
                     if (!string.IsNullOrWhiteSpace(token))
                     {
                         var session = await dbContext.UserSessions
@@ -53,26 +50,13 @@ namespace MyBackend.Api.Middlewares
                             .OrderByDescending(s => s.LoginTime)
                             .FirstOrDefaultAsync();
 
-                        if (session != null)
+                        if (session != null && (!session.IsActive || session.LogoutTime != null))
                         {
-                            isSessionActive = session.IsActive && session.LogoutTime == null;
+                            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                            context.Response.ContentType = "application/json";
+                            await context.Response.WriteAsync("{\"message\":\"Your session has been terminated by an administrator. Please log in again.\"}");
+                            return;
                         }
-                    }
-                    else
-                    {
-                        var anyActive = await dbContext.UserSessions
-                            .AsNoTracking()
-                            .AnyAsync(s => s.UserId == userId && s.IsActive && s.LogoutTime == null && s.DeletedFlag == 1);
-
-                        isSessionActive = anyActive;
-                    }
-
-                    if (!isSessionActive)
-                    {
-                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        context.Response.ContentType = "application/json";
-                        await context.Response.WriteAsync("{\"message\":\"Your session has been terminated by an administrator. Please log in again.\"}");
-                        return;
                     }
                 }
             }
