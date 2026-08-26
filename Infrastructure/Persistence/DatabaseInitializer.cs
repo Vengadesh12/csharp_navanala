@@ -89,6 +89,30 @@ namespace MyBackend.Infrastructure.Persistence
                 }
                 await context.SaveChangesAsync();
 
+                // Seed standard roles
+                var standardRoles = new (int Id, string Name, string Desc)[]
+                {
+                    (1, "Employee", "Standard workspace member with view access to assigned projects and dashboards."),
+                    (2, "Super Admin", "Full administrative authority across all modules, settings, roles, and permissions."),
+                    (3, "Manager", "Workspace operational lead with team and project management privileges.")
+                };
+
+                foreach (var r in standardRoles)
+                {
+                    var roleExists = await context.Roles.AnyAsync(role => role.Id == r.Id || role.Name.ToLower() == r.Name.ToLower());
+                    if (!roleExists)
+                    {
+                        context.Roles.Add(new Role
+                        {
+                            Id = r.Id,
+                            Name = r.Name,
+                            Description = r.Desc,
+                            DeletedFlag = 1
+                        });
+                    }
+                }
+                await context.SaveChangesAsync();
+
                 // Ensure all roles have their baseline permissions assigned
                 var allPermissions = await context.Permissions.ToListAsync();
                 var rolePermissionsMap = new Dictionary<int, string[]>
@@ -119,6 +143,39 @@ namespace MyBackend.Infrastructure.Persistence
                                 });
                             }
                         }
+                    }
+                }
+                await context.SaveChangesAsync();
+
+                // Seed standard default users if they do not exist
+                // Pre-hashed passwords: Admin@123, Manager@123, User@123
+                const string adminHash = "AQAAAAEAACcQAAAAEH3vhmzXo5IHubT0Mk3/xKdiu101EvHQGGgx+3HoVPRninHbg8XaUNqMNQ30LdJswA=="; // Admin@123
+                const string managerHash = "AQAAAAEAACcQAAAAEJAQTKzscccmkTeWZEVtE7lXFwwBzjIbe+apIZwzQxyBHx8rMVGtI+PeA/GmsPbFlg=="; // Manager@123
+                const string userHash = "AQAAAAEAACcQAAAAEItamfTQyH56Kngp0xBLo8HTT5Vf5/GRcWOZQhGtZNdlqB/DmhV36QSCGeWxv7p2dg=="; // User@123
+
+                var defaultUsers = new List<User>
+                {
+                    new() { Name = "Super Admin", Email = "admin@example.com", PasswordHash = adminHash, RoleId = 2, DesignationId = 11, Phone = "+1 (555) 019-2834", Age = 32, Address = "123 Innovation Way, Suite 400", DeletedFlag = 1 },
+                    new() { Name = "Vengadesh M", Email = "vengadesh@example.com", PasswordHash = adminHash, RoleId = 2, DesignationId = 2, Phone = "+91 9876543210", Age = 28, Address = "45 Tech City, Bangalore", DeletedFlag = 1 },
+                    new() { Name = "Vengadesh M", Email = "vengadesh.kc@gmail.com", PasswordHash = adminHash, RoleId = 2, DesignationId = 2, Phone = "+91 9876543210", Age = 28, Address = "45 Tech City, Bangalore", DeletedFlag = 1 },
+                    new() { Name = "Operations Manager", Email = "manager@example.com", PasswordHash = managerHash, RoleId = 3, DesignationId = 10, Phone = "+1 (555) 018-9943", Age = 36, Address = "78 Strategy Blvd, Suite 210", DeletedFlag = 1 },
+                    new() { Name = "John Doe", Email = "user@example.com", PasswordHash = userHash, RoleId = 1, DesignationId = 1, Phone = "+1 (555) 014-7732", Age = 26, Address = "56 Developer Court", DeletedFlag = 1 },
+                    new() { Name = "Arun Kumar", Email = "arun@example.com", PasswordHash = userHash, RoleId = 1, DesignationId = 4, Phone = "+91 9876543211", Age = 29, Address = "12 IT Highway, Chennai", DeletedFlag = 1 },
+                    new() { Name = "Kaviya R", Email = "kaviya@example.com", PasswordHash = userHash, RoleId = 1, DesignationId = 3, Phone = "+91 9876543212", Age = 25, Address = "88 Silicon Avenue, Coimbatore", DeletedFlag = 1 },
+                    new() { Name = "Divya S", Email = "divya@example.com", PasswordHash = userHash, RoleId = 1, DesignationId = 8, Phone = "+91 9876543213", Age = 27, Address = "90 Creative Park, Hyderabad", DeletedFlag = 1 }
+                };
+
+                foreach (var u in defaultUsers)
+                {
+                    var existingUser = await context.Users.FirstOrDefaultAsync(user => user.Email.ToLower() == u.Email.ToLower());
+                    if (existingUser == null)
+                    {
+                        context.Users.Add(u);
+                    }
+                    else if (string.IsNullOrWhiteSpace(existingUser.PasswordHash))
+                    {
+                        existingUser.PasswordHash = u.PasswordHash;
+                        context.Users.Update(existingUser);
                     }
                 }
                 await context.SaveChangesAsync();

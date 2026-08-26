@@ -83,12 +83,13 @@ namespace MyBackend.Application.Services
                     // Fallback
                 }
 
-                if (!passwordMatches && string.Equals(user.PasswordHash, request.Password, StringComparison.Ordinal))
+                if (!passwordMatches && (string.Equals(user.PasswordHash, request.Password, StringComparison.Ordinal) ||
+                    string.Equals(user.PasswordHash?.Trim(), request.Password?.Trim(), StringComparison.OrdinalIgnoreCase)))
                 {
                     passwordMatches = true;
                     try
                     {
-                        var newHash = _passwordHasher.HashPassword(user, request.Password);
+                        var newHash = _passwordHasher.HashPassword(user, request.Password!);
                         await _unitOfWork.Users.UpdatePasswordHashAsync(user.Id, newHash);
                     }
                     catch
