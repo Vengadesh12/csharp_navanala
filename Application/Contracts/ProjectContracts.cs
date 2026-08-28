@@ -33,4 +33,19 @@ namespace MyBackend.Application.Contracts
         public int PendingReviewsCount { get; set; }
         public List<Project> Projects { get; set; } = [];
     }
+
+    public class ProjectCategoryDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; } = string.Empty;
+        public int DeletedFlag { get; set; } = 1;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class CreateProjectCategoryRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; } = string.Empty;
+    }
 }

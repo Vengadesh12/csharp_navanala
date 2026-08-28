@@ -30,6 +30,18 @@ public sealed class DesignationDto
     /// </summary>
     /// <example>1</example>
     public int DeletedFlag { get; set; } = 1;
+
+    /// <summary>
+    /// Associated Department ID if assigned.
+    /// </summary>
+    /// <example>1</example>
+    public int? DepartmentId { get; set; }
+
+    /// <summary>
+    /// Associated Department Name.
+    /// </summary>
+    /// <example>Software Development</example>
+    public string? DepartmentName { get; set; }
 }
 
 /// <summary>
@@ -51,4 +63,35 @@ public sealed class CreateDesignationRequest
     /// <example>Develops and maintains core applications and services.</example>
     [MaxLength(255)]
     public string? Description { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional Department ID to assign this designation to.
+    /// </summary>
+    public int? DepartmentId { get; set; }
+}
+
+/// <summary>
+/// Payload to update an existing designation in the system.
+/// </summary>
+public sealed class UpdateDesignationRequest
+{
+    /// <summary>
+    /// Name of the designation.
+    /// </summary>
+    /// <example>Software Engineer</example>
+    [Required]
+    [MaxLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Description of the designation.
+    /// </summary>
+    /// <example>Develops and maintains core applications and services.</example>
+    [MaxLength(255)]
+    public string? Description { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional Department ID to assign this designation to.
+    /// </summary>
+    public int? DepartmentId { get; set; }
 }

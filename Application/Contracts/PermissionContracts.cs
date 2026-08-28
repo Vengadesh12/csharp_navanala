@@ -96,7 +96,49 @@ public sealed class RolePermissionMatrixItem
 }
 
 /// <summary>
-/// Full permissions matrix response containing all system permissions and assignments across roles.
+/// Department with its comma-delimited assigned permission keys from the database.
+/// </summary>
+public sealed class DepartmentPermissionDto
+{
+    /// <summary>
+    /// Department identifier.
+    /// </summary>
+    public int DepartmentId { get; set; }
+
+    /// <summary>
+    /// Name of the department.
+    /// </summary>
+    public string DepartmentName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Comma-separated list of assigned permission keys.
+    /// </summary>
+    public string PermissionKeys { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Formatted department permission matrix item returned to client applications.
+/// </summary>
+public sealed class DepartmentPermissionMatrixItem
+{
+    /// <summary>
+    /// Unique department identifier.
+    /// </summary>
+    public int DepartmentId { get; set; }
+
+    /// <summary>
+    /// Display name of the department.
+    /// </summary>
+    public string DepartmentName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Array of permission keys currently assigned to this department.
+    /// </summary>
+    public string[] PermissionKeys { get; set; } = [];
+}
+
+/// <summary>
+/// Full permissions matrix response containing all system permissions and assignments across roles and departments.
 /// </summary>
 public sealed class PermissionsMatrixResponse
 {
@@ -109,4 +151,9 @@ public sealed class PermissionsMatrixResponse
     /// Matrix of all roles and their assigned permission keys.
     /// </summary>
     public List<RolePermissionMatrixItem> Roles { get; set; } = [];
+
+    /// <summary>
+    /// Matrix of all departments and their assigned permission keys.
+    /// </summary>
+    public List<DepartmentPermissionMatrixItem> Departments { get; set; } = [];
 }

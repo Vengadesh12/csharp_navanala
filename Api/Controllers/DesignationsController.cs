@@ -90,6 +90,80 @@ namespace MyBackend.Api.Controllers
             {
                 return BadRequest(new ErrorResponse { Message = ex.Message });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ErrorResponse { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Updates an existing job designation.
+        /// </summary>
+        /// <param name="id">Designation ID.</param>
+        /// <param name="request">Updated designation payload.</param>
+        /// <response code="200">Designation updated successfully.</response>
+        /// <response code="400">Invalid payload.</response>
+        /// <response code="404">Designation not found.</response>
+        [HttpPut("{id:int}")]
+        [ProducesResponseType(typeof(ApiResponse<DesignationDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateDesignation(int id, [FromBody] UpdateDesignationRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                return BadRequest(new ErrorResponse { Message = "Designation name is required." });
+            }
+
+            try
+            {
+                var updated = await _designationService.UpdateDesignationAsync(id, request);
+                if (updated is null)
+                {
+                    return NotFound(new ErrorResponse { Message = $"Designation with ID {id} not found." });
+                }
+
+                return Ok(new ApiResponse<DesignationDto>
+                {
+                    Success = true,
+                    Message = "Designation updated successfully!",
+                    Data = updated
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ErrorResponse { Message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ErrorResponse { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Deletes / soft-deletes a job designation.
+        /// </summary>
+        /// <param name="id">Designation ID.</param>
+        /// <response code="200">Designation deleted successfully.</response>
+        /// <response code="404">Designation not found.</response>
+        [HttpDelete("{id:int}")]
+        [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeleteDesignation(int id)
+        {
+            var success = await _designationService.DeleteDesignationAsync(id);
+            if (!success)
+            {
+                return NotFound(new ErrorResponse { Message = $"Designation with ID {id} not found." });
+            }
+
+            return Ok(new DeleteResponse
+            {
+                Success = true,
+                Message = "Designation deleted successfully!",
+                Id = id,
+                DeletedFlag = 0
+            });
         }
     }
 }

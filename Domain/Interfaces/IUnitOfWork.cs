@@ -19,6 +19,11 @@ namespace MyBackend.Domain.Interfaces
         IRoleRepository Roles { get; }
 
         /// <summary>
+        /// Department repository instance.
+        /// </summary>
+        IDepartmentRepository Departments { get; }
+
+        /// <summary>
         /// Designation repository instance.
         /// </summary>
         IDesignationRepository Designations { get; }

@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace MyBackend.Domain.Entities
 {
     /// <summary>
-    /// User account database entity representing a registered system member.
+    /// User account business object representing a registered system member with domain behaviors.
     /// </summary>
     public class User
     {
@@ -74,5 +74,112 @@ namespace MyBackend.Domain.Entities
         /// </summary>
         /// <example>1</example>
         public int DeletedFlag { get; set; } = 1;
+
+        /// <summary>
+        /// Flag indicating whether the user must change password on their initial login.
+        /// </summary>
+        /// <example>true</example>
+        public bool IsFirstLogin { get; set; } = false;
+
+        #region Business Object Domain Methods
+
+        /// <summary>
+        /// Business Object Factory Method to create a newly provisioned User.
+        /// </summary>
+        public static User Create(
+            string name,
+            string email,
+            string? phone = null,
+            int age = 0,
+            string? address = null,
+            int? roleId = null,
+            int? designationId = null,
+            bool isFirstLogin = true)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("User name is required.", nameof(name));
+            if (string.IsNullOrWhiteSpace(email))
+                throw new ArgumentException("User email is required.", nameof(email));
+
+            return new User
+            {
+                Name = name.Trim(),
+                Email = email.Trim().ToLowerInvariant(),
+                Phone = phone?.Trim() ?? string.Empty,
+                Age = age,
+                Address = address?.Trim() ?? string.Empty,
+                RoleId = roleId,
+                DesignationId = designationId,
+                DeletedFlag = 1,
+                IsFirstLogin = isFirstLogin
+            };
+        }
+
+        /// <summary>
+        /// Updates the user's personal profile and RBAC assignments.
+        /// </summary>
+        public void UpdateDetails(
+            string name,
+            string email,
+            string? phone,
+            int age,
+            string? address,
+            int? roleId,
+            int? designationId)
+        {
+            if (!string.IsNullOrWhiteSpace(name)) Name = name.Trim();
+            if (!string.IsNullOrWhiteSpace(email)) Email = email.Trim().ToLowerInvariant();
+            if (phone != null) Phone = phone.Trim();
+            if (age > 0) Age = age;
+            if (address != null) Address = address.Trim();
+            RoleId = roleId;
+            DesignationId = designationId;
+        }
+
+        /// <summary>
+        /// Updates the user's password hash and marks the first-login flag complete if applicable.
+        /// </summary>
+        public void SetPasswordHash(string newPasswordHash, bool clearFirstLoginFlag = false)
+        {
+            if (string.IsNullOrWhiteSpace(newPasswordHash))
+                throw new ArgumentException("Password hash cannot be empty.", nameof(newPasswordHash));
+
+            PasswordHash = newPasswordHash;
+            if (clearFirstLoginFlag)
+            {
+                IsFirstLogin = false;
+            }
+        }
+
+        /// <summary>
+        /// Marks the initial mandatory password reset requirement complete.
+        /// </summary>
+        public void CompleteFirstLogin()
+        {
+            IsFirstLogin = false;
+        }
+
+        /// <summary>
+        /// Soft-deletes / deactivates the user account.
+        /// </summary>
+        public void SoftDelete()
+        {
+            DeletedFlag = 0;
+        }
+
+        /// <summary>
+        /// Restores / reactivates the user account.
+        /// </summary>
+        public void Restore()
+        {
+            DeletedFlag = 1;
+        }
+
+        /// <summary>
+        /// Returns whether the user is active.
+        /// </summary>
+        public bool IsActiveAccount() => DeletedFlag == 1;
+
+        #endregion
     }
 }

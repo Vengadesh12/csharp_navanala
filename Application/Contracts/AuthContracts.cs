@@ -130,6 +130,16 @@ public sealed class AuthUserData
     public string? RoleName { get; set; }
 
     /// <summary>
+    /// Associated organizational department name.
+    /// </summary>
+    public string? DepartmentName { get; set; }
+
+    /// <summary>
+    /// Associated job designation title.
+    /// </summary>
+    public string? DesignationName { get; set; }
+
+    /// <summary>
     /// List of permission keys granted to this user.
     /// </summary>
     /// <example>["users.view", "users.create", "roles.view", "permissions.manage"]</example>
@@ -145,6 +155,12 @@ public sealed class AuthUserData
     /// </summary>
     /// <example>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</example>
     public string Token { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Indicates whether the user must change password on their initial login.
+    /// </summary>
+    /// <example>false</example>
+    public bool IsFirstLogin { get; set; }
 }
 
 /// <summary>

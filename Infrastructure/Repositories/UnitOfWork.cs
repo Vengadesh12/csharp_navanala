@@ -16,6 +16,7 @@ namespace MyBackend.Infrastructure.Repositories
 
         private IUserRepository? _users;
         private IRoleRepository? _roles;
+        private IDepartmentRepository? _departments;
         private IDesignationRepository? _designations;
         private IPermissionRepository? _permissions;
         private IRepository<SystemSetting>? _systemSettings;
@@ -29,6 +30,7 @@ namespace MyBackend.Infrastructure.Repositories
 
         public IUserRepository Users => _users ??= new UserRepository(_context);
         public IRoleRepository Roles => _roles ??= new RoleRepository(_context);
+        public IDepartmentRepository Departments => _departments ??= new DepartmentRepository(_context);
         public IDesignationRepository Designations => _designations ??= new DesignationRepository(_context);
         public IPermissionRepository Permissions => _permissions ??= new PermissionRepository(_context);
         public IRepository<SystemSetting> SystemSettings => _systemSettings ??= new Repository<SystemSetting>(_context);

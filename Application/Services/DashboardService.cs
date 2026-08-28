@@ -26,7 +26,6 @@ namespace MyBackend.Application.Services
             var users = await _unitOfWork.Users.GetAllUsersAsync();
             var roles = await _unitOfWork.Roles.GetActiveRolesAsync();
             var permissionsCount = await _unitOfWork.Permissions.CountAsync(p => p.DeletedFlag == 1);
-            if (permissionsCount == 0) permissionsCount = 18;
 
             var activeUsersList = users.Where(u => u.DeletedFlag == 1).ToList();
             var inactiveUsersList = users.Where(u => u.DeletedFlag == 0).ToList();
@@ -231,25 +230,48 @@ namespace MyBackend.Application.Services
                 _ => 7
             };
 
+            var today = DateTime.UtcNow.Date;
+            var startDate = today.AddDays(-daysCount);
+
+            var allAuditLogsInPeriod = await _context.AuditLogs
+                .AsNoTracking()
+                .Where(a => a.DeletedFlag == 1 && a.CreatedAt >= startDate)
+                .ToListAsync();
+
             var chartData = new List<DashboardChartPoint>();
-            var today = DateTime.UtcNow;
 
             for (int i = daysCount - 1; i >= 0; i--)
             {
-                var dayDate = today.AddDays(-i);
-                var dayLabel = dayDate.ToString("MMM dd");
-                var baseUsers = Math.Max(1, totalUsers - (i * 2));
-                var activeEstimate = Math.Max(1, (int)(baseUsers * 0.75));
-                var newEstimate = (i % 3 == 0) ? (i % 4 + 1) : 0;
+                var dayStart = today.AddDays(-i);
+                var dayEnd = dayStart.AddDays(1);
+                var dayLabel = dayStart.ToString("MMM dd");
+
+                var activeOnDay = allSessions.Count(s => s.LoginTime >= dayStart && s.LoginTime < dayEnd);
+                var uniqueUsersOnDay = allSessions
+                    .Where(s => s.LoginTime >= dayStart && s.LoginTime < dayEnd)
+                    .Select(s => s.UserId)
+                    .Distinct()
+                    .Count();
+
+                var auditLogsOnDay = allAuditLogsInPeriod.Count(a => a.CreatedAt >= dayStart && a.CreatedAt < dayEnd);
 
                 chartData.Add(new DashboardChartPoint
                 {
                     Day = dayLabel,
-                    Active = activeEstimate,
-                    NewUsers = newEstimate,
-                    Total = Math.Min(totalUsers, baseUsers + newEstimate)
+                    Active = activeOnDay,
+                    NewUsers = uniqueUsersOnDay,
+                    AuditLogs = auditLogsOnDay,
+                    Total = totalUsers
                 });
             }
+
+            var recentLoginsCount = allSessions.Count(s => s.LoginTime >= today.AddDays(-7));
+            var prevPeriodLoginsCount = allSessions.Count(s => s.LoginTime >= today.AddDays(-14) && s.LoginTime < today.AddDays(-7));
+            var sessionsGrowth = prevPeriodLoginsCount > 0
+                ? $"{((double)(recentLoginsCount - prevPeriodLoginsCount) / prevPeriodLoginsCount * 100):+0.#;-0.#;0}%"
+                : (recentLoginsCount > 0 ? "+100%" : "0%");
+
+            var userActivePercentage = totalUsers > 0 ? $"{Math.Round((double)activeUsersCount / totalUsers * 100):0.#}%" : "0%";
 
             return new DashboardSummaryResponse
             {
@@ -261,10 +283,10 @@ namespace MyBackend.Application.Services
                     TotalRoles = totalRoles,
                     TotalPermissions = permissionsCount,
                     ActiveSessions = activeSessions,
-                    UsersGrowth = "+12.5%",
-                    RolesGrowth = "+5.2%",
-                    PermissionsGrowth = "+8.7%",
-                    SessionsGrowth = "+3.1%"
+                    UsersGrowth = userActivePercentage,
+                    RolesGrowth = $"{totalRoles} Active",
+                    PermissionsGrowth = $"{permissionsCount} Matrix",
+                    SessionsGrowth = sessionsGrowth
                 },
                 RoleDistribution = roleDistribution,
                 RecentUsers = recentUsers,

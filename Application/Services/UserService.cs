@@ -10,7 +10,7 @@ using MyBackend.Domain.Interfaces;
 namespace MyBackend.Application.Services
 {
     /// <summary>
-    /// Implements user account provisioning, profile retrieval, updates, soft deletion, and permission verification using repositories.
+    /// Implements user account provisioning, profile retrieval, updates, soft deletion, and permission verification using repositories and business objects.
     /// </summary>
     public class UserService : IUserService
     {
@@ -47,7 +47,8 @@ namespace MyBackend.Application.Services
                 RoleName = u.RoleId.HasValue && rolesDict.TryGetValue(u.RoleId.Value, out var rName) ? rName : null,
                 DesignationId = u.DesignationId,
                 DesignationName = u.DesignationId.HasValue && designationsDict.TryGetValue(u.DesignationId.Value, out var dName) ? dName : null,
-                DeletedFlag = u.DeletedFlag
+                DeletedFlag = u.DeletedFlag,
+                IsFirstLogin = u.IsFirstLogin
             }).ToList();
         }
 
@@ -82,7 +83,8 @@ namespace MyBackend.Application.Services
                 RoleName = roleName,
                 DesignationId = user.DesignationId,
                 DesignationName = designationName,
-                DeletedFlag = user.DeletedFlag
+                DeletedFlag = user.DeletedFlag,
+                IsFirstLogin = user.IsFirstLogin
             };
         }
 
@@ -96,25 +98,24 @@ namespace MyBackend.Application.Services
                 throw new ArgumentException(errors.Count > 0 ? errors[0] : "Password does not meet strong security requirements.");
             }
 
-            var user = new User
-            {
-                Name = request.Name,
-                Email = request.Email,
-                Phone = request.Phone,
-                Age = request.Age,
-                Address = request.Address,
-                RoleId = request.RoleId,
-                DesignationId = request.DesignationId,
-                DeletedFlag = 1
-            };
+            // Create using Business Object Factory Method
+            var user = User.Create(
+                name: request.Name,
+                email: request.Email,
+                phone: request.Phone,
+                age: request.Age,
+                address: request.Address,
+                roleId: request.RoleId,
+                designationId: request.DesignationId,
+                isFirstLogin: true
+            );
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
-            user.PasswordHash = _passwordHasher.HashPassword(user, plainPassword);
+            var hashedPassword = _passwordHasher.HashPassword(user, plainPassword);
+            user.SetPasswordHash(hashedPassword);
 
             await _unitOfWork.Users.AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
-
-            user.DeletedFlag = 1;
             await _unitOfWork.CommitTransactionAsync();
 
             // Dispatch welcome credentials email via Gmail SMTP
@@ -153,7 +154,8 @@ namespace MyBackend.Application.Services
                 RoleName = roleName,
                 DesignationId = user.DesignationId,
                 DesignationName = designationName,
-                DeletedFlag = user.DeletedFlag
+                DeletedFlag = user.DeletedFlag,
+                IsFirstLogin = user.IsFirstLogin
             };
         }
 
@@ -162,13 +164,16 @@ namespace MyBackend.Application.Services
             var user = await _unitOfWork.Users.GetByIdAsync(id);
             if (user is null) return null;
 
-            user.Name = request.Name;
-            user.Email = request.Email;
-            user.Phone = request.Phone;
-            user.Age = request.Age;
-            user.Address = request.Address;
-            user.RoleId = request.RoleId;
-            user.DesignationId = request.DesignationId;
+            // Use Business Object update method
+            user.UpdateDetails(
+                name: request.Name,
+                email: request.Email,
+                phone: request.Phone,
+                age: request.Age,
+                address: request.Address,
+                roleId: request.RoleId,
+                designationId: request.DesignationId
+            );
 
             if (!string.IsNullOrWhiteSpace(request.Password))
             {
@@ -178,7 +183,8 @@ namespace MyBackend.Application.Services
                     throw new ArgumentException(errors.Count > 0 ? errors[0] : "Password does not meet strong security requirements.");
                 }
 
-                user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
+                var newHash = _passwordHasher.HashPassword(user, request.Password);
+                user.SetPasswordHash(newHash);
             }
 
             _unitOfWork.Users.Update(user);
@@ -210,7 +216,8 @@ namespace MyBackend.Application.Services
                 RoleName = roleName,
                 DesignationId = user.DesignationId,
                 DesignationName = designationName,
-                DeletedFlag = user.DeletedFlag
+                DeletedFlag = user.DeletedFlag,
+                IsFirstLogin = user.IsFirstLogin
             };
         }
 

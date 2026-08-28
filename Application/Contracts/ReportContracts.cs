@@ -6,6 +6,7 @@ namespace MyBackend.Application.Contracts
     {
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public int? CategoryId { get; set; }
         public string Category { get; set; } = "Compliance";
         public string Format { get; set; } = "PDF";
     }
@@ -14,6 +15,7 @@ namespace MyBackend.Application.Contracts
     {
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public int? CategoryId { get; set; }
         public string Category { get; set; } = "Compliance";
         public string Format { get; set; } = "PDF";
         public string Status { get; set; } = "Generated";
@@ -25,6 +27,7 @@ namespace MyBackend.Application.Contracts
         public int ExportsReady { get; set; }
         public string RoleCoverage { get; set; } = "100%";
         public List<Report> Reports { get; set; } = [];
+        public List<ReportCategoryDto> Categories { get; set; } = [];
     }
 
     public class ReportDownloadResult
@@ -32,5 +35,20 @@ namespace MyBackend.Application.Contracts
         public byte[] FileBytes { get; set; } = [];
         public string ContentType { get; set; } = "application/octet-stream";
         public string FileName { get; set; } = "report.txt";
+    }
+
+    public class ReportCategoryDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; } = string.Empty;
+        public int DeletedFlag { get; set; } = 1;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class CreateReportCategoryRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; } = string.Empty;
     }
 }

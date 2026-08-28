@@ -1,7 +1,9 @@
+using System;
+
 namespace MyBackend.Domain.Entities
 {
     /// <summary>
-    /// Represents an authorization role assigned to users in the RBAC system.
+    /// Represents an authorization role business object assigned to users in the RBAC system.
     /// </summary>
     public class Role
     {
@@ -28,5 +30,53 @@ namespace MyBackend.Domain.Entities
         /// </summary>
         /// <example>1</example>
         public int DeletedFlag { get; set; } = 1;
+
+        #region Business Object Domain Methods
+
+        /// <summary>
+        /// Factory method to create a new Role.
+        /// </summary>
+        public static Role Create(string name, string? description)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Role name is required.", nameof(name));
+
+            return new Role
+            {
+                Name = name.Trim(),
+                Description = description?.Trim() ?? string.Empty,
+                DeletedFlag = 1
+            };
+        }
+
+        /// <summary>
+        /// Updates the role details.
+        /// </summary>
+        public void UpdateDetails(string name, string? description)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Role name cannot be empty.", nameof(name));
+
+            Name = name.Trim();
+            Description = description?.Trim() ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Soft deletes the role.
+        /// </summary>
+        public void SoftDelete()
+        {
+            DeletedFlag = 0;
+        }
+
+        /// <summary>
+        /// Restores a soft-deleted role.
+        /// </summary>
+        public void Restore()
+        {
+            DeletedFlag = 1;
+        }
+
+        #endregion
     }
 }

@@ -21,7 +21,7 @@ namespace MyBackend.Infrastructure.Repositories
 
             return await _context.Users
                 .FromSqlInterpolated($"""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag"
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin"
                     FROM users
                     WHERE LOWER("Email") = {normalizedEmail}
                     LIMIT 1
@@ -34,7 +34,7 @@ namespace MyBackend.Infrastructure.Repositories
         {
             return await _context.Users
                 .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag"
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin"
                     FROM users
                     ORDER BY "Id"
                     """)
@@ -46,7 +46,7 @@ namespace MyBackend.Infrastructure.Repositories
         {
             return await _context.Users
                 .FromSqlInterpolated($"""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag"
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin"
                     FROM users
                     WHERE "Id" = {id}
                     """)
@@ -66,50 +66,93 @@ namespace MyBackend.Infrastructure.Repositories
         {
             if (permissionKeys.Length == 0) return true;
 
-            var userRoleId = await _context.Users
+            var userRecord = await _context.Users
                 .AsNoTracking()
                 .Where(u => u.Id == userId && u.DeletedFlag == 1)
-                .Select(u => u.RoleId)
+                .Select(u => new { u.RoleId, u.DesignationId })
                 .FirstOrDefaultAsync();
 
-            if (!userRoleId.HasValue) return false;
+            if (userRecord is null) return false;
 
             // Super Admin role ID = 2 has all permissions
-            if (userRoleId.Value == 2) return true;
+            if (userRecord.RoleId == 2) return true;
+
+            var roleId = userRecord.RoleId ?? 0;
+            var designationId = userRecord.DesignationId ?? 0;
 
             var permissions = await _context.Database.SqlQueryRaw<string>("""
-                SELECT p."PermissionKey" AS "Value"
+                SELECT DISTINCT p."PermissionKey" AS "Value"
                 FROM permissions p
-                INNER JOIN rolepermissions rp ON rp."PermissionId" = p."Id"
-                WHERE rp."RoleId" = {0} AND p."DeletedFlag" = 1
-                """, userRoleId.Value).ToListAsync();
+                WHERE p."DeletedFlag" = 1
+                  AND (
+                      ({0} > 0 AND p."Id" IN (
+                          SELECT rp."PermissionId" 
+                          FROM rolepermissions rp 
+                          WHERE rp."RoleId" = {0}
+                      ))
+                      OR
+                      ({1} > 0 AND p."Id" IN (
+                          SELECT dp."PermissionId"
+                          FROM departmentpermissions dp
+                          INNER JOIN designations des ON des."DepartmentId" = dp."DepartmentId" AND des."DeletedFlag" = 1
+                          WHERE des."Id" = {1}
+                      ))
+                  )
+                """, roleId, designationId).ToListAsync();
 
             return permissionKeys.Any(k => permissions.Contains(k, StringComparer.OrdinalIgnoreCase));
         }
 
         public async Task<List<string>> GetUserPermissionKeysAsync(int userId)
         {
-            var userRoleId = await _context.Users
+            var userRecord = await _context.Users
                 .AsNoTracking()
                 .Where(u => u.Id == userId && u.DeletedFlag == 1)
-                .Select(u => u.RoleId)
+                .Select(u => new { u.RoleId, u.DesignationId })
                 .FirstOrDefaultAsync();
 
-            if (!userRoleId.HasValue) return [];
+            if (userRecord is null) return [];
+
+            // Super Admin role ID = 2 has all active permissions
+            if (userRecord.RoleId == 2)
+            {
+                return await _context.Permissions
+                    .AsNoTracking()
+                    .Where(p => p.DeletedFlag == 1)
+                    .OrderBy(p => p.Id)
+                    .Select(p => p.PermissionKey)
+                    .ToListAsync();
+            }
+
+            var roleId = userRecord.RoleId ?? 0;
+            var designationId = userRecord.DesignationId ?? 0;
 
             return await _context.Database.SqlQueryRaw<string>("""
-                SELECT p."PermissionKey" AS "Value"
+                SELECT DISTINCT p."PermissionKey" AS "Value"
                 FROM permissions p
-                INNER JOIN rolepermissions rp ON rp."PermissionId" = p."Id"
-                WHERE rp."RoleId" = {0} AND p."DeletedFlag" = 1
-                ORDER BY p."Id"
-                """, userRoleId.Value).ToListAsync();
+                WHERE p."DeletedFlag" = 1
+                  AND (
+                      ({0} > 0 AND p."Id" IN (
+                          SELECT rp."PermissionId" 
+                          FROM rolepermissions rp 
+                          WHERE rp."RoleId" = {0}
+                      ))
+                      OR
+                      ({1} > 0 AND p."Id" IN (
+                          SELECT dp."PermissionId"
+                          FROM departmentpermissions dp
+                          INNER JOIN designations des ON des."DepartmentId" = dp."DepartmentId" AND des."DeletedFlag" = 1
+                          WHERE des."Id" = {1}
+                      ))
+                  )
+                ORDER BY "Value"
+                """, roleId, designationId).ToListAsync();
         }
 
         public async Task<bool> UpdatePasswordHashAsync(int userId, string newPasswordHash)
         {
             var rows = await _context.Database.ExecuteSqlInterpolatedAsync($"""
-                UPDATE users SET "Password" = {newPasswordHash} WHERE "Id" = {userId}
+                UPDATE users SET "Password" = {newPasswordHash}, "IsFirstLogin" = false WHERE "Id" = {userId}
                 """);
             return rows > 0;
         }

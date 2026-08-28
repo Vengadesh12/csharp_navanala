@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
@@ -17,66 +18,98 @@ namespace MyBackend.Application.Services
 
         public async Task<AuditLogOverviewResponse> GetAuditLogsAsync(string? module, string? search)
         {
-            var query = _context.AuditLogs
-                .Where(a => a.DeletedFlag == 1)
-                .AsNoTracking();
+            var sql = new StringBuilder("""
+                SELECT id, action, module, performed_by, details, ip_address, status, created_at, deleted_flag
+                FROM audit_logs
+                WHERE deleted_flag = 1
+            """);
+
+            var parameters = new List<object>();
+            int paramIndex = 0;
 
             if (!string.IsNullOrWhiteSpace(module) && module != "ALL")
             {
-                query = query.Where(a => a.Module.ToLower() == module.ToLower());
+                sql.Append($" AND LOWER(module) = LOWER({{{paramIndex++}}})");
+                parameters.Add(module.Trim());
             }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lower = search.ToLower();
-                query = query.Where(a => a.Action.ToLower().Contains(lower) ||
-                                         a.Details.ToLower().Contains(lower) ||
-                                         a.PerformedBy.ToLower().Contains(lower));
+                var pattern = $"%{search.Trim().ToLower()}%";
+                sql.Append($" AND (LOWER(action) LIKE {{{paramIndex}}} OR LOWER(details) LIKE {{{paramIndex}}} OR LOWER(performed_by) LIKE {{{paramIndex++}}})");
+                parameters.Add(pattern);
             }
 
-            var logs = await query.OrderByDescending(a => a.Id).ToListAsync();
+            sql.Append(" ORDER BY id DESC");
 
-            var totalEvents = await _context.AuditLogs.CountAsync(a => a.DeletedFlag == 1);
-            var successfulLogins = await _context.AuditLogs.CountAsync(a => a.DeletedFlag == 1 && a.Module == "Auth");
-            var privilegeChanges = await _context.AuditLogs.CountAsync(a => a.DeletedFlag == 1 && (a.Module == "Permissions" || a.Module == "Roles"));
+            var logs = await _context.AuditLogs
+                .FromSqlRaw(sql.ToString(), parameters.ToArray())
+                .AsNoTracking()
+                .ToListAsync();
+
+            var totalEvents = await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM audit_logs
+                WHERE deleted_flag = 1
+            """).SingleOrDefaultAsync();
+
+            var successfulLogins = await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM audit_logs
+                WHERE deleted_flag = 1 AND module = 'Auth'
+            """).SingleOrDefaultAsync();
+
+            var privilegeChanges = await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM audit_logs
+                WHERE deleted_flag = 1 AND (module = 'Permissions' OR module = 'Roles')
+            """).SingleOrDefaultAsync();
 
             return new AuditLogOverviewResponse
             {
                 TotalEvents = totalEvents,
-                SuccessfulLogins = successfulLogins > 0 ? successfulLogins : 128,
-                PrivilegeChanges = privilegeChanges > 0 ? privilegeChanges : 3,
+                SuccessfulLogins = successfulLogins,
+                PrivilegeChanges = privilegeChanges,
                 Logs = logs
             };
         }
 
         public async Task<AuditLog> CreateAuditLogAsync(CreateAuditLogRequest request, string performedBy, string ipAddress)
         {
-            var log = new AuditLog
-            {
-                Action = request.Action.Trim(),
-                Module = request.Module.Trim(),
-                PerformedBy = performedBy,
-                Details = request.Details.Trim(),
-                Status = string.IsNullOrWhiteSpace(request.Status) ? "Success" : request.Status.Trim(),
-                IpAddress = string.IsNullOrWhiteSpace(request.IpAddress) ? ipAddress : request.IpAddress,
-                CreatedAt = DateTime.UtcNow,
-                DeletedFlag = 1
-            };
+            var action = request.Action.Trim();
+            var module = request.Module.Trim();
+            var details = request.Details.Trim();
+            var status = string.IsNullOrWhiteSpace(request.Status) ? "Success" : request.Status.Trim();
+            var ip = string.IsNullOrWhiteSpace(request.IpAddress) ? ipAddress : request.IpAddress;
+            var now = DateTime.UtcNow;
 
-            _context.AuditLogs.Add(log);
-            await _context.SaveChangesAsync();
+            var newId = await _context.Database.SqlQueryRaw<int>("""
+                INSERT INTO audit_logs (action, module, performed_by, details, ip_address, status, created_at, deleted_flag)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, 1)
+                RETURNING id AS "Value"
+            """, action, module, performedBy, details, ip, status, now).SingleAsync();
 
-            return log;
+            var log = await _context.AuditLogs
+                .FromSqlRaw("""
+                    SELECT id, action, module, performed_by, details, ip_address, status, created_at, deleted_flag
+                    FROM audit_logs
+                    WHERE id = {0} AND deleted_flag = 1
+                """, newId)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            return log!;
         }
 
         public async Task<bool> DeleteAuditLogAsync(int id)
         {
-            var log = await _context.AuditLogs.FirstOrDefaultAsync(a => a.Id == id && a.DeletedFlag == 1);
-            if (log == null) return false;
+            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
+                UPDATE audit_logs
+                SET deleted_flag = 0
+                WHERE id = {0} AND deleted_flag = 1
+            """, id);
 
-            log.DeletedFlag = 0;
-            await _context.SaveChangesAsync();
-            return true;
+            return rowsAffected > 0;
         }
     }
 }

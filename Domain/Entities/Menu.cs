@@ -1,7 +1,9 @@
+using System;
+
 namespace MyBackend.Domain.Entities
 {
     /// <summary>
-    /// Represents a dynamic navigation menu item in the application.
+    /// Represents a dynamic navigation menu item business object in the application.
     /// </summary>
     public class Menu
     {
@@ -64,5 +66,81 @@ namespace MyBackend.Domain.Entities
         /// </summary>
         /// <example>1</example>
         public int DeletedFlag { get; set; } = 1;
+
+        #region Business Object Domain Methods
+
+        /// <summary>
+        /// Factory method to create a new Navigation Menu entry.
+        /// </summary>
+        public static Menu Create(
+            string menuKey,
+            string label,
+            string icon,
+            string route,
+            string groupName,
+            string? description,
+            int orderIndex,
+            string? permissionKey = null)
+        {
+            if (string.IsNullOrWhiteSpace(menuKey))
+                throw new ArgumentException("Menu key is required.", nameof(menuKey));
+            if (string.IsNullOrWhiteSpace(label))
+                throw new ArgumentException("Menu label is required.", nameof(label));
+
+            return new Menu
+            {
+                MenuKey = menuKey.Trim(),
+                Label = label.Trim(),
+                Icon = icon?.Trim() ?? string.Empty,
+                Route = route?.Trim() ?? string.Empty,
+                GroupName = groupName?.Trim() ?? "Core Access",
+                Description = description?.Trim() ?? string.Empty,
+                OrderIndex = orderIndex,
+                PermissionKey = string.IsNullOrWhiteSpace(permissionKey) ? null : permissionKey.Trim(),
+                DeletedFlag = 1
+            };
+        }
+
+        /// <summary>
+        /// Updates the navigation menu details.
+        /// </summary>
+        public void UpdateDetails(
+            string label,
+            string icon,
+            string route,
+            string groupName,
+            string? description,
+            int orderIndex,
+            string? permissionKey)
+        {
+            if (string.IsNullOrWhiteSpace(label))
+                throw new ArgumentException("Menu label cannot be empty.", nameof(label));
+
+            Label = label.Trim();
+            Icon = icon?.Trim() ?? string.Empty;
+            Route = route?.Trim() ?? string.Empty;
+            GroupName = groupName?.Trim() ?? "Core Access";
+            Description = description?.Trim() ?? string.Empty;
+            OrderIndex = orderIndex;
+            PermissionKey = string.IsNullOrWhiteSpace(permissionKey) ? null : permissionKey.Trim();
+        }
+
+        /// <summary>
+        /// Soft deletes the menu item.
+        /// </summary>
+        public void SoftDelete()
+        {
+            DeletedFlag = 0;
+        }
+
+        /// <summary>
+        /// Restores a soft-deleted menu item.
+        /// </summary>
+        public void Restore()
+        {
+            DeletedFlag = 1;
+        }
+
+        #endregion
     }
 }

@@ -25,6 +25,7 @@ namespace MyBackend.Api.Controllers
         /// Retrieve all workspace settings and parameters.
         /// </summary>
         [HttpGet]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(SettingsOverviewResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetSettings([FromQuery] string? category, [FromQuery] string? search)
         {
@@ -36,6 +37,7 @@ namespace MyBackend.Api.Controllers
         /// Retrieve all configuration categories registered in database.
         /// </summary>
         [HttpGet("categories")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(List<SettingCategoryDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetCategories()
         {

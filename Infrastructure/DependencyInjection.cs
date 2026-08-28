@@ -40,6 +40,7 @@ namespace MyBackend.Infrastructure
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
+            services.AddScoped<IDepartmentRepository, DepartmentRepository>();
             services.AddScoped<IDesignationRepository, DesignationRepository>();
             services.AddScoped<IPermissionRepository, PermissionRepository>();
             services.AddScoped<IUserSessionRepository, UserSessionRepository>();

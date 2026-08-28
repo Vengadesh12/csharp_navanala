@@ -39,14 +39,42 @@ namespace MyBackend.Application.Services
                     .FirstOrDefaultAsync() ?? "Member";
             }
 
-            var permissions = user.RoleId.HasValue
-                ? await _context.Database.SqlQueryRaw<string>("""
-                    SELECT p."PermissionKey" AS "Value"
+            var roleId = user.RoleId ?? 0;
+            var designationId = user.DesignationId ?? 0;
+
+            List<string> permissions;
+            if (roleId == 2)
+            {
+                permissions = await _context.Permissions
+                    .AsNoTracking()
+                    .Where(p => p.DeletedFlag == 1)
+                    .OrderBy(p => p.Id)
+                    .Select(p => p.PermissionKey)
+                    .ToListAsync();
+            }
+            else
+            {
+                permissions = await _context.Database.SqlQueryRaw<string>("""
+                    SELECT DISTINCT p."PermissionKey" AS "Value"
                     FROM permissions p
-                    INNER JOIN rolepermissions rp ON rp."PermissionId" = p."Id"
-                    WHERE rp."RoleId" = {0} AND p."DeletedFlag" = 1
-                    """, user.RoleId.Value).ToListAsync()
-                : [];
+                    WHERE p."DeletedFlag" = 1
+                      AND (
+                          ({0} > 0 AND p."Id" IN (
+                              SELECT rp."PermissionId" 
+                              FROM rolepermissions rp 
+                              WHERE rp."RoleId" = {0}
+                          ))
+                          OR
+                          ({1} > 0 AND p."Id" IN (
+                              SELECT dp."PermissionId"
+                              FROM departmentpermissions dp
+                              INNER JOIN designations des ON des."DepartmentId" = dp."DepartmentId" AND des."DeletedFlag" = 1
+                              WHERE des."Id" = {1}
+                          ))
+                      )
+                    ORDER BY "Value"
+                    """, roleId, designationId).ToListAsync();
+            }
 
             return new UserProfileResponse
             {
@@ -58,7 +86,8 @@ namespace MyBackend.Application.Services
                 Address = user.Address,
                 RoleId = user.RoleId,
                 RoleName = roleName,
-                Permissions = permissions
+                Permissions = permissions,
+                IsFirstLogin = user.IsFirstLogin
             };
         }
 
@@ -70,11 +99,15 @@ namespace MyBackend.Application.Services
                 throw new NotFoundException("User profile not found.");
             }
 
-            if (!string.IsNullOrWhiteSpace(request.Name)) user.Name = request.Name.Trim();
-            if (!string.IsNullOrWhiteSpace(request.Email)) user.Email = request.Email.Trim();
-            if (request.Phone != null) user.Phone = request.Phone.Trim();
-            if (request.Age > 0) user.Age = request.Age;
-            if (request.Address != null) user.Address = request.Address.Trim();
+            user.UpdateDetails(
+                name: !string.IsNullOrWhiteSpace(request.Name) ? request.Name : user.Name,
+                email: !string.IsNullOrWhiteSpace(request.Email) ? request.Email : user.Email,
+                phone: request.Phone ?? user.Phone,
+                age: request.Age > 0 ? request.Age : user.Age,
+                address: request.Address ?? user.Address,
+                roleId: user.RoleId,
+                designationId: user.DesignationId
+            );
 
             await _context.SaveChangesAsync();
 
@@ -86,7 +119,8 @@ namespace MyBackend.Application.Services
                 Phone = user.Phone,
                 Age = user.Age,
                 Address = user.Address,
-                RoleId = user.RoleId
+                RoleId = user.RoleId,
+                IsFirstLogin = user.IsFirstLogin
             };
         }
 
@@ -129,7 +163,10 @@ namespace MyBackend.Application.Services
                 }
             }
 
-            user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword);
+            var newHash = _passwordHasher.HashPassword(user, request.NewPassword);
+            user.SetPasswordHash(newHash);
+            user.CompleteFirstLogin();
+
             await _context.SaveChangesAsync();
 
             return true;

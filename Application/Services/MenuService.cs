@@ -18,10 +18,13 @@ namespace MyBackend.Application.Services
         public async Task<List<Menu>> GetUserMenusAsync(int userId)
         {
             var user = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "RoleId", "DesignationId", "Phone", "Age", "Address", "DeletedFlag"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, userId)
                 .AsNoTracking()
-                .Where(item => item.Id == userId && item.DeletedFlag == 1)
-                .Select(item => new { item.Id, item.RoleId })
-                .SingleOrDefaultAsync();
+                .FirstOrDefaultAsync();
 
             if (user is null)
             {
@@ -32,38 +35,52 @@ namespace MyBackend.Application.Services
             {
                 // Super Admin has access to all active menus
                 return await _context.Menus
+                    .FromSqlRaw("""
+                        SELECT id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag
+                        FROM menus
+                        WHERE deletedflag = 1
+                        ORDER BY orderindex ASC, id ASC
+                    """)
                     .AsNoTracking()
-                    .Where(m => m.DeletedFlag == 1)
-                    .OrderBy(m => m.OrderIndex)
-                    .ThenBy(m => m.Id)
-                    .ToListAsync();
-            }
-            else if (user.RoleId.HasValue)
-            {
-                // Get role permissions for regular role
-                var allowedPermissionKeys = await _context.Database.SqlQueryRaw<string>("""
-                    SELECT p."PermissionKey" AS "Value"
-                    FROM permissions p
-                    INNER JOIN rolepermissions rp ON rp."PermissionId" = p."Id"
-                    WHERE rp."RoleId" = {0} AND p."DeletedFlag" = 1
-                    """, user.RoleId.Value).ToListAsync();
-
-                return await _context.Menus
-                    .AsNoTracking()
-                    .Where(m => m.DeletedFlag == 1 &&
-                               (string.IsNullOrEmpty(m.PermissionKey) || allowedPermissionKeys.Contains(m.PermissionKey)))
-                    .OrderBy(m => m.OrderIndex)
-                    .ThenBy(m => m.Id)
                     .ToListAsync();
             }
             else
             {
-                // User has no role: only menus without specific permission requirement
+                var roleId = user.RoleId ?? 0;
+                var designationId = user.DesignationId ?? 0;
+
+                // Get role + department permissions for regular role and filter menus
                 return await _context.Menus
+                    .FromSqlRaw("""
+                        SELECT m.id, m.menukey, m.label, m.icon, m.route, m.groupname, m.description, m.orderindex, m.permissionkey, m.deletedflag
+                        FROM menus m
+                        WHERE m.deletedflag = 1
+                          AND (
+                            m.permissionkey IS NULL 
+                            OR m.permissionkey = '' 
+                            OR m.permissionkey IN (
+                                SELECT p."PermissionKey"
+                                FROM permissions p
+                                WHERE p."DeletedFlag" = 1
+                                  AND (
+                                      ({0} > 0 AND p."Id" IN (
+                                          SELECT rp."PermissionId" 
+                                          FROM rolepermissions rp 
+                                          WHERE rp."RoleId" = {0}
+                                      ))
+                                      OR
+                                      ({1} > 0 AND p."Id" IN (
+                                          SELECT dp."PermissionId"
+                                          FROM departmentpermissions dp
+                                          INNER JOIN designations des ON des."DepartmentId" = dp."DepartmentId" AND des."DeletedFlag" = 1
+                                          WHERE des."Id" = {1}
+                                      ))
+                                  )
+                            )
+                          )
+                        ORDER BY m.orderindex ASC, m.id ASC
+                    """, roleId, designationId)
                     .AsNoTracking()
-                    .Where(m => m.DeletedFlag == 1 && string.IsNullOrEmpty(m.PermissionKey))
-                    .OrderBy(m => m.OrderIndex)
-                    .ThenBy(m => m.Id)
                     .ToListAsync();
             }
         }
@@ -71,10 +88,13 @@ namespace MyBackend.Application.Services
         public async Task<List<Menu>> GetAllMenusAsync()
         {
             return await _context.Menus
+                .FromSqlRaw("""
+                    SELECT id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag
+                    FROM menus
+                    WHERE deletedflag = 1
+                    ORDER BY orderindex ASC, id ASC
+                """)
                 .AsNoTracking()
-                .Where(m => m.DeletedFlag == 1)
-                .OrderBy(m => m.OrderIndex)
-                .ThenBy(m => m.Id)
                 .ToListAsync();
         }
     }

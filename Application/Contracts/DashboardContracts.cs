@@ -148,6 +148,8 @@ namespace MyBackend.Application.Contracts
         public string Day { get; set; } = string.Empty;
         public int Active { get; set; }
         public int NewUsers { get; set; }
+        public int AuditLogs { get; set; }
         public int Total { get; set; }
     }
 }
+

@@ -79,8 +79,7 @@ namespace MyBackend.Application.Services
             if (session == null) return false;
 
             var now = DateTime.UtcNow;
-            session.IsActive = false;
-            session.LogoutTime = now;
+            session.EndSession(now);
 
             // Also mark any other open/active sessions for the same user as terminated
             if (session.UserId > 0)
@@ -91,28 +90,24 @@ namespace MyBackend.Application.Services
 
                 foreach (var other in otherSessions)
                 {
-                    other.IsActive = false;
-                    other.LogoutTime = now;
+                    other.EndSession(now);
                 }
             }
 
-            // Write audit log
+            // Write audit log using Business Object factory
             try
             {
                 var adminUser = await _context.Users.FindAsync(adminUserId);
                 var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";
 
-                _context.AuditLogs.Add(new AuditLog
-                {
-                    Action = "Force Terminate Session",
-                    Module = "Auth",
-                    PerformedBy = adminName,
-                    Details = $"Terminated active session #{sessionId} for user {session.UserName} ({session.Email})",
-                    IpAddress = session.IpAddress,
-                    Status = "Success",
-                    CreatedAt = now,
-                    DeletedFlag = 1
-                });
+                _context.AuditLogs.Add(AuditLog.CreateLog(
+                    action: "Force Terminate Session",
+                    module: "Auth",
+                    performedBy: adminName,
+                    details: $"Terminated active session #{sessionId} for user {session.UserName} ({session.Email})",
+                    ipAddress: session.IpAddress,
+                    status: "Success"
+                ));
             }
             catch
             {
@@ -136,8 +131,7 @@ namespace MyBackend.Application.Services
             {
                 foreach (var session in activeSessions)
                 {
-                    session.IsActive = false;
-                    session.LogoutTime = now;
+                    session.EndSession(now);
                 }
             }
             else if (user != null)
@@ -148,28 +142,24 @@ namespace MyBackend.Application.Services
 
                 foreach (var s in emailSessions)
                 {
-                    s.IsActive = false;
-                    s.LogoutTime = now;
+                    s.EndSession(now);
                 }
             }
 
-            // Record audit log
+            // Record audit log using Business Object factory
             try
             {
                 var adminUser = await _context.Users.FindAsync(adminUserId);
                 var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";
 
-                _context.AuditLogs.Add(new AuditLog
-                {
-                    Action = "Force User Logout",
-                    Module = "Auth",
-                    PerformedBy = adminName,
-                    Details = $"Terminated all active sessions for {user?.Name ?? $"User #{targetUserId}"}",
-                    IpAddress = "127.0.0.1",
-                    Status = "Success",
-                    CreatedAt = now,
-                    DeletedFlag = 1
-                });
+                _context.AuditLogs.Add(AuditLog.CreateLog(
+                    action: "Force User Logout",
+                    module: "Auth",
+                    performedBy: adminName,
+                    details: $"Terminated all active sessions for {user?.Name ?? $"User #{targetUserId}"}",
+                    ipAddress: "127.0.0.1",
+                    status: "Success"
+                ));
             }
             catch
             {

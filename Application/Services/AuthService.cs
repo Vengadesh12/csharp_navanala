@@ -185,17 +185,14 @@ namespace MyBackend.Application.Services
                 );
 
                 // Write Audit Log
-                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
-                {
-                    Action = "User Login",
-                    Module = "Auth",
-                    PerformedBy = user.Name,
-                    Details = $"User logged in successfully from IP {clientIp}",
-                    IpAddress = clientIp,
-                    Status = "Success",
-                    CreatedAt = DateTime.UtcNow,
-                    DeletedFlag = 1
-                });
+                await _unitOfWork.Repository<AuditLog>().AddAsync(AuditLog.CreateLog(
+                    action: "User Login",
+                    module: "Auth",
+                    performedBy: user.Name,
+                    details: $"User logged in successfully from IP {clientIp}",
+                    ipAddress: clientIp,
+                    status: "Success"
+                ));
                 await _unitOfWork.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -242,17 +239,14 @@ namespace MyBackend.Application.Services
                 );
 
                 // Write Audit Log
-                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
-                {
-                    Action = "2FA Login Verification",
-                    Module = "Auth",
-                    PerformedBy = user.Name,
-                    Details = $"User 2FA verified and signed in from IP {clientIp}",
-                    IpAddress = clientIp,
-                    Status = "Success",
-                    CreatedAt = DateTime.UtcNow,
-                    DeletedFlag = 1
-                });
+                await _unitOfWork.Repository<AuditLog>().AddAsync(AuditLog.CreateLog(
+                    action: "2FA Login Verification",
+                    module: "Auth",
+                    performedBy: user.Name,
+                    details: $"User 2FA verified and signed in from IP {clientIp}",
+                    ipAddress: clientIp,
+                    status: "Success"
+                ));
                 await _unitOfWork.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -289,17 +283,14 @@ namespace MyBackend.Application.Services
             // Record audit log for logout
             try
             {
-                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
-                {
-                    Action = "User Logout",
-                    Module = "Auth",
-                    PerformedBy = user?.Name ?? $"User ID: {userId}",
-                    Details = $"User logged out at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC from IP {clientIp}",
-                    IpAddress = clientIp,
-                    Status = "Success",
-                    CreatedAt = DateTime.UtcNow,
-                    DeletedFlag = 1
-                });
+                await _unitOfWork.Repository<AuditLog>().AddAsync(AuditLog.CreateLog(
+                    action: "User Logout",
+                    module: "Auth",
+                    performedBy: user?.Name ?? $"User ID: {userId}",
+                    details: $"User logged out at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC from IP {clientIp}",
+                    ipAddress: clientIp,
+                    status: "Success"
+                ));
                 await _unitOfWork.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -468,6 +459,19 @@ namespace MyBackend.Application.Services
                 roleName = role?.Name;
             }
 
+            string? designationName = null;
+            string? departmentName = null;
+            if (user.DesignationId.HasValue)
+            {
+                var des = await _unitOfWork.Designations.GetByIdAsync(user.DesignationId.Value);
+                designationName = des?.Name;
+                if (des?.DepartmentId.HasValue == true)
+                {
+                    var dept = await _unitOfWork.Departments.GetByIdAsync(des.DepartmentId.Value);
+                    departmentName = dept?.Name;
+                }
+            }
+
             var permissions = await _unitOfWork.Users.GetUserPermissionKeysAsync(user.Id);
 
             List<Menu> menus = [];
@@ -529,9 +533,12 @@ namespace MyBackend.Application.Services
                 Email = user.Email,
                 RoleId = user.RoleId,
                 RoleName = roleName,
+                DepartmentName = departmentName,
+                DesignationName = designationName,
                 Permissions = permissions,
                 Menus = menus,
-                Token = new JwtSecurityTokenHandler().WriteToken(token)
+                Token = new JwtSecurityTokenHandler().WriteToken(token),
+                IsFirstLogin = user.IsFirstLogin
             };
         }
     }

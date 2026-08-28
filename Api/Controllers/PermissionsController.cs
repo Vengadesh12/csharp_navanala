@@ -85,6 +85,56 @@ namespace MyBackend.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Retrieve granted permission keys for a specific department.
+        /// </summary>
+        [HttpGet("departments/{departmentId:int}")]
+        [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetDepartmentPermissions(int departmentId)
+        {
+            if (!await CanManagePermissions())
+            {
+                return Forbid();
+            }
+
+            var keys = await _permissionService.GetDepartmentPermissionsAsync(departmentId);
+            return Ok(keys);
+        }
+
+        /// <summary>
+        /// Update granted permission keys for a specific department.
+        /// </summary>
+        [HttpPut("departments/{departmentId:int}")]
+        [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateDepartmentPermissions(int departmentId, [FromBody] UpdatePermissionsRequest request)
+        {
+            if (!await CanManagePermissions())
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                var success = await _permissionService.UpdateDepartmentPermissionsAsync(departmentId, request);
+                if (!success)
+                {
+                    return NotFound(new ErrorResponse { Message = $"Department with ID {departmentId} not found." });
+                }
+
+                return Ok(new MessageResponse { Success = true, Message = "Department permissions updated successfully." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ErrorResponse { Message = ex.Message });
+            }
+        }
+
         private async Task<bool> CanManagePermissions()
         {
             if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))

@@ -35,5 +35,15 @@ namespace MyBackend.Application.Services
         {
             return await _unitOfWork.Permissions.UpdateRolePermissionsAsync(roleId, request.PermissionKeys);
         }
+
+        public async Task<List<string>> GetDepartmentPermissionsAsync(int departmentId)
+        {
+            return await _unitOfWork.Permissions.GetPermissionKeysByDepartmentIdAsync(departmentId);
+        }
+
+        public async Task<bool> UpdateDepartmentPermissionsAsync(int departmentId, UpdatePermissionsRequest request)
+        {
+            return await _unitOfWork.Permissions.UpdateDepartmentPermissionsAsync(departmentId, request.PermissionKeys);
+        }
     }
 }

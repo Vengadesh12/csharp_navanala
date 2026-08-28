@@ -27,5 +27,15 @@ namespace MyBackend.Domain.Interfaces
         /// Updates the full set of permission keys assigned to a role ID.
         /// </summary>
         Task<bool> UpdateRolePermissionsAsync(int roleId, IEnumerable<string> permissionKeys);
+
+        /// <summary>
+        /// Retrieves permission keys assigned directly to a department ID.
+        /// </summary>
+        Task<List<string>> GetPermissionKeysByDepartmentIdAsync(int departmentId);
+
+        /// <summary>
+        /// Updates the full set of permission keys assigned to a department ID.
+        /// </summary>
+        Task<bool> UpdateDepartmentPermissionsAsync(int departmentId, IEnumerable<string> permissionKeys);
     }
 }

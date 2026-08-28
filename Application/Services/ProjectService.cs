@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Common.Interfaces;
@@ -18,37 +19,62 @@ namespace MyBackend.Application.Services
 
         public async Task<ProjectsOverviewResponse> GetProjectsAsync(string? category, string? status, string? search)
         {
-            var query = _context.Projects
-                .Where(p => p.DeletedFlag == 1)
-                .AsNoTracking();
+            var sql = new StringBuilder("""
+                SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, deleted_flag
+                FROM projects
+                WHERE deleted_flag = 1
+            """);
+
+            var parameters = new List<object>();
+            int paramIndex = 0;
 
             if (!string.IsNullOrWhiteSpace(category) && category != "ALL")
             {
-                query = query.Where(p => p.Category.ToLower() == category.ToLower());
+                sql.Append($" AND LOWER(category) = LOWER({{{paramIndex++}}})");
+                parameters.Add(category.Trim());
             }
 
             if (!string.IsNullOrWhiteSpace(status) && status != "ALL")
             {
-                query = query.Where(p => p.Status.ToLower() == status.ToLower());
+                sql.Append($" AND LOWER(status) = LOWER({{{paramIndex++}}})");
+                parameters.Add(status.Trim());
             }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lower = search.ToLower();
-                query = query.Where(p => p.Name.ToLower().Contains(lower) ||
-                                         p.Description.ToLower().Contains(lower) ||
-                                         p.LeadName.ToLower().Contains(lower));
+                var pattern = $"%{search.Trim().ToLower()}%";
+                sql.Append($" AND (LOWER(name) LIKE {{{paramIndex}}} OR LOWER(description) LIKE {{{paramIndex}}} OR LOWER(lead_name) LIKE {{{paramIndex++}}})");
+                parameters.Add(pattern);
             }
 
-            var projects = await query.OrderByDescending(p => p.Id).ToListAsync();
+            sql.Append(" ORDER BY id DESC");
 
-            var activeRollouts = await _context.Projects.CountAsync(p => p.DeletedFlag == 1 && p.Status == "In Progress");
-            var onTrackCount = await _context.Projects.CountAsync(p => p.DeletedFlag == 1 && p.ProgressPercentage >= 50);
-            var pendingReviews = await _context.Projects.CountAsync(p => p.DeletedFlag == 1 && p.Status == "Review");
+            var projects = await _context.Projects
+                .FromSqlRaw(sql.ToString(), parameters.ToArray())
+                .AsNoTracking()
+                .ToListAsync();
+
+            var activeRollouts = await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM projects
+                WHERE deleted_flag = 1 AND status = 'In Progress'
+            """).SingleOrDefaultAsync();
+
+            var onTrackCount = await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM projects
+                WHERE deleted_flag = 1 AND progress_percentage >= 50
+            """).SingleOrDefaultAsync();
+
+            var pendingReviews = await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM projects
+                WHERE deleted_flag = 1 AND status = 'Review'
+            """).SingleOrDefaultAsync();
 
             return new ProjectsOverviewResponse
             {
-                ActiveRollouts = activeRollouts > 0 ? activeRollouts : projects.Count,
+                ActiveRollouts = activeRollouts,
                 OnTrackCount = onTrackCount,
                 PendingReviewsCount = pendingReviews,
                 Projects = projects
@@ -62,51 +88,63 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException("Project name is required.");
             }
 
-            var project = new Project
-            {
-                Name = request.Name.Trim(),
-                Description = request.Description.Trim(),
-                Category = string.IsNullOrWhiteSpace(request.Category) ? "RBAC Rollout" : request.Category.Trim(),
-                Status = string.IsNullOrWhiteSpace(request.Status) ? "In Progress" : request.Status.Trim(),
-                Priority = string.IsNullOrWhiteSpace(request.Priority) ? "Medium" : request.Priority.Trim(),
-                LeadName = string.IsNullOrWhiteSpace(request.LeadName) ? creatorName : request.LeadName.Trim(),
-                ProgressPercentage = Math.Clamp(request.ProgressPercentage, 0, 100),
-                DueDate = string.IsNullOrWhiteSpace(request.DueDate) ? DateTime.UtcNow.AddMonths(1).ToString("MMM dd, yyyy") : request.DueDate.Trim(),
-                CreatedAt = DateTime.UtcNow,
-                DeletedFlag = 1
-            };
+            var name = request.Name.Trim();
+            var description = request.Description.Trim();
+            var category = string.IsNullOrWhiteSpace(request.Category) ? "RBAC Rollout" : request.Category.Trim();
+            var status = string.IsNullOrWhiteSpace(request.Status) ? "In Progress" : request.Status.Trim();
+            var priority = string.IsNullOrWhiteSpace(request.Priority) ? "Medium" : request.Priority.Trim();
+            var leadName = string.IsNullOrWhiteSpace(request.LeadName) ? creatorName : request.LeadName.Trim();
+            var progress = Math.Clamp(request.ProgressPercentage, 0, 100);
+            var dueDate = string.IsNullOrWhiteSpace(request.DueDate) ? DateTime.UtcNow.AddMonths(1).ToString("MMM dd, yyyy") : request.DueDate.Trim();
+            var now = DateTime.UtcNow;
 
-            _context.Projects.Add(project);
-            await _context.SaveChangesAsync();
-            return project;
+            var newId = await _context.Database.SqlQueryRaw<int>("""
+                INSERT INTO projects (name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, deleted_flag)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, 1)
+                RETURNING id AS "Value"
+            """, name, description, category, status, priority, leadName, progress, dueDate, now).SingleAsync();
+
+            var createdProject = await _context.Projects
+                .FromSqlRaw("""
+                    SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, deleted_flag
+                    FROM projects
+                    WHERE id = {0} AND deleted_flag = 1
+                """, newId)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            return createdProject!;
         }
 
         public async Task<Project?> UpdateProjectAsync(int id, UpdateProjectRequest request)
         {
-            var project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.DeletedFlag == 1);
-            if (project == null) return null;
+            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
+                UPDATE projects
+                SET name = {0}, description = {1}, category = {2}, status = {3}, priority = {4}, lead_name = {5}, progress_percentage = {6}, due_date = {7}
+                WHERE id = {8} AND deleted_flag = 1
+            """, request.Name.Trim(), request.Description.Trim(), request.Category.Trim(), request.Status.Trim(), request.Priority.Trim(), request.LeadName.Trim(), Math.Clamp(request.ProgressPercentage, 0, 100), request.DueDate.Trim(), id);
 
-            project.Name = request.Name.Trim();
-            project.Description = request.Description.Trim();
-            project.Category = request.Category.Trim();
-            project.Status = request.Status.Trim();
-            project.Priority = request.Priority.Trim();
-            project.LeadName = request.LeadName.Trim();
-            project.ProgressPercentage = Math.Clamp(request.ProgressPercentage, 0, 100);
-            project.DueDate = request.DueDate.Trim();
+            if (rowsAffected == 0) return null;
 
-            await _context.SaveChangesAsync();
-            return project;
+            return await _context.Projects
+                .FromSqlRaw("""
+                    SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, deleted_flag
+                    FROM projects
+                    WHERE id = {0} AND deleted_flag = 1
+                """, id)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
         }
 
         public async Task<bool> DeleteProjectAsync(int id)
         {
-            var project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == id && p.DeletedFlag == 1);
-            if (project == null) return false;
+            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
+                UPDATE projects
+                SET deleted_flag = 0
+                WHERE id = {0} AND deleted_flag = 1
+            """, id);
 
-            project.DeletedFlag = 0;
-            await _context.SaveChangesAsync();
-            return true;
+            return rowsAffected > 0;
         }
     }
 }

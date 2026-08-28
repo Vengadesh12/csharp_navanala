@@ -6,7 +6,7 @@ using MyBackend.Domain.Interfaces;
 namespace MyBackend.Application.Services
 {
     /// <summary>
-    /// Implements role creation, updates, querying, and soft deletion using repositories.
+    /// Implements role creation, updates, querying, and soft deletion using repositories and business object domain methods.
     /// </summary>
     public class RoleService : IRoleService
     {
@@ -46,17 +46,7 @@ namespace MyBackend.Application.Services
 
         public async Task<RoleDto> CreateRoleAsync(CreateRoleRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.Name))
-            {
-                throw new ArgumentException("Role name is required.");
-            }
-
-            var role = new Role
-            {
-                Name = request.Name.Trim(),
-                Description = request.Description?.Trim() ?? string.Empty,
-                DeletedFlag = 1
-            };
+            var role = Role.Create(request.Name, request.Description);
 
             await _unitOfWork.Roles.AddAsync(role);
             await _unitOfWork.SaveChangesAsync();
@@ -75,8 +65,7 @@ namespace MyBackend.Application.Services
             var role = await _unitOfWork.Roles.GetActiveRoleByIdAsync(id);
             if (role is null) return null;
 
-            role.Name = request.Name.Trim();
-            role.Description = request.Description?.Trim() ?? string.Empty;
+            role.UpdateDetails(request.Name, request.Description);
 
             _unitOfWork.Roles.Update(role);
             await _unitOfWork.SaveChangesAsync();

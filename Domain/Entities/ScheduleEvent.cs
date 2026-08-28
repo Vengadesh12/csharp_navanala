@@ -1,7 +1,9 @@
+using System;
+
 namespace MyBackend.Domain.Entities
 {
     /// <summary>
-    /// Calendar scheduled audits, access reviews, training, and meetings entity.
+    /// Calendar scheduled audits, access reviews, training, and meetings business object.
     /// </summary>
     public class ScheduleEvent
     {
@@ -19,5 +21,97 @@ namespace MyBackend.Domain.Entities
         public int AttendeesCount { get; set; } = 1;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public int DeletedFlag { get; set; } = 1;
+
+        #region Business Object Domain Methods
+
+        /// <summary>
+        /// Factory method to create a new Schedule Event.
+        /// </summary>
+        public static ScheduleEvent Create(
+            string title,
+            string? description,
+            string? eventType,
+            string? eventDate,
+            string? startTime,
+            string? endTime,
+            string? location,
+            string? organizer,
+            string? status,
+            string? priority,
+            int attendeesCount)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+                throw new ArgumentException("Event title is required.", nameof(title));
+
+            return new ScheduleEvent
+            {
+                Title = title.Trim(),
+                Description = description?.Trim() ?? string.Empty,
+                EventType = string.IsNullOrWhiteSpace(eventType) ? "Audit" : eventType.Trim(),
+                EventDate = string.IsNullOrWhiteSpace(eventDate) ? DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd") : eventDate.Trim(),
+                StartTime = string.IsNullOrWhiteSpace(startTime) ? "10:00 AM" : startTime.Trim(),
+                EndTime = string.IsNullOrWhiteSpace(endTime) ? "11:00 AM" : endTime.Trim(),
+                Location = string.IsNullOrWhiteSpace(location) ? "Virtual / Workspace" : location.Trim(),
+                Organizer = organizer?.Trim() ?? string.Empty,
+                Status = string.IsNullOrWhiteSpace(status) ? "Scheduled" : status.Trim(),
+                Priority = string.IsNullOrWhiteSpace(priority) ? "Normal" : priority.Trim(),
+                AttendeesCount = Math.Max(1, attendeesCount),
+                CreatedAt = DateTime.UtcNow,
+                DeletedFlag = 1
+            };
+        }
+
+        /// <summary>
+        /// Updates the scheduled event information.
+        /// </summary>
+        public void UpdateDetails(
+            string title,
+            string? description,
+            string? eventType,
+            string? eventDate,
+            string? startTime,
+            string? endTime,
+            string? location,
+            string? organizer,
+            string? status,
+            string? priority,
+            int attendeesCount)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+                throw new ArgumentException("Event title cannot be empty.", nameof(title));
+
+            Title = title.Trim();
+            Description = description?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(eventType)) EventType = eventType.Trim();
+            if (!string.IsNullOrWhiteSpace(eventDate)) EventDate = eventDate.Trim();
+            if (!string.IsNullOrWhiteSpace(startTime)) StartTime = startTime.Trim();
+            if (!string.IsNullOrWhiteSpace(endTime)) EndTime = endTime.Trim();
+            if (!string.IsNullOrWhiteSpace(location)) Location = location.Trim();
+            if (!string.IsNullOrWhiteSpace(organizer)) Organizer = organizer.Trim();
+            if (!string.IsNullOrWhiteSpace(status)) Status = status.Trim();
+            if (!string.IsNullOrWhiteSpace(priority)) Priority = priority.Trim();
+            AttendeesCount = Math.Max(1, attendeesCount);
+        }
+
+        /// <summary>
+        /// Reschedules the date, time, and location of the event.
+        /// </summary>
+        public void Reschedule(string newEventDate, string newStartTime, string newEndTime, string? newLocation = null)
+        {
+            if (!string.IsNullOrWhiteSpace(newEventDate)) EventDate = newEventDate.Trim();
+            if (!string.IsNullOrWhiteSpace(newStartTime)) StartTime = newStartTime.Trim();
+            if (!string.IsNullOrWhiteSpace(newEndTime)) EndTime = newEndTime.Trim();
+            if (!string.IsNullOrWhiteSpace(newLocation)) Location = newLocation.Trim();
+        }
+
+        /// <summary>
+        /// Soft deletes the schedule event.
+        /// </summary>
+        public void SoftDelete()
+        {
+            DeletedFlag = 0;
+        }
+
+        #endregion
     }
 }

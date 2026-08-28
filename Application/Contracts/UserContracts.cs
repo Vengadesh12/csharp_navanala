@@ -191,4 +191,10 @@ public sealed class UserDto
     /// </summary>
     /// <example>1</example>
     public int DeletedFlag { get; set; } = 1;
+
+    /// <summary>
+    /// Flag indicating whether the user must change their password on initial login.
+    /// </summary>
+    /// <example>false</example>
+    public bool IsFirstLogin { get; set; }
 }
