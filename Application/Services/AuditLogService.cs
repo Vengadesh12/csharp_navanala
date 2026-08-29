@@ -22,7 +22,7 @@ namespace MyBackend.Application.Services
         public async Task<AuditLogOverviewResponse> GetAuditLogsAsync(string? module, string? search)
         {
             var sql = new StringBuilder("""
-                SELECT id, action, module, performed_by, details, ip_address, status, created_at, deleted_flag
+                SELECT id, action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag
                 FROM audit_logs
                 WHERE deleted_flag = 1
             """);
@@ -87,14 +87,14 @@ namespace MyBackend.Application.Services
             var now = DateTime.UtcNow;
 
             var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO audit_logs (action, module, performed_by, details, ip_address, status, created_at, deleted_flag)
-                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, 1)
+                INSERT INTO audit_logs (action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {6}, 1)
                 RETURNING id AS "Value"
             """, action, module, performedBy, details, ip, status, now).SingleAsync();
 
             var log = await _context.AuditLogs
                 .FromSqlRaw("""
-                    SELECT id, action, module, performed_by, details, ip_address, status, created_at, deleted_flag
+                    SELECT id, action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag
                     FROM audit_logs
                     WHERE id = {0} AND deleted_flag = 1
                 """, newId)
@@ -106,11 +106,12 @@ namespace MyBackend.Application.Services
 
         public async Task<bool> DeleteAuditLogAsync(int id)
         {
+            var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE audit_logs
-                SET deleted_flag = 0
-                WHERE id = {0} AND deleted_flag = 1
-            """, id);
+                SET deleted_flag = 0, updated_at = {0}
+                WHERE id = {1} AND deleted_flag = 1
+            """, now, id);
 
             return rowsAffected > 0;
         }

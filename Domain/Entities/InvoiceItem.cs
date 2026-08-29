@@ -64,6 +64,16 @@ namespace MyBackend.Domain.Entities
         public int DeletedFlag { get; set; } = 1;
 
         /// <summary>
+        /// Record creation timestamp.
+        /// </summary>
+        public System.DateTime CreatedAt { get; set; } = System.DateTime.UtcNow;
+
+        /// <summary>
+        /// Record last modification timestamp.
+        /// </summary>
+        public System.DateTime? UpdatedAt { get; set; } = System.DateTime.UtcNow;
+
+        /// <summary>
         /// Parent invoice navigation reference.
         /// </summary>
         public virtual Invoice? Invoice { get; set; }
@@ -88,6 +98,7 @@ namespace MyBackend.Domain.Entities
             var baseAmount = qty * price;
             var taxAmount = Math.Round((baseAmount * rate) / 100m, 2);
             var total = baseAmount + taxAmount;
+            var now = System.DateTime.UtcNow;
 
             return new InvoiceItem
             {
@@ -100,7 +111,9 @@ namespace MyBackend.Domain.Entities
                 TaxAmount = taxAmount,
                 TotalAmount = total,
                 OrderIndex = orderIndex,
-                DeletedFlag = 1
+                DeletedFlag = 1,
+                CreatedAt = now,
+                UpdatedAt = now
             };
         }
 
@@ -112,6 +125,7 @@ namespace MyBackend.Domain.Entities
             var baseAmount = Quantity * UnitPrice;
             TaxAmount = Math.Round((baseAmount * TaxRate) / 100m, 2);
             TotalAmount = baseAmount + TaxAmount;
+            UpdatedAt = System.DateTime.UtcNow;
         }
 
         /// <summary>
@@ -120,6 +134,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = System.DateTime.UtcNow;
         }
 
         #endregion

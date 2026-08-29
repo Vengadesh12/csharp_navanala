@@ -40,6 +40,11 @@ namespace MyBackend.Domain.Entities
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         /// <summary>
+        /// Timestamp when the department was last updated.
+        /// </summary>
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
         /// Collection of job designations mapped under this department.
         /// </summary>
         public ICollection<Designation> Designations { get; set; } = new List<Designation>();
@@ -54,12 +59,14 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Department name is required.", nameof(name));
 
+            var now = DateTime.UtcNow;
             return new Department
             {
                 Name = name.Trim(),
                 Description = description?.Trim() ?? string.Empty,
                 DeletedFlag = 1,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             };
         }
 
@@ -73,6 +80,7 @@ namespace MyBackend.Domain.Entities
 
             Name = name.Trim();
             Description = description?.Trim() ?? string.Empty;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -81,6 +89,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -89,6 +98,7 @@ namespace MyBackend.Domain.Entities
         public void Restore()
         {
             DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion

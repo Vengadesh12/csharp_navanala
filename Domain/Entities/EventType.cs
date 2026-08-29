@@ -13,6 +13,7 @@ namespace MyBackend.Domain.Entities
         public string Color { get; set; } = "#3b82f6";
         public string Icon { get; set; } = "Event";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
         public string CreatedBy { get; set; } = "System Admin";
         public int DeletedFlag { get; set; } = 1;
 
@@ -31,6 +32,7 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Event type name is required.", nameof(name));
 
+            var now = DateTime.UtcNow;
             return new EventType
             {
                 Name = name.Trim(),
@@ -38,7 +40,8 @@ namespace MyBackend.Domain.Entities
                 Color = string.IsNullOrWhiteSpace(color) ? "#3b82f6" : color.Trim(),
                 Icon = string.IsNullOrWhiteSpace(icon) ? "Event" : icon.Trim(),
                 CreatedBy = string.IsNullOrWhiteSpace(createdBy) ? "System Admin" : createdBy.Trim(),
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = now,
+                UpdatedAt = now,
                 DeletedFlag = 1
             };
         }
@@ -51,6 +54,7 @@ namespace MyBackend.Domain.Entities
             Description = description?.Trim() ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(color)) Color = color.Trim();
             if (!string.IsNullOrWhiteSpace(icon)) Icon = icon.Trim();
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -59,6 +63,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -67,6 +72,7 @@ namespace MyBackend.Domain.Entities
         public void Restore()
         {
             DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion

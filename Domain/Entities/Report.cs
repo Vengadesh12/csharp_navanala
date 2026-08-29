@@ -17,6 +17,7 @@ namespace MyBackend.Domain.Entities
         public string Status { get; set; } = "Generated";
         public string FileSize { get; set; } = "1.2 MB";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
         public int DeletedFlag { get; set; } = 1;
 
         #region Business Object Domain Methods
@@ -37,6 +38,7 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(title))
                 throw new ArgumentException("Report title is required.", nameof(title));
 
+            var now = DateTime.UtcNow;
             return new Report
             {
                 Title = title.Trim(),
@@ -47,7 +49,8 @@ namespace MyBackend.Domain.Entities
                 CreatedBy = createdBy?.Trim() ?? string.Empty,
                 Status = string.IsNullOrWhiteSpace(status) ? "Ready" : status.Trim(),
                 FileSize = string.IsNullOrWhiteSpace(fileSize) ? "1.5 MB" : fileSize.Trim(),
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = now,
+                UpdatedAt = now,
                 DeletedFlag = 1
             };
         }
@@ -72,6 +75,7 @@ namespace MyBackend.Domain.Entities
             if (!string.IsNullOrWhiteSpace(category)) Category = category.Trim();
             if (!string.IsNullOrWhiteSpace(format)) Format = format.Trim();
             if (!string.IsNullOrWhiteSpace(status)) Status = status.Trim();
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -80,6 +84,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -88,6 +93,7 @@ namespace MyBackend.Domain.Entities
         public void Restore()
         {
             DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion

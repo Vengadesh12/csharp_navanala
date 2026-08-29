@@ -81,6 +81,16 @@ namespace MyBackend.Domain.Entities
         /// <example>true</example>
         public bool IsFirstLogin { get; set; } = false;
 
+        /// <summary>
+        /// Timestamp when the user account was created.
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Timestamp when the user account was last modified.
+        /// </summary>
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
+
         #region Business Object Domain Methods
 
         /// <summary>
@@ -101,6 +111,7 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(email))
                 throw new ArgumentException("User email is required.", nameof(email));
 
+            var now = DateTime.UtcNow;
             return new User
             {
                 Name = name.Trim(),
@@ -111,7 +122,9 @@ namespace MyBackend.Domain.Entities
                 RoleId = roleId,
                 DesignationId = designationId,
                 DeletedFlag = 1,
-                IsFirstLogin = isFirstLogin
+                IsFirstLogin = isFirstLogin,
+                CreatedAt = now,
+                UpdatedAt = now
             };
         }
 
@@ -134,6 +147,7 @@ namespace MyBackend.Domain.Entities
             if (address != null) Address = address.Trim();
             RoleId = roleId;
             DesignationId = designationId;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -149,6 +163,7 @@ namespace MyBackend.Domain.Entities
             {
                 IsFirstLogin = false;
             }
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -157,6 +172,7 @@ namespace MyBackend.Domain.Entities
         public void CompleteFirstLogin()
         {
             IsFirstLogin = false;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -165,6 +181,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -173,6 +190,7 @@ namespace MyBackend.Domain.Entities
         public void Restore()
         {
             DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>

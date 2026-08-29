@@ -12,6 +12,7 @@ namespace MyBackend.Domain.Entities
         public string Description { get; set; } = string.Empty;
         public string Icon { get; set; } = "Tune";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
         public string CreatedBy { get; set; } = "System Admin";
         public int DeletedFlag { get; set; } = 1;
 
@@ -29,13 +30,15 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Setting category name is required.", nameof(name));
 
+            var now = DateTime.UtcNow;
             return new SettingCategory
             {
                 Name = name.Trim(),
                 Description = description?.Trim() ?? string.Empty,
                 Icon = string.IsNullOrWhiteSpace(icon) ? "Tune" : icon.Trim(),
                 CreatedBy = string.IsNullOrWhiteSpace(createdBy) ? "System Admin" : createdBy.Trim(),
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = now,
+                UpdatedAt = now,
                 DeletedFlag = 1
             };
         }
@@ -51,6 +54,7 @@ namespace MyBackend.Domain.Entities
             Name = name.Trim();
             Description = description?.Trim() ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(icon)) Icon = icon.Trim();
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -59,6 +63,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -67,6 +72,7 @@ namespace MyBackend.Domain.Entities
         public void Restore()
         {
             DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion

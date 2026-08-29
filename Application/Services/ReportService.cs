@@ -25,7 +25,7 @@ namespace MyBackend.Application.Services
         public async Task<ReportsOverviewResponse> GetReportsAsync(string? category, string? search)
         {
             var sql = new StringBuilder("""
-                SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, deleted_flag
+                SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag
                 FROM reports
                 WHERE deleted_flag = 1
             """);
@@ -138,7 +138,7 @@ namespace MyBackend.Application.Services
         {
             var report = await _context.Reports
                 .FromSqlRaw("""
-                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, deleted_flag
+                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag
                     FROM reports
                     WHERE id = {0} AND deleted_flag = 1
                 """, id)
@@ -262,14 +262,14 @@ namespace MyBackend.Application.Services
             }
 
             var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO reports (title, description, category_id, category, format, created_by, status, file_size, created_at, deleted_flag)
-                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, 1)
+                INSERT INTO reports (title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {8}, 1)
                 RETURNING id AS "Value"
             """, title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, creatorName, "Ready", "1.5 MB", now).SingleAsync();
 
             var report = await _context.Reports
                 .FromSqlRaw("""
-                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, deleted_flag
+                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag
                     FROM reports
                     WHERE id = {0} AND deleted_flag = 1
                 """, newId)
@@ -309,17 +309,18 @@ namespace MyBackend.Application.Services
                 categoryName = "Compliance";
             }
 
+            var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE reports
-                SET title = {0}, description = {1}, category_id = {2}, category = {3}, format = {4}, status = COALESCE(NULLIF({5}, ''), status)
-                WHERE id = {6} AND deleted_flag = 1
-            """, request.Title.Trim(), request.Description.Trim(), (object?)categoryId ?? DBNull.Value, categoryName, request.Format.Trim(), request.Status ?? string.Empty, id);
+                SET title = {0}, description = {1}, category_id = {2}, category = {3}, format = {4}, status = COALESCE(NULLIF({5}, ''), status), updated_at = {6}
+                WHERE id = {7} AND deleted_flag = 1
+            """, request.Title.Trim(), request.Description.Trim(), (object?)categoryId ?? DBNull.Value, categoryName, request.Format.Trim(), request.Status ?? string.Empty, now, id);
 
             if (rowsAffected == 0) return null;
 
             var updated = await _context.Reports
                 .FromSqlRaw("""
-                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, deleted_flag
+                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag
                     FROM reports
                     WHERE id = {0} AND deleted_flag = 1
                 """, id)
@@ -331,11 +332,12 @@ namespace MyBackend.Application.Services
 
         public async Task<bool> DeleteReportAsync(int id)
         {
+            var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE reports
-                SET deleted_flag = 0
-                WHERE id = {0} AND deleted_flag = 1
-            """, id);
+                SET deleted_flag = 0, updated_at = {0}
+                WHERE id = {1} AND deleted_flag = 1
+            """, now, id);
 
             return rowsAffected > 0;
         }

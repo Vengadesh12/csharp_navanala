@@ -22,7 +22,7 @@ namespace MyBackend.Application.Services
         {
             var user = await _context.Users
                 .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "RoleId", "DesignationId", "Phone", "Age", "Address", "DeletedFlag"
+                    SELECT "Id", "Name", "Email", "Password", "RoleId", "DesignationId", "Phone", "Age", "Address", "DeletedFlag", "CreatedAt", "UpdatedAt"
                     FROM users
                     WHERE "Id" = {0} AND "DeletedFlag" = 1
                 """, userId)
@@ -39,7 +39,7 @@ namespace MyBackend.Application.Services
                 // Super Admin has access to all active menus
                 var rawMenus = await _context.Menus
                     .FromSqlRaw("""
-                        SELECT id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag
+                        SELECT id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag, created_at, updated_at
                         FROM menus
                         WHERE deletedflag = 1
                         ORDER BY orderindex ASC, id ASC
@@ -57,7 +57,7 @@ namespace MyBackend.Application.Services
                 // Get role + department permissions for regular role and filter menus
                 var rawMenus = await _context.Menus
                     .FromSqlRaw("""
-                        SELECT m.id, m.menukey, m.label, m.icon, m.route, m.groupname, m.description, m.orderindex, m.permissionkey, m.deletedflag
+                        SELECT m.id, m.menukey, m.label, m.icon, m.route, m.groupname, m.description, m.orderindex, m.permissionkey, m.deletedflag, m.created_at, m.updated_at
                         FROM menus m
                         WHERE m.deletedflag = 1
                           AND (
@@ -96,7 +96,7 @@ namespace MyBackend.Application.Services
         {
             var rawMenus = await _context.Menus
                 .FromSqlRaw("""
-                    SELECT id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag
+                    SELECT id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag, created_at, updated_at
                     FROM menus
                     WHERE deletedflag = 1
                     ORDER BY orderindex ASC, id ASC

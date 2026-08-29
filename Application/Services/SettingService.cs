@@ -23,7 +23,7 @@ namespace MyBackend.Application.Services
         public async Task<SettingsOverviewResponse> GetSettingsAsync(string? category, string? search)
         {
             var sql = new StringBuilder("""
-                SELECT id, setting_key, setting_value, category, description, data_type, updated_at, updated_by
+                SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
                 FROM system_settings
                 WHERE 1=1
             """);
@@ -53,7 +53,7 @@ namespace MyBackend.Application.Services
 
             var categoriesList = await _context.SettingCategories
                 .FromSqlRaw("""
-                    SELECT id, name, description, icon, created_at, created_by, deleted_flag
+                    SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
                     FROM setting_categories
                     WHERE deleted_flag = 1
                     ORDER BY id ASC
@@ -63,7 +63,7 @@ namespace MyBackend.Application.Services
 
             var settingCounts = (await _context.SystemSettings
                 .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, updated_at, updated_by
+                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
                     FROM system_settings
                 """)
                 .AsNoTracking()
@@ -117,7 +117,7 @@ namespace MyBackend.Application.Services
         {
             var categories = await _context.SettingCategories
                 .FromSqlRaw("""
-                    SELECT id, name, description, icon, created_at, created_by, deleted_flag
+                    SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
                     FROM setting_categories
                     WHERE deleted_flag = 1
                     ORDER BY id ASC
@@ -127,7 +127,7 @@ namespace MyBackend.Application.Services
 
             var settingCounts = (await _context.SystemSettings
                 .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, updated_at, updated_by
+                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
                     FROM system_settings
                 """)
                 .AsNoTracking()
@@ -162,8 +162,8 @@ namespace MyBackend.Application.Services
             }
 
             var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO setting_categories (name, description, icon, created_at, created_by, deleted_flag)
-                VALUES ({0}, {1}, {2}, {3}, {4}, 1)
+                INSERT INTO setting_categories (name, description, icon, created_at, updated_at, created_by, deleted_flag)
+                VALUES ({0}, {1}, {2}, {3}, {3}, {4}, 1)
                 RETURNING id AS "Value"
             """, trimmedName, desc, icon, now, callerName).SingleAsync();
 
@@ -184,7 +184,7 @@ namespace MyBackend.Application.Services
         {
             var category = await _context.SettingCategories
                 .FromSqlRaw("""
-                    SELECT id, name, description, icon, created_at, created_by, deleted_flag
+                    SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
                     FROM setting_categories
                     WHERE id = {0} AND deleted_flag = 1
                 """, id)
@@ -211,11 +211,12 @@ namespace MyBackend.Application.Services
                 }
             }
 
+            var now = DateTime.UtcNow;
             await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE setting_categories
-                SET name = {0}, description = {1}, icon = {2}
-                WHERE id = {3} AND deleted_flag = 1
-            """, name, desc, icon, id);
+                SET name = {0}, description = {1}, icon = {2}, updated_at = {3}
+                WHERE id = {4} AND deleted_flag = 1
+            """, name, desc, icon, now, id);
 
             var count = await _context.Database.SqlQueryRaw<int>("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
@@ -252,11 +253,12 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException($"Category '{categoryName}' is a core system category and cannot be deleted.");
             }
 
+            var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE setting_categories
-                SET deleted_flag = 0
-                WHERE id = {0} AND deleted_flag = 1
-            """, id);
+                SET deleted_flag = 0, updated_at = {0}
+                WHERE id = {1} AND deleted_flag = 1
+            """, now, id);
 
             return rowsAffected > 0;
         }
@@ -276,8 +278,8 @@ namespace MyBackend.Application.Services
                 if (rowsAffected == 0)
                 {
                     await _context.Database.ExecuteSqlRawAsync("""
-                        INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, updated_at, updated_by)
-                        VALUES ({0}, {1}, 'General', {2}, 'string', {3}, {4})
+                        INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by)
+                        VALUES ({0}, {1}, 'General', {2}, 'string', {3}, {3}, {4})
                     """, kvp.Key, kvp.Value, kvp.Key, now, callerName);
                 }
             }
@@ -311,14 +313,14 @@ namespace MyBackend.Application.Services
             }
 
             var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, updated_at, updated_by)
-                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6})
+                INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {5}, {6})
                 RETURNING id AS "Value"
             """, key, val, cat, desc, dataType, now, callerName).SingleAsync();
 
             var setting = await _context.SystemSettings
                 .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, updated_at, updated_by
+                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
                     FROM system_settings
                     WHERE id = {0}
                 """, newId)
@@ -332,7 +334,7 @@ namespace MyBackend.Application.Services
         {
             var existing = await _context.SystemSettings
                 .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, updated_at, updated_by
+                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
                     FROM system_settings
                     WHERE id = {0}
                 """, id)
@@ -356,7 +358,7 @@ namespace MyBackend.Application.Services
 
             var updated = await _context.SystemSettings
                 .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, updated_at, updated_by
+                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
                     FROM system_settings
                     WHERE id = {0}
                 """, id)

@@ -13,11 +13,22 @@ namespace MyBackend.Domain.Common
         public int DeletedFlag { get; set; } = 1;
 
         /// <summary>
+        /// Record creation timestamp.
+        /// </summary>
+        public virtual DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Record last modification timestamp.
+        /// </summary>
+        public virtual DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
         /// Marks the business object as soft-deleted.
         /// </summary>
         public virtual void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -26,6 +37,7 @@ namespace MyBackend.Domain.Common
         public virtual void Restore()
         {
             DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>

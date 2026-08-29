@@ -34,6 +34,11 @@ namespace MyBackend.Domain.Entities
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        /// <summary>
+        /// Timestamp when the category was last updated.
+        /// </summary>
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
+
         #region Business Object Domain Methods
 
         /// <summary>
@@ -44,12 +49,14 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Project category name is required.", nameof(name));
 
+            var now = DateTime.UtcNow;
             return new ProjectCategory
             {
                 Name = name.Trim(),
                 Description = description?.Trim() ?? string.Empty,
                 DeletedFlag = 1,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             };
         }
 
@@ -63,6 +70,7 @@ namespace MyBackend.Domain.Entities
 
             Name = name.Trim();
             Description = description?.Trim() ?? string.Empty;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -71,6 +79,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -79,6 +88,7 @@ namespace MyBackend.Domain.Entities
         public void Restore()
         {
             DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion

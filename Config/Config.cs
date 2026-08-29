@@ -481,6 +481,12 @@ namespace MyBackend.Configuration
                 .HasColumnName("IsFirstLogin")
                 .HasDefaultValue(false);
 
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("CreatedAt");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("UpdatedAt");
+
             builder.Ignore(x => x.Password);
         }
     }
@@ -511,6 +517,12 @@ namespace MyBackend.Configuration
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("DeletedFlag")
                 .HasDefaultValue(1);
+
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("CreatedAt");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("UpdatedAt");
         }
     }
 
@@ -543,6 +555,9 @@ namespace MyBackend.Configuration
 
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("CreatedAt");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("UpdatedAt");
         }
     }
 
@@ -578,6 +593,9 @@ namespace MyBackend.Configuration
 
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("CreatedAt");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("UpdatedAt");
 
             builder.HasOne(x => x.Department)
                 .WithMany(d => d.Designations)
@@ -617,6 +635,12 @@ namespace MyBackend.Configuration
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("DeletedFlag")
                 .HasDefaultValue(1);
+
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("CreatedAt");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("UpdatedAt");
         }
     }
 
@@ -641,6 +665,12 @@ namespace MyBackend.Configuration
             builder.Property(x => x.PermissionId)
                 .HasColumnName("PermissionId")
                 .IsRequired();
+
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("CreatedAt");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("UpdatedAt");
         }
     }
 
@@ -665,6 +695,12 @@ namespace MyBackend.Configuration
             builder.Property(x => x.PermissionId)
                 .HasColumnName("PermissionId")
                 .IsRequired();
+
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("CreatedAt");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("UpdatedAt");
         }
     }
 
@@ -720,6 +756,12 @@ namespace MyBackend.Configuration
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("deleted_flag")
                 .HasDefaultValue(1);
+
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("created_at");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
         }
     }
 
@@ -774,6 +816,12 @@ namespace MyBackend.Configuration
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("deletedflag")
                 .HasDefaultValue(1);
+
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("created_at");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
         }
     }
 
@@ -819,6 +867,9 @@ namespace MyBackend.Configuration
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("created_at")
                 .IsRequired();
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
 
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("deleted_flag")
@@ -876,6 +927,9 @@ namespace MyBackend.Configuration
                 .HasColumnName("created_at")
                 .IsRequired();
 
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
+
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("deleted_flag")
                 .HasDefaultValue(1);
@@ -911,6 +965,9 @@ namespace MyBackend.Configuration
 
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("created_at");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
         }
     }
 
@@ -962,6 +1019,9 @@ namespace MyBackend.Configuration
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("created_at");
 
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
+
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("deleted_flag")
                 .HasDefaultValue(1);
@@ -997,6 +1057,9 @@ namespace MyBackend.Configuration
 
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("created_at");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
         }
     }
 
@@ -1060,6 +1123,9 @@ namespace MyBackend.Configuration
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("created_at");
 
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
+
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("deleted_flag")
                 .HasDefaultValue(1);
@@ -1100,6 +1166,9 @@ namespace MyBackend.Configuration
                 .HasColumnName("data_type")
                 .HasMaxLength(50);
 
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("created_at");
+
             builder.Property(x => x.UpdatedAt)
                 .HasColumnName("updated_at");
 
@@ -1138,6 +1207,9 @@ namespace MyBackend.Configuration
 
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("created_at");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
 
             builder.Property(x => x.CreatedBy)
                 .HasColumnName("created_by")
@@ -1182,6 +1254,9 @@ namespace MyBackend.Configuration
 
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("created_at");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
 
             builder.Property(x => x.CreatedBy)
                 .HasColumnName("created_by")
@@ -1552,6 +1627,12 @@ namespace MyBackend.Configuration
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("deleted_flag")
                 .HasDefaultValue(1);
+
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("created_at");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
         }
     }
 }

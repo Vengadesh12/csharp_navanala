@@ -13,6 +13,7 @@ namespace MyBackend.Domain.Entities
         public string Category { get; set; } = "General";
         public string Description { get; set; } = string.Empty;
         public string DataType { get; set; } = "string";
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public string UpdatedBy { get; set; } = "System Admin";
 
@@ -32,6 +33,7 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(settingKey))
                 throw new ArgumentException("Setting key is required.", nameof(settingKey));
 
+            var now = DateTime.UtcNow;
             return new SystemSetting
             {
                 SettingKey = settingKey.Trim(),
@@ -39,7 +41,8 @@ namespace MyBackend.Domain.Entities
                 Category = string.IsNullOrWhiteSpace(category) ? "General" : category.Trim(),
                 Description = description?.Trim() ?? string.Empty,
                 DataType = string.IsNullOrWhiteSpace(dataType) ? "string" : dataType.Trim(),
-                UpdatedAt = DateTime.UtcNow,
+                CreatedAt = now,
+                UpdatedAt = now,
                 UpdatedBy = string.IsNullOrWhiteSpace(updatedBy) ? "System Admin" : updatedBy.Trim()
             };
         }

@@ -23,7 +23,7 @@ namespace MyBackend.Application.Services
         public async Task<ProjectsOverviewResponse> GetProjectsAsync(string? category, string? status, string? search)
         {
             var sql = new StringBuilder("""
-                SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, deleted_flag
+                SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, updated_at, deleted_flag
                 FROM projects
                 WHERE deleted_flag = 1
             """);
@@ -102,14 +102,14 @@ namespace MyBackend.Application.Services
             var now = DateTime.UtcNow;
 
             var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO projects (name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, deleted_flag)
-                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, 1)
+                INSERT INTO projects (name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, updated_at, deleted_flag)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {8}, 1)
                 RETURNING id AS "Value"
             """, name, description, category, status, priority, leadName, progress, dueDate, now).SingleAsync();
 
             var createdProject = await _context.Projects
                 .FromSqlRaw("""
-                    SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, deleted_flag
+                    SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, updated_at, deleted_flag
                     FROM projects
                     WHERE id = {0} AND deleted_flag = 1
                 """, newId)
@@ -121,17 +121,18 @@ namespace MyBackend.Application.Services
 
         public async Task<ProjectDto?> UpdateProjectAsync(int id, UpdateProjectRequest request)
         {
+            var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE projects
-                SET name = {0}, description = {1}, category = {2}, status = {3}, priority = {4}, lead_name = {5}, progress_percentage = {6}, due_date = {7}
-                WHERE id = {8} AND deleted_flag = 1
-            """, request.Name.Trim(), request.Description.Trim(), request.Category.Trim(), request.Status.Trim(), request.Priority.Trim(), request.LeadName.Trim(), Math.Clamp(request.ProgressPercentage, 0, 100), request.DueDate.Trim(), id);
+                SET name = {0}, description = {1}, category = {2}, status = {3}, priority = {4}, lead_name = {5}, progress_percentage = {6}, due_date = {7}, updated_at = {8}
+                WHERE id = {9} AND deleted_flag = 1
+            """, request.Name.Trim(), request.Description.Trim(), request.Category.Trim(), request.Status.Trim(), request.Priority.Trim(), request.LeadName.Trim(), Math.Clamp(request.ProgressPercentage, 0, 100), request.DueDate.Trim(), now, id);
 
             if (rowsAffected == 0) return null;
 
             var updated = await _context.Projects
                 .FromSqlRaw("""
-                    SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, deleted_flag
+                    SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, updated_at, deleted_flag
                     FROM projects
                     WHERE id = {0} AND deleted_flag = 1
                 """, id)
@@ -143,11 +144,12 @@ namespace MyBackend.Application.Services
 
         public async Task<bool> DeleteProjectAsync(int id)
         {
+            var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE projects
-                SET deleted_flag = 0
-                WHERE id = {0} AND deleted_flag = 1
-            """, id);
+                SET deleted_flag = 0, updated_at = {0}
+                WHERE id = {1} AND deleted_flag = 1
+            """, now, id);
 
             return rowsAffected > 0;
         }

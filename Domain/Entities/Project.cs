@@ -17,6 +17,7 @@ namespace MyBackend.Domain.Entities
         public int ProgressPercentage { get; set; } = 0;
         public string DueDate { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
         public int DeletedFlag { get; set; } = 1;
 
         #region Business Object Domain Methods
@@ -37,6 +38,7 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Project name is required.", nameof(name));
 
+            var now = DateTime.UtcNow;
             return new Project
             {
                 Name = name.Trim(),
@@ -47,7 +49,8 @@ namespace MyBackend.Domain.Entities
                 LeadName = leadName?.Trim() ?? string.Empty,
                 ProgressPercentage = Math.Clamp(progressPercentage, 0, 100),
                 DueDate = dueDate?.Trim() ?? string.Empty,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = now,
+                UpdatedAt = now,
                 DeletedFlag = 1
             };
         }
@@ -76,6 +79,7 @@ namespace MyBackend.Domain.Entities
             if (!string.IsNullOrWhiteSpace(leadName)) LeadName = leadName.Trim();
             ProgressPercentage = Math.Clamp(progressPercentage, 0, 100);
             if (!string.IsNullOrWhiteSpace(dueDate)) DueDate = dueDate.Trim();
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -86,6 +90,7 @@ namespace MyBackend.Domain.Entities
             ProgressPercentage = Math.Clamp(percentage, 0, 100);
             if (!string.IsNullOrWhiteSpace(status)) Status = status.Trim();
             else if (ProgressPercentage == 100) Status = "Completed";
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -94,6 +99,16 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Restores a soft deleted project.
+        /// </summary>
+        public void Restore()
+        {
+            DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion

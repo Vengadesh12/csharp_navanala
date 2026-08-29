@@ -15,6 +15,7 @@ namespace MyBackend.Domain.Entities
         public string IpAddress { get; set; } = "127.0.0.1";
         public string Status { get; set; } = "Success";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
         public int DeletedFlag { get; set; } = 1;
 
         #region Business Object Domain Methods
@@ -30,6 +31,7 @@ namespace MyBackend.Domain.Entities
             string? ipAddress = null,
             string? status = "Success")
         {
+            var now = DateTime.UtcNow;
             return new AuditLog
             {
                 Action = action.Trim(),
@@ -38,7 +40,8 @@ namespace MyBackend.Domain.Entities
                 Details = details.Trim(),
                 IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? "127.0.0.1" : ipAddress.Trim(),
                 Status = string.IsNullOrWhiteSpace(status) ? "Success" : status.Trim(),
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = now,
+                UpdatedAt = now,
                 DeletedFlag = 1
             };
         }
@@ -49,6 +52,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion

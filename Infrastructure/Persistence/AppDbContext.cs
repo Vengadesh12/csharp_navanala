@@ -39,5 +39,47 @@ namespace MyBackend.Infrastructure.Persistence
             base.OnModelCreating(modelBuilder);
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(MyBackend.Configuration.Config).Assembly);
         }
+
+        public override int SaveChanges()
+        {
+            UpdateTimestamps();
+            return base.SaveChanges();
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            UpdateTimestamps();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void UpdateTimestamps()
+        {
+            var utcNow = DateTime.UtcNow;
+            foreach (var entry in ChangeTracker.Entries())
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    var createdAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "CreatedAt");
+                    if (createdAtProp != null && (createdAtProp.CurrentValue == null || (createdAtProp.CurrentValue is DateTime dt && dt == default)))
+                    {
+                        createdAtProp.CurrentValue = utcNow;
+                    }
+
+                    var updatedAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedAt");
+                    if (updatedAtProp != null)
+                    {
+                        updatedAtProp.CurrentValue = utcNow;
+                    }
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    var updatedAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedAt");
+                    if (updatedAtProp != null)
+                    {
+                        updatedAtProp.CurrentValue = utcNow;
+                    }
+                }
+            }
+        }
     }
 }

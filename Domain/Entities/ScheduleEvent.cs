@@ -20,6 +20,7 @@ namespace MyBackend.Domain.Entities
         public string Priority { get; set; } = "Normal";
         public int AttendeesCount { get; set; } = 1;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
         public int DeletedFlag { get; set; } = 1;
 
         #region Business Object Domain Methods
@@ -43,12 +44,13 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(title))
                 throw new ArgumentException("Event title is required.", nameof(title));
 
+            var now = DateTime.UtcNow;
             return new ScheduleEvent
             {
                 Title = title.Trim(),
                 Description = description?.Trim() ?? string.Empty,
                 EventType = string.IsNullOrWhiteSpace(eventType) ? "Audit" : eventType.Trim(),
-                EventDate = string.IsNullOrWhiteSpace(eventDate) ? DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd") : eventDate.Trim(),
+                EventDate = string.IsNullOrWhiteSpace(eventDate) ? now.AddDays(1).ToString("yyyy-MM-dd") : eventDate.Trim(),
                 StartTime = string.IsNullOrWhiteSpace(startTime) ? "10:00 AM" : startTime.Trim(),
                 EndTime = string.IsNullOrWhiteSpace(endTime) ? "11:00 AM" : endTime.Trim(),
                 Location = string.IsNullOrWhiteSpace(location) ? "Virtual / Workspace" : location.Trim(),
@@ -56,7 +58,8 @@ namespace MyBackend.Domain.Entities
                 Status = string.IsNullOrWhiteSpace(status) ? "Scheduled" : status.Trim(),
                 Priority = string.IsNullOrWhiteSpace(priority) ? "Normal" : priority.Trim(),
                 AttendeesCount = Math.Max(1, attendeesCount),
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = now,
+                UpdatedAt = now,
                 DeletedFlag = 1
             };
         }
@@ -91,6 +94,7 @@ namespace MyBackend.Domain.Entities
             if (!string.IsNullOrWhiteSpace(status)) Status = status.Trim();
             if (!string.IsNullOrWhiteSpace(priority)) Priority = priority.Trim();
             AttendeesCount = Math.Max(1, attendeesCount);
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -102,6 +106,7 @@ namespace MyBackend.Domain.Entities
             if (!string.IsNullOrWhiteSpace(newStartTime)) StartTime = newStartTime.Trim();
             if (!string.IsNullOrWhiteSpace(newEndTime)) EndTime = newEndTime.Trim();
             if (!string.IsNullOrWhiteSpace(newLocation)) Location = newLocation.Trim();
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -110,6 +115,16 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Restores the schedule event.
+        /// </summary>
+        public void Restore()
+        {
+            DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion

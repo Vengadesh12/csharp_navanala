@@ -21,7 +21,7 @@ namespace MyBackend.Infrastructure.Repositories
 
             return await _context.Users
                 .FromSqlInterpolated($"""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin"
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
                     FROM users
                     WHERE LOWER("Email") = {normalizedEmail}
                     LIMIT 1
@@ -34,7 +34,7 @@ namespace MyBackend.Infrastructure.Repositories
         {
             return await _context.Users
                 .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin"
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
                     FROM users
                     ORDER BY "Id"
                     """)
@@ -46,7 +46,7 @@ namespace MyBackend.Infrastructure.Repositories
         {
             return await _context.Users
                 .FromSqlInterpolated($"""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin"
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
                     FROM users
                     WHERE "Id" = {id}
                     """)

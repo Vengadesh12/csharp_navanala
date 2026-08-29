@@ -45,6 +45,11 @@ namespace MyBackend.Domain.Entities
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         /// <summary>
+        /// Timestamp when the designation record was last updated.
+        /// </summary>
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
         /// Navigation property to parent department.
         /// </summary>
         public Department? Department { get; set; }
@@ -59,13 +64,15 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Designation name is required.", nameof(name));
 
+            var now = DateTime.UtcNow;
             return new Designation
             {
                 Name = name.Trim(),
                 Description = description?.Trim() ?? string.Empty,
                 DepartmentId = departmentId,
                 DeletedFlag = 1,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             };
         }
 
@@ -80,6 +87,7 @@ namespace MyBackend.Domain.Entities
             Name = name.Trim();
             Description = description?.Trim() ?? string.Empty;
             DepartmentId = departmentId;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -88,6 +96,7 @@ namespace MyBackend.Domain.Entities
         public void AssignDepartment(int departmentId)
         {
             DepartmentId = departmentId;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -96,6 +105,7 @@ namespace MyBackend.Domain.Entities
         public void UnassignDepartment()
         {
             DepartmentId = null;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -104,6 +114,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -112,6 +123,7 @@ namespace MyBackend.Domain.Entities
         public void Restore()
         {
             DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion

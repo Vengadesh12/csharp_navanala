@@ -67,6 +67,16 @@ namespace MyBackend.Domain.Entities
         /// <example>1</example>
         public int DeletedFlag { get; set; } = 1;
 
+        /// <summary>
+        /// Record creation timestamp.
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Record last modification timestamp.
+        /// </summary>
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
+
         #region Business Object Domain Methods
 
         /// <summary>
@@ -87,6 +97,7 @@ namespace MyBackend.Domain.Entities
             if (string.IsNullOrWhiteSpace(label))
                 throw new ArgumentException("Menu label is required.", nameof(label));
 
+            var now = DateTime.UtcNow;
             return new Menu
             {
                 MenuKey = menuKey.Trim(),
@@ -97,7 +108,9 @@ namespace MyBackend.Domain.Entities
                 Description = description?.Trim() ?? string.Empty,
                 OrderIndex = orderIndex,
                 PermissionKey = string.IsNullOrWhiteSpace(permissionKey) ? null : permissionKey.Trim(),
-                DeletedFlag = 1
+                DeletedFlag = 1,
+                CreatedAt = now,
+                UpdatedAt = now
             };
         }
 
@@ -123,6 +136,7 @@ namespace MyBackend.Domain.Entities
             Description = description?.Trim() ?? string.Empty;
             OrderIndex = orderIndex;
             PermissionKey = string.IsNullOrWhiteSpace(permissionKey) ? null : permissionKey.Trim();
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -131,6 +145,7 @@ namespace MyBackend.Domain.Entities
         public void SoftDelete()
         {
             DeletedFlag = 0;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -139,6 +154,7 @@ namespace MyBackend.Domain.Entities
         public void Restore()
         {
             DeletedFlag = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion
