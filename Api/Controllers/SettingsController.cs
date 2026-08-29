@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Api.Controllers
 {
@@ -132,14 +134,14 @@ namespace MyBackend.Api.Controllers
         /// Create or register a custom system configuration key.
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(ApiResponse<SystemSetting>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<SystemSettingDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateSetting([FromBody] CreateSettingRequest request)
         {
             var callerName = User.FindFirstValue(ClaimTypes.Name) ?? "System Administrator";
             var setting = await _settingService.CreateSettingAsync(request, callerName);
 
-            return CreatedAtAction(nameof(GetSettings), new { id = setting.Id }, new ApiResponse<SystemSetting>
+            return CreatedAtAction(nameof(GetSettings), new { id = setting.Id }, new ApiResponse<SystemSettingDto>
             {
                 Success = true,
                 Message = "Setting key registered successfully!",
@@ -151,7 +153,7 @@ namespace MyBackend.Api.Controllers
         /// Update an existing system configuration setting.
         /// </summary>
         [HttpPut("{id:int}")]
-        [ProducesResponseType(typeof(ApiResponse<SystemSetting>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<SystemSettingDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateSetting(int id, [FromBody] UpdateSettingRequest request)
         {
@@ -162,7 +164,7 @@ namespace MyBackend.Api.Controllers
                 return NotFound(new ErrorResponse { Message = $"Setting with ID {id} not found." });
             }
 
-            return Ok(new ApiResponse<SystemSetting>
+            return Ok(new ApiResponse<SystemSettingDto>
             {
                 Success = true,
                 Message = $"Setting '{setting.SettingKey}' updated and persisted in database!",

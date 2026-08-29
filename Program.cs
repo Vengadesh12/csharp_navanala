@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Api.Extensions;
 using MyBackend.Api.Middlewares;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Common.Models;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Services;

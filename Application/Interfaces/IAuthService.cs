@@ -1,5 +1,6 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using MyBackend.Application.Contracts;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Interfaces
 {
@@ -56,11 +57,11 @@ namespace MyBackend.Application.Interfaces
         /// <summary>
         /// Retrieves the session login/logout history for a specific user.
         /// </summary>
-        Task<List<UserSession>> GetUserSessionsAsync(int userId, int limit = 50);
+        Task<List<UserSessionDto>> GetUserSessionsAsync(int userId, int limit = 50);
 
         /// <summary>
         /// Retrieves all recent user login and logout sessions with IP addresses.
         /// </summary>
-        Task<List<UserSession>> GetAllRecentSessionsAsync(int limit = 100);
+        Task<List<UserSessionDto>> GetAllRecentSessionsAsync(int limit = 100);
     }
 }

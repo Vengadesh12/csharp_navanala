@@ -1,10 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Application.Mappings;
 
 namespace MyBackend.Application.Services
 {
@@ -49,7 +52,7 @@ namespace MyBackend.Application.Services
 
             sql.Append(" ORDER BY id DESC");
 
-            var projects = await _context.Projects
+            var rawProjects = await _context.Projects
                 .FromSqlRaw(sql.ToString(), parameters.ToArray())
                 .AsNoTracking()
                 .ToListAsync();
@@ -77,11 +80,11 @@ namespace MyBackend.Application.Services
                 ActiveRollouts = activeRollouts,
                 OnTrackCount = onTrackCount,
                 PendingReviewsCount = pendingReviews,
-                Projects = projects
+                Projects = rawProjects.ToDtoList()
             };
         }
 
-        public async Task<Project> CreateProjectAsync(CreateProjectRequest request, string creatorName)
+        public async Task<ProjectDto> CreateProjectAsync(CreateProjectRequest request, string creatorName)
         {
             if (string.IsNullOrWhiteSpace(request.Name))
             {
@@ -113,10 +116,10 @@ namespace MyBackend.Application.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
-            return createdProject!;
+            return createdProject!.ToDto();
         }
 
-        public async Task<Project?> UpdateProjectAsync(int id, UpdateProjectRequest request)
+        public async Task<ProjectDto?> UpdateProjectAsync(int id, UpdateProjectRequest request)
         {
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE projects
@@ -126,7 +129,7 @@ namespace MyBackend.Application.Services
 
             if (rowsAffected == 0) return null;
 
-            return await _context.Projects
+            var updated = await _context.Projects
                 .FromSqlRaw("""
                     SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, deleted_flag
                     FROM projects
@@ -134,6 +137,8 @@ namespace MyBackend.Application.Services
                 """, id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
+
+            return updated?.ToDto();
         }
 
         public async Task<bool> DeleteProjectAsync(int id)

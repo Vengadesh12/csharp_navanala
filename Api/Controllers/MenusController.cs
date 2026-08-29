@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Api.Controllers
 {
@@ -25,7 +27,7 @@ namespace MyBackend.Api.Controllers
         /// Retrieves the list of accessible menus for the current authenticated user based on JWT token and role permissions.
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(typeof(List<Menu>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<MenuItemDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetUserMenus()
         {
@@ -42,7 +44,7 @@ namespace MyBackend.Api.Controllers
         /// Retrieves all configured menus in the system (for administrative purposes).
         /// </summary>
         [HttpGet("all")]
-        [ProducesResponseType(typeof(List<Menu>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<MenuItemDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllMenus()
         {
             var menus = await _menuService.GetAllMenusAsync();

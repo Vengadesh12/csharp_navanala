@@ -4,9 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
+using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Services
@@ -78,7 +78,7 @@ namespace MyBackend.Application.Services
 
             return new PagedApprovalResponse
             {
-                Items = items.Select(MapToDto).ToList(),
+                Items = items.Select(a => a.ToDto()).ToList(),
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize,
@@ -128,7 +128,7 @@ namespace MyBackend.Application.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.Id == id && a.DeletedFlag == 1);
 
-            return entity != null ? MapToDto(entity) : null;
+            return entity?.ToDto();
         }
 
         public async Task<ApprovalRequestDto> CreateApprovalAsync(
@@ -164,7 +164,7 @@ namespace MyBackend.Application.Services
             _context.Approvals.Add(entity);
             await _context.SaveChangesAsync();
 
-            return MapToDto(entity);
+            return entity.ToDto();
         }
 
         public async Task<ApprovalRequestDto?> ProcessActionAsync(
@@ -195,7 +195,7 @@ namespace MyBackend.Application.Services
 
             await _context.SaveChangesAsync();
 
-            return MapToDto(entity);
+            return entity.ToDto();
         }
 
         public async Task<bool> DeleteApprovalAsync(int id, int currentUserId, bool isManagerOrAdmin)
@@ -216,28 +216,5 @@ namespace MyBackend.Application.Services
             await _context.SaveChangesAsync();
             return true;
         }
-
-        private static ApprovalRequestDto MapToDto(ApprovalRequest e) => new()
-        {
-            Id = e.Id,
-            UserId = e.UserId,
-            EmployeeName = e.EmployeeName,
-            EmployeeEmail = e.EmployeeEmail,
-            DepartmentName = e.DepartmentName,
-            ItemName = e.ItemName,
-            Category = e.Category,
-            Description = e.Description,
-            Quantity = e.Quantity,
-            Priority = e.Priority,
-            EstimatedAmount = e.EstimatedAmount,
-            Status = e.Status,
-            Comments = e.Comments,
-            ReviewedById = e.ReviewedById,
-            ReviewedByName = e.ReviewedByName,
-            ReviewedAt = e.ReviewedAt,
-            CreatedAt = e.CreatedAt,
-            UpdatedAt = e.UpdatedAt,
-            DeletedFlag = e.DeletedFlag
-        };
     }
 }

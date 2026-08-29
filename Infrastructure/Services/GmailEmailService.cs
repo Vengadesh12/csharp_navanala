@@ -1,9 +1,11 @@
+using System;
 using System.Net;
 using System.Net.Mail;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Common.Models;
+using MyBackend.Application.Interfaces;
 using MyBackend.Configuration;
 
 namespace MyBackend.Infrastructure.Services

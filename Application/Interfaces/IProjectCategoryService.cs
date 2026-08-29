@@ -1,5 +1,6 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using MyBackend.Application.Contracts;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Interfaces
 {

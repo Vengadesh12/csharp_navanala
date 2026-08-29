@@ -1,9 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Common.Validators;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
+using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
 using MyBackend.Domain.Interfaces;
 
@@ -35,21 +39,7 @@ namespace MyBackend.Application.Services
             var rolesDict = await _unitOfWork.Roles.GetRoleNameDictionaryAsync();
             var designationsDict = await _unitOfWork.Designations.GetDesignationNameDictionaryAsync();
 
-            return users.Select(u => new UserDto
-            {
-                Id = u.Id,
-                Name = u.Name,
-                Email = u.Email,
-                Phone = u.Phone ?? string.Empty,
-                Age = u.Age,
-                Address = u.Address ?? string.Empty,
-                RoleId = u.RoleId,
-                RoleName = u.RoleId.HasValue && rolesDict.TryGetValue(u.RoleId.Value, out var rName) ? rName : null,
-                DesignationId = u.DesignationId,
-                DesignationName = u.DesignationId.HasValue && designationsDict.TryGetValue(u.DesignationId.Value, out var dName) ? dName : null,
-                DeletedFlag = u.DeletedFlag,
-                IsFirstLogin = u.IsFirstLogin
-            }).ToList();
+            return users.ToDtoList(rolesDict, designationsDict);
         }
 
         public async Task<UserDto?> GetUserByIdAsync(int id)
@@ -71,21 +61,7 @@ namespace MyBackend.Application.Services
                 designationName = designation?.Name;
             }
 
-            return new UserDto
-            {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Phone = user.Phone ?? string.Empty,
-                Age = user.Age,
-                Address = user.Address ?? string.Empty,
-                RoleId = user.RoleId,
-                RoleName = roleName,
-                DesignationId = user.DesignationId,
-                DesignationName = designationName,
-                DeletedFlag = user.DeletedFlag,
-                IsFirstLogin = user.IsFirstLogin
-            };
+            return user.ToDto(roleName, designationName);
         }
 
         public async Task<UserDto> CreateUserAsync(CreateUserRequest request)
@@ -142,21 +118,7 @@ namespace MyBackend.Application.Services
                 designationName = designation?.Name;
             }
 
-            return new UserDto
-            {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Phone = user.Phone ?? string.Empty,
-                Age = user.Age,
-                Address = user.Address ?? string.Empty,
-                RoleId = user.RoleId,
-                RoleName = roleName,
-                DesignationId = user.DesignationId,
-                DesignationName = designationName,
-                DeletedFlag = user.DeletedFlag,
-                IsFirstLogin = user.IsFirstLogin
-            };
+            return user.ToDto(roleName, designationName);
         }
 
         public async Task<UserDto?> UpdateUserAsync(int id, UpdateUserRequest request)
@@ -204,21 +166,7 @@ namespace MyBackend.Application.Services
                 designationName = designation?.Name;
             }
 
-            return new UserDto
-            {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Phone = user.Phone ?? string.Empty,
-                Age = user.Age,
-                Address = user.Address ?? string.Empty,
-                RoleId = user.RoleId,
-                RoleName = roleName,
-                DesignationId = user.DesignationId,
-                DesignationName = designationName,
-                DeletedFlag = user.DeletedFlag,
-                IsFirstLogin = user.IsFirstLogin
-            };
+            return user.ToDto(roleName, designationName);
         }
 
         public async Task<bool> SoftDeleteUserAsync(int id)

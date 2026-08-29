@@ -1,10 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Application.Mappings;
 
 namespace MyBackend.Application.Services
 {
@@ -43,7 +46,7 @@ namespace MyBackend.Application.Services
 
             sql.Append(" ORDER BY category ASC, setting_key ASC");
 
-            var settings = await _context.SystemSettings
+            var rawSettings = await _context.SystemSettings
                 .FromSqlRaw(sql.ToString(), parameters.ToArray())
                 .AsNoTracking()
                 .ToListAsync();
@@ -68,17 +71,7 @@ namespace MyBackend.Application.Services
                 .GroupBy(s => s.Category)
                 .ToDictionary(g => g.Key.ToLower(), g => g.Count());
 
-            var categoryDtos = categoriesList.Select(c => new SettingCategoryDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Description = c.Description,
-                Icon = c.Icon,
-                CreatedAt = c.CreatedAt,
-                CreatedBy = c.CreatedBy,
-                DeletedFlag = c.DeletedFlag,
-                SettingsCount = settingCounts.TryGetValue(c.Name.ToLower(), out var count) ? count : 0
-            }).ToList();
+            var categoryDtos = categoriesList.Select(c => c.ToDto(settingCounts.TryGetValue(c.Name.ToLower(), out var count) ? count : 0)).ToList();
 
             var totalSettings = await _context.Database.SqlQueryRaw<int>("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
@@ -115,7 +108,7 @@ namespace MyBackend.Application.Services
                 SessionTimeout = sessionTimeout,
                 TotalSettings = totalSettings,
                 TotalCategories = categoryDtos.Count,
-                Settings = settings,
+                Settings = rawSettings.ToDtoList(),
                 Categories = categoryDtos
             };
         }
@@ -142,17 +135,7 @@ namespace MyBackend.Application.Services
                 .GroupBy(s => s.Category)
                 .ToDictionary(g => g.Key.ToLower(), g => g.Count());
 
-            return categories.Select(c => new SettingCategoryDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Description = c.Description,
-                Icon = c.Icon,
-                CreatedAt = c.CreatedAt,
-                CreatedBy = c.CreatedBy,
-                DeletedFlag = c.DeletedFlag,
-                SettingsCount = settingCounts.TryGetValue(c.Name.ToLower(), out var count) ? count : 0
-            }).ToList();
+            return categories.Select(c => c.ToDto(settingCounts.TryGetValue(c.Name.ToLower(), out var count) ? count : 0)).ToList();
         }
 
         public async Task<SettingCategoryDto> CreateCategoryAsync(CreateSettingCategoryRequest request, string callerName)
@@ -302,7 +285,7 @@ namespace MyBackend.Application.Services
             return true;
         }
 
-        public async Task<SystemSetting> CreateSettingAsync(CreateSettingRequest request, string callerName)
+        public async Task<SystemSettingDto> CreateSettingAsync(CreateSettingRequest request, string callerName)
         {
             if (string.IsNullOrWhiteSpace(request.SettingKey))
             {
@@ -342,10 +325,10 @@ namespace MyBackend.Application.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
-            return setting!;
+            return setting!.ToDto();
         }
 
-        public async Task<SystemSetting?> UpdateSettingAsync(int id, UpdateSettingRequest request, string callerName)
+        public async Task<SystemSettingDto?> UpdateSettingAsync(int id, UpdateSettingRequest request, string callerName)
         {
             var existing = await _context.SystemSettings
                 .FromSqlRaw("""
@@ -371,7 +354,7 @@ namespace MyBackend.Application.Services
                 WHERE id = {7}
             """, key, val, cat, desc, dataType, now, callerName, id);
 
-            return await _context.SystemSettings
+            var updated = await _context.SystemSettings
                 .FromSqlRaw("""
                     SELECT id, setting_key, setting_value, category, description, data_type, updated_at, updated_by
                     FROM system_settings
@@ -379,6 +362,8 @@ namespace MyBackend.Application.Services
                 """, id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
+
+            return updated?.ToDto();
         }
 
         public async Task<bool> DeleteSettingAsync(int id)

@@ -1,5 +1,3 @@
-using MyBackend.Domain.Entities;
-
 namespace MyBackend.Application.Contracts
 {
     public class MenuItemDto

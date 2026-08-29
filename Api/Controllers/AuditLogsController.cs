@@ -1,9 +1,10 @@
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
-using System.Security.Claims;
 
 namespace MyBackend.Api.Controllers
 {
@@ -36,7 +37,7 @@ namespace MyBackend.Api.Controllers
         /// Record a new audit log / security event manually or programmatically.
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(ApiResponse<AuditLog>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<AuditLogDto>), StatusCodes.Status201Created)]
         public async Task<IActionResult> CreateAuditLog([FromBody] CreateAuditLogRequest request)
         {
             var callerName = User.FindFirstValue(ClaimTypes.Name) ?? "System Administrator";
@@ -44,7 +45,7 @@ namespace MyBackend.Api.Controllers
 
             var log = await _auditLogService.CreateAuditLogAsync(request, callerName, ipAddress);
 
-            return CreatedAtAction(nameof(GetAuditLogs), new { id = log.Id }, new ApiResponse<AuditLog>
+            return CreatedAtAction(nameof(GetAuditLogs), new { id = log.Id }, new ApiResponse<AuditLogDto>
             {
                 Success = true,
                 Message = "Audit log recorded successfully!",

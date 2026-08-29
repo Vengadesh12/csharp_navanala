@@ -1,7 +1,10 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Common.Interfaces;
+using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Application.Mappings;
 
 namespace MyBackend.Application.Services
 {
@@ -15,7 +18,7 @@ namespace MyBackend.Application.Services
             _context = context;
         }
 
-        public async Task<List<Menu>> GetUserMenusAsync(int userId)
+        public async Task<List<MenuItemDto>> GetUserMenusAsync(int userId)
         {
             var user = await _context.Users
                 .FromSqlRaw("""
@@ -34,7 +37,7 @@ namespace MyBackend.Application.Services
             if (user.RoleId == SuperAdminRoleId)
             {
                 // Super Admin has access to all active menus
-                return await _context.Menus
+                var rawMenus = await _context.Menus
                     .FromSqlRaw("""
                         SELECT id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag
                         FROM menus
@@ -43,6 +46,8 @@ namespace MyBackend.Application.Services
                     """)
                     .AsNoTracking()
                     .ToListAsync();
+
+                return rawMenus.ToDtoList();
             }
             else
             {
@@ -50,7 +55,7 @@ namespace MyBackend.Application.Services
                 var designationId = user.DesignationId ?? 0;
 
                 // Get role + department permissions for regular role and filter menus
-                return await _context.Menus
+                var rawMenus = await _context.Menus
                     .FromSqlRaw("""
                         SELECT m.id, m.menukey, m.label, m.icon, m.route, m.groupname, m.description, m.orderindex, m.permissionkey, m.deletedflag
                         FROM menus m
@@ -82,12 +87,14 @@ namespace MyBackend.Application.Services
                     """, roleId, designationId)
                     .AsNoTracking()
                     .ToListAsync();
+
+                return rawMenus.ToDtoList();
             }
         }
 
-        public async Task<List<Menu>> GetAllMenusAsync()
+        public async Task<List<MenuItemDto>> GetAllMenusAsync()
         {
-            return await _context.Menus
+            var rawMenus = await _context.Menus
                 .FromSqlRaw("""
                     SELECT id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag
                     FROM menus
@@ -96,6 +103,8 @@ namespace MyBackend.Application.Services
                 """)
                 .AsNoTracking()
                 .ToListAsync();
+
+            return rawMenus.ToDtoList();
         }
     }
 }

@@ -1,9 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
-using System.Security.Claims;
 
 namespace MyBackend.Api.Controllers
 {
@@ -128,7 +132,7 @@ namespace MyBackend.Api.Controllers
         /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet("sessions")]
         [Authorize]
-        [ProducesResponseType(typeof(List<UserSession>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<UserSessionDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetUserSessions([FromQuery] int limit = 50)
         {
@@ -148,7 +152,7 @@ namespace MyBackend.Api.Controllers
         /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet("sessions/all")]
         [Authorize]
-        [ProducesResponseType(typeof(List<UserSession>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<UserSessionDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAllRecentSessions([FromQuery] int limit = 100)
         {

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Services;
 

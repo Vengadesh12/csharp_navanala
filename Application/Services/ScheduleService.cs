@@ -1,10 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Application.Mappings;
 
 namespace MyBackend.Application.Services
 {
@@ -43,7 +46,7 @@ namespace MyBackend.Application.Services
 
             sql.Append(" ORDER BY event_date ASC, start_time ASC");
 
-            var schedules = await _context.Schedules
+            var rawSchedules = await _context.Schedules
                 .FromSqlRaw(sql.ToString(), parameters.ToArray())
                 .AsNoTracking()
                 .ToListAsync();
@@ -81,7 +84,7 @@ namespace MyBackend.Application.Services
                 UpcomingReviews = upcomingReviews,
                 TeamAvailability = teamAvailability,
                 DueThisWeek = dueThisWeek,
-                Schedules = schedules,
+                Schedules = rawSchedules.ToDtoList(),
                 EventTypes = eventTypes
             };
         }
@@ -202,7 +205,7 @@ namespace MyBackend.Application.Services
             return rowsAffected > 0;
         }
 
-        public async Task<ScheduleEvent> CreateScheduleAsync(CreateScheduleRequest request, string creatorName)
+        public async Task<ScheduleEventDto> CreateScheduleAsync(CreateScheduleRequest request, string creatorName)
         {
             if (string.IsNullOrWhiteSpace(request.Title))
             {
@@ -237,10 +240,10 @@ namespace MyBackend.Application.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
-            return schedule!;
+            return schedule!.ToDto();
         }
 
-        public async Task<ScheduleEvent?> UpdateScheduleAsync(int id, UpdateScheduleRequest request)
+        public async Task<ScheduleEventDto?> UpdateScheduleAsync(int id, UpdateScheduleRequest request)
         {
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE schedules
@@ -250,7 +253,7 @@ namespace MyBackend.Application.Services
 
             if (rowsAffected == 0) return null;
 
-            return await _context.Schedules
+            var updated = await _context.Schedules
                 .FromSqlRaw("""
                     SELECT id, title, description, event_type, event_date, start_time, end_time, location, organizer, status, priority, attendees_count, created_at, deleted_flag
                     FROM schedules
@@ -258,6 +261,8 @@ namespace MyBackend.Application.Services
                 """, id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
+
+            return updated?.ToDto();
         }
 
         public async Task<bool> DeleteScheduleAsync(int id)

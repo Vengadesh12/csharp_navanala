@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Api.Controllers
 {
@@ -36,14 +38,14 @@ namespace MyBackend.Api.Controllers
         /// Schedule a new event or audit session.
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(ApiResponse<ScheduleEvent>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<ScheduleEventDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateSchedule([FromBody] CreateScheduleRequest request)
         {
             var callerName = User.FindFirstValue(ClaimTypes.Name) ?? "System Lead";
             var schedule = await _scheduleService.CreateScheduleAsync(request, callerName);
 
-            return CreatedAtAction(nameof(GetSchedules), new { id = schedule.Id }, new ApiResponse<ScheduleEvent>
+            return CreatedAtAction(nameof(GetSchedules), new { id = schedule.Id }, new ApiResponse<ScheduleEventDto>
             {
                 Success = true,
                 Message = "Event scheduled and saved in database successfully!",
@@ -55,7 +57,7 @@ namespace MyBackend.Api.Controllers
         /// Update an existing scheduled event.
         /// </summary>
         [HttpPut("{id:int}")]
-        [ProducesResponseType(typeof(ApiResponse<ScheduleEvent>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<ScheduleEventDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateSchedule(int id, [FromBody] UpdateScheduleRequest request)
         {
@@ -65,7 +67,7 @@ namespace MyBackend.Api.Controllers
                 return NotFound(new ErrorResponse { Message = $"Scheduled event with ID {id} not found." });
             }
 
-            return Ok(new ApiResponse<ScheduleEvent>
+            return Ok(new ApiResponse<ScheduleEventDto>
             {
                 Success = true,
                 Message = "Scheduled event updated successfully!",

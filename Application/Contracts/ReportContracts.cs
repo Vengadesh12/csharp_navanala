@@ -1,7 +1,23 @@
-using MyBackend.Domain.Entities;
+using System;
+using System.Collections.Generic;
 
 namespace MyBackend.Application.Contracts
 {
+    public class ReportDto
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public int? CategoryId { get; set; }
+        public string Category { get; set; } = "Compliance";
+        public string Format { get; set; } = "PDF";
+        public string CreatedBy { get; set; } = "System Admin";
+        public string Status { get; set; } = "Generated";
+        public string FileSize { get; set; } = "1.2 MB";
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public int DeletedFlag { get; set; } = 1;
+    }
+
     public class CreateReportRequest
     {
         public string Title { get; set; } = string.Empty;
@@ -26,7 +42,7 @@ namespace MyBackend.Application.Contracts
         public int ReportsGenerated { get; set; }
         public int ExportsReady { get; set; }
         public string RoleCoverage { get; set; } = "100%";
-        public List<Report> Reports { get; set; } = [];
+        public List<ReportDto> Reports { get; set; } = [];
         public List<ReportCategoryDto> Categories { get; set; } = [];
     }
 

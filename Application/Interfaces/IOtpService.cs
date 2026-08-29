@@ -1,4 +1,4 @@
-namespace MyBackend.Application.Common.Interfaces
+namespace MyBackend.Application.Interfaces
 {
     /// <summary>
     /// Service contract for generating, validating, and consuming short-lived OTP tokens.

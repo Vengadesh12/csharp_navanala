@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
+using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Services
@@ -52,12 +52,13 @@ namespace MyBackend.Application.Services
             var page = query.Page > 0 ? query.Page : 1;
             var pageSize = query.PageSize > 0 ? query.PageSize : 50;
 
-            var items = await dbQuery
+            var rawPurchases = await dbQuery
                 .OrderByDescending(p => p.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p => MapToDto(p))
                 .ToListAsync();
+
+            var items = rawPurchases.Select(p => p.ToDto()).ToList();
 
             return new PagedPurchaseResponse
             {
@@ -153,7 +154,7 @@ namespace MyBackend.Application.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == id && p.DeletedFlag == 1);
 
-            return purchase != null ? MapToDto(purchase) : null;
+            return purchase?.ToDto();
         }
 
         public async Task<PurchaseDto> CreatePurchaseAsync(CreatePurchaseRequest request, int createdByUserId, string createdByName)
@@ -197,7 +198,7 @@ namespace MyBackend.Application.Services
             _context.Purchases.Add(purchase);
             await _context.SaveChangesAsync();
 
-            return MapToDto(purchase);
+            return purchase.ToDto();
         }
 
         public async Task<PurchaseDto?> UpdatePurchaseAsync(int id, UpdatePurchaseRequest request)
@@ -222,7 +223,7 @@ namespace MyBackend.Application.Services
 
             await _context.SaveChangesAsync();
 
-            return MapToDto(purchase);
+            return purchase.ToDto();
         }
 
         public async Task<bool> DeletePurchaseAsync(int id)
@@ -236,36 +237,6 @@ namespace MyBackend.Application.Services
 
             await _context.SaveChangesAsync();
             return true;
-        }
-
-        private static PurchaseDto MapToDto(Purchase p)
-        {
-            return new PurchaseDto
-            {
-                Id = p.Id,
-                ApprovalRequestId = p.ApprovalRequestId,
-                ItemName = p.ItemName,
-                Category = p.Category,
-                Quantity = p.Quantity,
-                EstimatedAmount = p.EstimatedAmount,
-                EmployeeName = p.EmployeeName,
-                EmployeeEmail = p.EmployeeEmail,
-                DepartmentName = p.DepartmentName,
-                VendorName = p.VendorName,
-                VendorContact = p.VendorContact,
-                VendorEmail = p.VendorEmail,
-                QuotationNumber = p.QuotationNumber,
-                QuotationAmount = p.QuotationAmount,
-                QuotationDate = p.QuotationDate,
-                DeliveryTimeline = p.DeliveryTimeline,
-                PaymentTerms = p.PaymentTerms,
-                Notes = p.Notes,
-                Status = p.Status,
-                CreatedByUserId = p.CreatedByUserId,
-                CreatedByName = p.CreatedByName,
-                CreatedAt = p.CreatedAt,
-                UpdatedAt = p.UpdatedAt
-            };
         }
     }
 }

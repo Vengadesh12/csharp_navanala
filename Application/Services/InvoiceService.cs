@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
+using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Services
@@ -59,12 +59,13 @@ namespace MyBackend.Application.Services
             var page = query.Page > 0 ? query.Page : 1;
             var pageSize = query.PageSize > 0 ? query.PageSize : 50;
 
-            var items = await dbQuery
+            var rawInvoices = await dbQuery
                 .OrderByDescending(i => i.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(i => MapToDto(i))
                 .ToListAsync();
+
+            var items = rawInvoices.Select(i => i.ToDto()).ToList();
 
             return new PagedInvoiceResponse
             {
@@ -83,7 +84,7 @@ namespace MyBackend.Application.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == id && i.DeletedFlag == 1);
 
-            return invoice == null ? null : MapToDto(invoice);
+            return invoice?.ToDto();
         }
 
         public async Task<InvoiceSummaryDto> GetSummaryAsync()
@@ -169,7 +170,7 @@ namespace MyBackend.Application.Services
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync();
 
-            return MapToDto(invoice);
+            return invoice.ToDto();
         }
 
         public async Task<InvoiceDto?> UpdateInvoiceAsync(int id, UpdateInvoiceRequest request, int userId, string userName, bool canEditGst)
@@ -221,7 +222,7 @@ namespace MyBackend.Application.Services
             );
 
             await _context.SaveChangesAsync();
-            return MapToDto(invoice);
+            return invoice.ToDto();
         }
 
         public async Task<bool> DeleteInvoiceAsync(int id, int userId)
@@ -332,50 +333,6 @@ namespace MyBackend.Application.Services
             var crores = NumberToIndianWords(number / 10000000) + " Crore";
             var croreRemainder = number % 10000000;
             return croreRemainder > 0 ? $"{crores} {NumberToIndianWords(croreRemainder)}" : crores;
-        }
-
-        private static InvoiceDto MapToDto(Invoice invoice)
-        {
-            return new InvoiceDto
-            {
-                Id = invoice.Id,
-                InvoiceNumber = invoice.InvoiceNumber,
-                CustomerName = invoice.CustomerName,
-                CustomerEmail = invoice.CustomerEmail,
-                CustomerPhone = invoice.CustomerPhone,
-                CustomerAddress = invoice.CustomerAddress,
-                CustomerGstin = invoice.CustomerGstin,
-                CompanyGstin = invoice.CompanyGstin,
-                InvoiceDate = invoice.InvoiceDate,
-                DueDate = invoice.DueDate,
-                Subtotal = invoice.Subtotal,
-                TaxRate = invoice.TaxRate,
-                TaxAmount = invoice.TaxAmount,
-                DiscountAmount = invoice.DiscountAmount,
-                TotalAmount = invoice.TotalAmount,
-                TotalAmountInWords = invoice.TotalAmountInWords,
-                Status = invoice.Status,
-                PaymentMethod = invoice.PaymentMethod,
-                Notes = invoice.Notes,
-                TermsAndConditions = invoice.TermsAndConditions,
-                CreatedByUserId = invoice.CreatedByUserId,
-                CreatedByName = invoice.CreatedByName,
-                CreatedAt = invoice.CreatedAt,
-                UpdatedAt = invoice.UpdatedAt,
-                Items = invoice.Items?.Where(it => it.DeletedFlag == 1).Select(it => new InvoiceItemDto
-                {
-                    Id = it.Id,
-                    InvoiceId = it.InvoiceId,
-                    ProductName = it.ProductName,
-                    Description = it.Description,
-                    Quantity = it.Quantity,
-                    UnitPrice = it.UnitPrice,
-                    TaxRate = it.TaxRate,
-                    TaxAmount = it.TaxAmount,
-                    TotalAmount = it.TotalAmount,
-                    OrderIndex = it.OrderIndex
-                }).ToList() ?? new List<InvoiceItemDto>()
-            };
         }
     }
 }

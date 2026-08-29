@@ -1,10 +1,14 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
+using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Services
@@ -53,7 +57,7 @@ namespace MyBackend.Application.Services
 
             sql.Append(" ORDER BY id DESC");
 
-            var reports = await _context.Reports
+            var rawReports = await _context.Reports
                 .FromSqlRaw(sql.ToString(), parameters.ToArray())
                 .AsNoTracking()
                 .ToListAsync();
@@ -103,7 +107,7 @@ namespace MyBackend.Application.Services
                 ReportsGenerated = totalReports,
                 ExportsReady = readyReports,
                 RoleCoverage = $"{coveragePercentage}%",
-                Reports = reports,
+                Reports = rawReports.ToDtoList(),
                 Categories = categories
             };
         }
@@ -201,7 +205,7 @@ namespace MyBackend.Application.Services
             }
         }
 
-        public async Task<Report> CreateReportAsync(CreateReportRequest request, string creatorName)
+        public async Task<ReportDto> CreateReportAsync(CreateReportRequest request, string creatorName)
         {
             if (string.IsNullOrWhiteSpace(request.Title))
             {
@@ -272,10 +276,10 @@ namespace MyBackend.Application.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
-            return report!;
+            return report!.ToDto();
         }
 
-        public async Task<Report?> UpdateReportAsync(int id, UpdateReportRequest request)
+        public async Task<ReportDto?> UpdateReportAsync(int id, UpdateReportRequest request)
         {
             int? categoryId = request.CategoryId;
             string categoryName = request.Category?.Trim() ?? string.Empty;
@@ -313,7 +317,7 @@ namespace MyBackend.Application.Services
 
             if (rowsAffected == 0) return null;
 
-            return await _context.Reports
+            var updated = await _context.Reports
                 .FromSqlRaw("""
                     SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, deleted_flag
                     FROM reports
@@ -321,6 +325,8 @@ namespace MyBackend.Application.Services
                 """, id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
+
+            return updated?.ToDto();
         }
 
         public async Task<bool> DeleteReportAsync(int id)

@@ -1,5 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
+using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
 using MyBackend.Domain.Interfaces;
 
@@ -24,15 +29,7 @@ namespace MyBackend.Application.Services
             var designations = await _designationRepository.GetActiveDesignationsAsync();
             var departmentsDict = await _unitOfWork.Departments.GetDepartmentNameDictionaryAsync();
 
-            return designations.Select(d => new DesignationDto
-            {
-                Id = d.Id,
-                Name = d.Name,
-                Description = d.Description ?? string.Empty,
-                DepartmentId = d.DepartmentId,
-                DepartmentName = d.DepartmentId.HasValue && departmentsDict.TryGetValue(d.DepartmentId.Value, out var deptName) ? deptName : null,
-                DeletedFlag = d.DeletedFlag
-            }).ToList();
+            return designations.ToDtoList(departmentsDict);
         }
 
         public async Task<DesignationDto?> GetDesignationByIdAsync(int id)
@@ -47,15 +44,7 @@ namespace MyBackend.Application.Services
                 departmentName = dept?.Name;
             }
 
-            return new DesignationDto
-            {
-                Id = designation.Id,
-                Name = designation.Name,
-                Description = designation.Description ?? string.Empty,
-                DepartmentId = designation.DepartmentId,
-                DepartmentName = departmentName,
-                DeletedFlag = designation.DeletedFlag
-            };
+            return designation.ToDto(departmentName);
         }
 
         public async Task<DesignationDto> CreateDesignationAsync(CreateDesignationRequest request)
@@ -87,15 +76,7 @@ namespace MyBackend.Application.Services
             await _designationRepository.AddAsync(designation);
             await _unitOfWork.SaveChangesAsync();
 
-            return new DesignationDto
-            {
-                Id = designation.Id,
-                Name = designation.Name,
-                Description = designation.Description ?? string.Empty,
-                DepartmentId = designation.DepartmentId,
-                DepartmentName = departmentName,
-                DeletedFlag = designation.DeletedFlag
-            };
+            return designation.ToDto(departmentName);
         }
 
         public async Task<DesignationDto?> UpdateDesignationAsync(int id, UpdateDesignationRequest request)
@@ -126,15 +107,7 @@ namespace MyBackend.Application.Services
             _designationRepository.Update(designation);
             await _unitOfWork.SaveChangesAsync();
 
-            return new DesignationDto
-            {
-                Id = designation.Id,
-                Name = designation.Name,
-                Description = designation.Description ?? string.Empty,
-                DepartmentId = designation.DepartmentId,
-                DepartmentName = departmentName,
-                DeletedFlag = designation.DeletedFlag
-            };
+            return designation.ToDto(departmentName);
         }
 
         public async Task<bool> DeleteDesignationAsync(int id)

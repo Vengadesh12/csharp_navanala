@@ -1,5 +1,6 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Contracts;
 
@@ -148,7 +149,7 @@ public sealed class AuthUserData
     /// <summary>
     /// List of dynamic navigation menus accessible by the user.
     /// </summary>
-    public List<Menu> Menus { get; set; } = [];
+    public List<MenuItemDto> Menus { get; set; } = [];
 
     /// <summary>
     /// Encrypted JWT bearer token to be included in subsequent requests via the Authorization header.
@@ -337,5 +338,20 @@ public sealed class LogoutRequest
     public string? Email { get; set; }
 }
 
-
-
+/// <summary>
+/// DTO representing a persisted user login session record.
+/// </summary>
+public sealed class UserSessionDto
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public string IpAddress { get; set; } = "127.0.0.1";
+    public string? UserAgent { get; set; }
+    public DateTime LoginTime { get; set; }
+    public DateTime? LogoutTime { get; set; }
+    public string? SessionToken { get; set; }
+    public bool IsActive { get; set; }
+    public int DeletedFlag { get; set; } = 1;
+}

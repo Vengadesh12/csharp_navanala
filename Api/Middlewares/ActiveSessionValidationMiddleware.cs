@@ -1,6 +1,10 @@
-using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Common.Interfaces;
+using System;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Middlewares
 {

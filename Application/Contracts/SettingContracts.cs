@@ -1,7 +1,21 @@
-using MyBackend.Domain.Entities;
+using System;
+using System.Collections.Generic;
 
 namespace MyBackend.Application.Contracts
 {
+    public class SystemSettingDto
+    {
+        public int Id { get; set; }
+        public string SettingKey { get; set; } = string.Empty;
+        public string SettingValue { get; set; } = string.Empty;
+        public string Category { get; set; } = "General";
+        public string Description { get; set; } = string.Empty;
+        public string DataType { get; set; } = "string";
+        public string UpdatedBy { get; set; } = "System Admin";
+        public DateTime? UpdatedAt { get; set; }
+        public int DeletedFlag { get; set; } = 1;
+    }
+
     public class UpdateSettingsBulkRequest
     {
         public Dictionary<string, string> Settings { get; set; } = [];
@@ -58,7 +72,7 @@ namespace MyBackend.Application.Contracts
         public string SessionTimeout { get; set; } = "24h";
         public int TotalSettings { get; set; } = 0;
         public int TotalCategories { get; set; } = 0;
-        public List<SystemSetting> Settings { get; set; } = [];
+        public List<SystemSettingDto> Settings { get; set; } = [];
         public List<SettingCategoryDto> Categories { get; set; } = [];
     }
 }

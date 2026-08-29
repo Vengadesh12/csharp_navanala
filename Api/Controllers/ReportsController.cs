@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Api.Controllers
 {
@@ -62,14 +64,14 @@ namespace MyBackend.Api.Controllers
         /// Generate / Create a new compliance report in the database.
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(ApiResponse<Report>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<ReportDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateReport([FromBody] CreateReportRequest request)
         {
             var callerName = User.FindFirstValue(ClaimTypes.Name) ?? "System Administrator";
             var report = await _reportService.CreateReportAsync(request, callerName);
 
-            return CreatedAtAction(nameof(GetReports), new { id = report.Id }, new ApiResponse<Report>
+            return CreatedAtAction(nameof(GetReports), new { id = report.Id }, new ApiResponse<ReportDto>
             {
                 Success = true,
                 Message = "Report generated and registered in database successfully!",
@@ -81,7 +83,7 @@ namespace MyBackend.Api.Controllers
         /// Update an existing report's parameters or status.
         /// </summary>
         [HttpPut("{id:int}")]
-        [ProducesResponseType(typeof(ApiResponse<Report>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<ReportDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateReport(int id, [FromBody] UpdateReportRequest request)
         {
@@ -91,7 +93,7 @@ namespace MyBackend.Api.Controllers
                 return NotFound(new ErrorResponse { Message = $"Report with ID {id} not found." });
             }
 
-            return Ok(new ApiResponse<Report>
+            return Ok(new ApiResponse<ReportDto>
             {
                 Success = true,
                 Message = "Report updated successfully!",

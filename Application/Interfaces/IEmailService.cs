@@ -1,4 +1,4 @@
-namespace MyBackend.Application.Common.Interfaces
+namespace MyBackend.Application.Interfaces
 {
     /// <summary>
     /// Service contract for sending transactional emails (credentials, OTP codes, alerts).

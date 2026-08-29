@@ -1,5 +1,6 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using MyBackend.Application.Contracts;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Interfaces
 {
@@ -26,7 +27,7 @@ namespace MyBackend.Application.Interfaces
         /// <summary>
         /// Retrieves an active session by session ID.
         /// </summary>
-        Task<UserSession?> GetSessionByIdAsync(int sessionId);
+        Task<UserSessionDto?> GetSessionByIdAsync(int sessionId);
 
         /// <summary>
         /// Terminates a specific session by ID.

@@ -1,14 +1,18 @@
+using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Common.Validators;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
+using MyBackend.Application.Mappings;
 using MyBackend.Configuration;
 using MyBackend.Domain.Entities;
 using MyBackend.Domain.Interfaces;
@@ -440,14 +444,16 @@ namespace MyBackend.Application.Services
             return new CurrentUserPermissionsResponse { Permissions = permissions };
         }
 
-        public async Task<List<UserSession>> GetUserSessionsAsync(int userId, int limit = 50)
+        public async Task<List<UserSessionDto>> GetUserSessionsAsync(int userId, int limit = 50)
         {
-            return await _unitOfWork.Sessions.GetUserSessionsAsync(userId, limit);
+            var sessions = await _unitOfWork.Sessions.GetUserSessionsAsync(userId, limit);
+            return sessions.ToDtoList();
         }
 
-        public async Task<List<UserSession>> GetAllRecentSessionsAsync(int limit = 100)
+        public async Task<List<UserSessionDto>> GetAllRecentSessionsAsync(int limit = 100)
         {
-            return await _unitOfWork.Sessions.GetAllRecentSessionsAsync(limit);
+            var sessions = await _unitOfWork.Sessions.GetAllRecentSessionsAsync(limit);
+            return sessions.ToDtoList();
         }
 
         private async Task<AuthUserData> BuildAuthUserDataAsync(User user)
@@ -536,7 +542,7 @@ namespace MyBackend.Application.Services
                 DepartmentName = departmentName,
                 DesignationName = designationName,
                 Permissions = permissions,
-                Menus = menus,
+                Menus = menus.ToDtoList(),
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 IsFirstLogin = user.IsFirstLogin
             };

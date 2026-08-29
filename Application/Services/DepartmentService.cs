@@ -1,7 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
+using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
 using MyBackend.Domain.Interfaces;
 
@@ -37,40 +41,15 @@ namespace MyBackend.Application.Services
             {
                 var mappedDes = d.Designations.Where(des => des.DeletedFlag == 1).ToList();
                 var userCount = mappedDes.Sum(des => userCountByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0);
+                var desDtos = mappedDes.Select(des => des.ToDto(d.Name, userCountByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0)).ToList();
 
-                return new DepartmentDto
-                {
-                    Id = d.Id,
-                    Name = d.Name,
-                    Description = d.Description ?? string.Empty,
-                    DeletedFlag = d.DeletedFlag,
-                    CreatedAt = d.CreatedAt,
-                    DesignationCount = mappedDes.Count,
-                    UserCount = userCount,
-                    Designations = mappedDes.Select(des => new DesignationDto
-                    {
-                        Id = des.Id,
-                        Name = des.Name,
-                        Description = des.Description ?? string.Empty,
-                        DepartmentId = des.DepartmentId,
-                        DepartmentName = d.Name,
-                        DeletedFlag = des.DeletedFlag
-                    }).ToList()
-                };
+                return d.ToDto(userCount, desDtos);
             }).ToList();
 
             var activeDeptIds = departments.Select(d => d.Id).ToHashSet();
             var unassignedDesignations = allDesignations
                 .Where(des => !des.DepartmentId.HasValue || !activeDeptIds.Contains(des.DepartmentId.Value))
-                .Select(des => new DesignationDto
-                {
-                    Id = des.Id,
-                    Name = des.Name,
-                    Description = des.Description ?? string.Empty,
-                    DepartmentId = null,
-                    DepartmentName = null,
-                    DeletedFlag = des.DeletedFlag
-                })
+                .Select(des => des.ToDto(null, userCountByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0))
                 .ToList();
 
             return new DepartmentOverviewResponse
@@ -100,25 +79,7 @@ namespace MyBackend.Application.Services
             var desIds = mappedDes.Select(des => des.Id).ToHashSet();
             var userCount = allUsers.Count(u => u.DesignationId.HasValue && desIds.Contains(u.DesignationId.Value) && u.DeletedFlag == 1);
 
-            return new DepartmentDto
-            {
-                Id = department.Id,
-                Name = department.Name,
-                Description = department.Description ?? string.Empty,
-                DeletedFlag = department.DeletedFlag,
-                CreatedAt = department.CreatedAt,
-                DesignationCount = mappedDes.Count,
-                UserCount = userCount,
-                Designations = mappedDes.Select(des => new DesignationDto
-                {
-                    Id = des.Id,
-                    Name = des.Name,
-                    Description = des.Description ?? string.Empty,
-                    DepartmentId = department.Id,
-                    DepartmentName = department.Name,
-                    DeletedFlag = des.DeletedFlag
-                }).ToList()
-            };
+            return department.ToDto(userCount);
         }
 
         public async Task<DepartmentDto> CreateDepartmentAsync(CreateDepartmentRequest request)

@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using MyBackend.Domain.Entities;
 
-namespace MyBackend.Application.Common.Interfaces
+namespace MyBackend.Application.Interfaces
 {
     /// <summary>
     /// Database context abstraction for the application layer.

@@ -1,9 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Application.Mappings;
 
 namespace MyBackend.Application.Services
 {
@@ -42,7 +45,7 @@ namespace MyBackend.Application.Services
 
             sql.Append(" ORDER BY id DESC");
 
-            var logs = await _context.AuditLogs
+            var rawLogs = await _context.AuditLogs
                 .FromSqlRaw(sql.ToString(), parameters.ToArray())
                 .AsNoTracking()
                 .ToListAsync();
@@ -70,11 +73,11 @@ namespace MyBackend.Application.Services
                 TotalEvents = totalEvents,
                 SuccessfulLogins = successfulLogins,
                 PrivilegeChanges = privilegeChanges,
-                Logs = logs
+                Logs = rawLogs.ToDtoList()
             };
         }
 
-        public async Task<AuditLog> CreateAuditLogAsync(CreateAuditLogRequest request, string performedBy, string ipAddress)
+        public async Task<AuditLogDto> CreateAuditLogAsync(CreateAuditLogRequest request, string performedBy, string ipAddress)
         {
             var action = request.Action.Trim();
             var module = request.Module.Trim();
@@ -98,7 +101,7 @@ namespace MyBackend.Application.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
-            return log!;
+            return log!.ToDto();
         }
 
         public async Task<bool> DeleteAuditLogAsync(int id)

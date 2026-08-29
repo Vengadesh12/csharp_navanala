@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MyBackend.Application.Common.Interfaces;
 using MyBackend.Application.Common.Models;
+using MyBackend.Application.Interfaces;
 using MyBackend.Configuration;
 using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;

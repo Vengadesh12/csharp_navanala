@@ -1,10 +1,12 @@
-using MyBackend.Domain.Entities;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using MyBackend.Application.Contracts;
 
 namespace MyBackend.Application.Interfaces
 {
     public interface IMenuService
     {
-        Task<List<Menu>> GetUserMenusAsync(int userId);
-        Task<List<Menu>> GetAllMenusAsync();
+        Task<List<MenuItemDto>> GetUserMenusAsync(int userId);
+        Task<List<MenuItemDto>> GetAllMenusAsync();
     }
 }

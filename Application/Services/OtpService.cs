@@ -1,6 +1,7 @@
+using System;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
-using MyBackend.Application.Common.Interfaces;
+using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Application.Services
 {

@@ -1,9 +1,10 @@
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Contracts;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Api.Controllers
 {
@@ -36,14 +37,14 @@ namespace MyBackend.Api.Controllers
         /// Create a new project initiative in the database.
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(ApiResponse<Project>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateProject([FromBody] CreateProjectRequest request)
         {
             var callerName = User.FindFirstValue(ClaimTypes.Name) ?? "System Lead";
             var project = await _projectService.CreateProjectAsync(request, callerName);
 
-            return CreatedAtAction(nameof(GetProjects), new { id = project.Id }, new ApiResponse<Project>
+            return CreatedAtAction(nameof(GetProjects), new { id = project.Id }, new ApiResponse<ProjectDto>
             {
                 Success = true,
                 Message = "Project created and stored in database successfully!",
@@ -55,7 +56,7 @@ namespace MyBackend.Api.Controllers
         /// Update an existing project's status, progress, or parameters.
         /// </summary>
         [HttpPut("{id:int}")]
-        [ProducesResponseType(typeof(ApiResponse<Project>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateProject(int id, [FromBody] UpdateProjectRequest request)
         {
@@ -65,7 +66,7 @@ namespace MyBackend.Api.Controllers
                 return NotFound(new ErrorResponse { Message = $"Project with ID {id} not found." });
             }
 
-            return Ok(new ApiResponse<Project>
+            return Ok(new ApiResponse<ProjectDto>
             {
                 Success = true,
                 Message = "Project updated successfully!",

@@ -1,5 +1,6 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using MyBackend.Application.Contracts;
-using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Interfaces
 {
@@ -11,8 +12,8 @@ namespace MyBackend.Application.Interfaces
         Task<SettingCategoryDto?> UpdateCategoryAsync(int id, UpdateSettingCategoryRequest request);
         Task<bool> DeleteCategoryAsync(int id);
         Task<bool> UpdateSettingsBulkAsync(UpdateSettingsBulkRequest request, string callerName);
-        Task<SystemSetting> CreateSettingAsync(CreateSettingRequest request, string callerName);
-        Task<SystemSetting?> UpdateSettingAsync(int id, UpdateSettingRequest request, string callerName);
+        Task<SystemSettingDto> CreateSettingAsync(CreateSettingRequest request, string callerName);
+        Task<SystemSettingDto?> UpdateSettingAsync(int id, UpdateSettingRequest request, string callerName);
         Task<bool> DeleteSettingAsync(int id);
     }
 }
