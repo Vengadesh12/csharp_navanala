@@ -130,6 +130,26 @@ app.UseSwaggerUI(options =>
 
 // 7. Security & Routing Middlewares
 app.UseCors("ReactPolicy");
+
+// Static File Hosting for User Uploads (Profile pictures, etc.)
+var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+if (!Directory.Exists(uploadsDirectory))
+{
+    Directory.CreateDirectory(uploadsDirectory);
+}
+
+var profilesDirectory = Path.Combine(uploadsDirectory, "profiles");
+if (!Directory.Exists(profilesDirectory))
+{
+    Directory.CreateDirectory(profilesDirectory);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDirectory),
+    RequestPath = "/uploads"
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<ActiveSessionValidationMiddleware>();

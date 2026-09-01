@@ -145,6 +145,11 @@ public sealed class UserDto
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
+    /// User profile image path or URL.
+    /// </summary>
+    public string? ProfileImage { get; set; }
+
+    /// <summary>
     /// Associated role ID.
     /// </summary>
     /// <example>1</example>

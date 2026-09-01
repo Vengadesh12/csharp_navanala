@@ -70,6 +70,12 @@ namespace MyBackend.Domain.Entities
         public string Address { get; set; } = string.Empty;
 
         /// <summary>
+        /// URL or relative path to the user's uploaded profile picture.
+        /// </summary>
+        /// <example>/uploads/profiles/user_1_abc123.jpg</example>
+        public string? ProfileImage { get; set; }
+
+        /// <summary>
         /// Status flag (1 = Active, 0 = Deactivated/Deleted).
         /// </summary>
         /// <example>1</example>
@@ -147,6 +153,15 @@ namespace MyBackend.Domain.Entities
             if (address != null) Address = address.Trim();
             RoleId = roleId;
             DesignationId = designationId;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Updates the user's profile image path.
+        /// </summary>
+        public void UpdateProfileImage(string? profileImageUrl)
+        {
+            ProfileImage = profileImageUrl;
             UpdatedAt = DateTime.UtcNow;
         }
 

@@ -85,5 +85,55 @@ namespace MyBackend.Api.Controllers
                 Message = "Password changed succesfully!"
             });
         }
+
+        /// <summary>
+        /// Upload a new profile picture for the currently logged-in user.
+        /// </summary>
+        [HttpPost("upload-image")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(ApiResponse<UserProfileResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UploadProfileImage(IFormFile file)
+        {
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { Message = "Valid user authentication token required." });
+            }
+
+            var updatedProfile = await _profileService.UploadProfileImageAsync(userId, file);
+
+            return Ok(new ApiResponse<UserProfileResponse>
+            {
+                Success = true,
+                Message = "Profile picture uploaded successfully!",
+                Data = updatedProfile
+            });
+        }
+
+        /// <summary>
+        /// Remove profile picture for the currently logged-in user and revert to default.
+        /// </summary>
+        [HttpDelete("remove-image")]
+        [ProducesResponseType(typeof(ApiResponse<UserProfileResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RemoveProfileImage()
+        {
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { Message = "Valid user authentication token required." });
+            }
+
+            var updatedProfile = await _profileService.RemoveProfileImageAsync(userId);
+
+            return Ok(new ApiResponse<UserProfileResponse>
+            {
+                Success = true,
+                Message = "Profile picture removed successfully!",
+                Data = updatedProfile
+            });
+        }
     }
 }

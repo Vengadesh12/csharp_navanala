@@ -19,7 +19,8 @@ namespace MyBackend.Infrastructure.Persistence
                 await context.Database.ExecuteSqlRawAsync(@"
                     ALTER TABLE IF EXISTS ""users"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""ProfileImage"" VARCHAR(500) DEFAULT NULL;
 
                     ALTER TABLE IF EXISTS ""roles"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -104,6 +105,19 @@ namespace MyBackend.Infrastructure.Persistence
                     ALTER TABLE IF EXISTS invoice_items 
                         ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns 
+                            WHERE table_name='users' AND column_name='profileimage'
+                        ) AND NOT EXISTS (
+                            SELECT 1 FROM information_schema.columns 
+                            WHERE table_name='users' AND column_name='ProfileImage'
+                        ) THEN
+                            ALTER TABLE ""users"" RENAME COLUMN profileimage TO ""ProfileImage"";
+                        END IF;
+                    END $$;
                 ");
 
                 // Ensure invoices and invoice_items tables exist

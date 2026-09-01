@@ -537,6 +537,7 @@ namespace MyBackend.Application.Services
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
+                ProfileImage = user.ProfileImage,
                 RoleId = user.RoleId,
                 RoleName = roleName,
                 DepartmentName = departmentName,

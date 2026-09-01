@@ -119,6 +119,12 @@ public sealed class AuthUserData
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
+    /// URL or relative path to the user's uploaded profile picture.
+    /// </summary>
+    /// <example>/uploads/profiles/user_1_abc123.jpg</example>
+    public string? ProfileImage { get; set; }
+
+    /// <summary>
     /// Assigned Role identifier (e.g. 2 for Super Admin).
     /// </summary>
     /// <example>2</example>

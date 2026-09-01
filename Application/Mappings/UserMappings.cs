@@ -14,6 +14,7 @@ namespace MyBackend.Application.Mappings
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
+                ProfileImage = user.ProfileImage,
                 Phone = user.Phone ?? string.Empty,
                 Age = user.Age,
                 Address = user.Address ?? string.Empty,

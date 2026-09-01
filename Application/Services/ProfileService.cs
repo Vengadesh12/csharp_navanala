@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
@@ -84,6 +86,7 @@ namespace MyBackend.Application.Services
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
+                ProfileImage = user.ProfileImage,
                 Phone = user.Phone,
                 Age = user.Age,
                 Address = user.Address,
@@ -114,17 +117,7 @@ namespace MyBackend.Application.Services
 
             await _context.SaveChangesAsync();
 
-            return new UserProfileResponse
-            {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Phone = user.Phone,
-                Age = user.Age,
-                Address = user.Address,
-                RoleId = user.RoleId,
-                IsFirstLogin = user.IsFirstLogin
-            };
+            return await GetProfileAsync(userId);
         }
 
         public async Task<bool> ChangePasswordAsync(int userId, ChangePasswordRequest request)
@@ -173,6 +166,117 @@ namespace MyBackend.Application.Services
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        public async Task<UserProfileResponse> UploadProfileImageAsync(int userId, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                throw new BadRequestException("No image file was provided for upload.");
+            }
+
+            // Allowed extensions check
+            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"
+            };
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension))
+            {
+                throw new BadRequestException("Invalid file format. Only images (.jpg, .jpeg, .png, .webp, .gif, .avif) are allowed.");
+            }
+
+            // MIME type check
+            if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BadRequestException("The uploaded file does not appear to be a valid image.");
+            }
+
+            // 5 MB max limit
+            const long maxFileSize = 5 * 1024 * 1024;
+            if (file.Length > maxFileSize)
+            {
+                throw new BadRequestException("Image file size cannot exceed 5MB.");
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && u.DeletedFlag == 1);
+            if (user == null)
+            {
+                throw new NotFoundException("User profile not found.");
+            }
+
+            // Ensure destination uploads/profiles directory exists
+            var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "profiles");
+            if (!Directory.Exists(uploadsDirectory))
+            {
+                Directory.CreateDirectory(uploadsDirectory);
+            }
+
+            // Remove old uploaded file if exists
+            if (!string.IsNullOrWhiteSpace(user.ProfileImage))
+            {
+                try
+                {
+                    var oldFileName = Path.GetFileName(user.ProfileImage);
+                    var oldFilePath = Path.Combine(uploadsDirectory, oldFileName);
+                    if (File.Exists(oldFilePath))
+                    {
+                        File.Delete(oldFilePath);
+                    }
+                }
+                catch
+                {
+                    // Fallback gracefully on disk deletion errors
+                }
+            }
+
+            // Generate unique, collision-resistant filename
+            var uniqueFileName = $"user_{userId}_{Guid.NewGuid():N}{extension}";
+            var destinationFilePath = Path.Combine(uploadsDirectory, uniqueFileName);
+
+            using (var stream = new FileStream(destinationFilePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var relativePath = $"/uploads/profiles/{uniqueFileName}";
+            user.UpdateProfileImage(relativePath);
+            await _context.SaveChangesAsync();
+
+            return await GetProfileAsync(userId);
+        }
+
+        public async Task<UserProfileResponse> RemoveProfileImageAsync(int userId)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && u.DeletedFlag == 1);
+            if (user == null)
+            {
+                throw new NotFoundException("User profile not found.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.ProfileImage))
+            {
+                try
+                {
+                    var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "profiles");
+                    var oldFileName = Path.GetFileName(user.ProfileImage);
+                    var oldFilePath = Path.Combine(uploadsDirectory, oldFileName);
+                    if (File.Exists(oldFilePath))
+                    {
+                        File.Delete(oldFilePath);
+                    }
+                }
+                catch
+                {
+                    // Fallback gracefully
+                }
+
+                user.UpdateProfileImage(null);
+                await _context.SaveChangesAsync();
+            }
+
+            return await GetProfileAsync(userId);
         }
     }
 }

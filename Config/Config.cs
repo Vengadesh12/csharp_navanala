@@ -473,6 +473,11 @@ namespace MyBackend.Configuration
                 .HasColumnName("Address")
                 .HasMaxLength(500);
 
+            builder.Property(x => x.ProfileImage)
+                .HasColumnName("ProfileImage")
+                .HasMaxLength(500)
+                .IsRequired(false);
+
             builder.Property(x => x.DeletedFlag)
                 .HasColumnName("DeletedFlag")
                 .HasDefaultValue(1);
