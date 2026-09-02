@@ -60,7 +60,8 @@ namespace MyBackend.Infrastructure.Persistence
 
                     ALTER TABLE IF EXISTS reports 
                         ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS file_name VARCHAR(255) DEFAULT NULL;
 
                     ALTER TABLE IF EXISTS report_categories 
                         ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -20,6 +20,7 @@ namespace MyBackend.Application.Mappings
                 CreatedBy = report.CreatedBy ?? "System Admin",
                 Status = report.Status,
                 FileSize = report.FileSize ?? "1.2 MB",
+                FileName = report.FileName,
                 CreatedAt = report.CreatedAt,
                 DeletedFlag = report.DeletedFlag
             };

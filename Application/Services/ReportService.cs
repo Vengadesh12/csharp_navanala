@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Contracts;
@@ -16,16 +18,29 @@ namespace MyBackend.Application.Services
     public class ReportService : IReportService
     {
         private readonly IApplicationDbContext _context;
+        private readonly IWebHostEnvironment? _environment;
 
-        public ReportService(IApplicationDbContext context)
+        public ReportService(IApplicationDbContext context, IWebHostEnvironment? environment = null)
         {
             _context = context;
+            _environment = environment;
+        }
+
+        private string GetReportDirectory()
+        {
+            var root = _environment?.ContentRootPath ?? Directory.GetCurrentDirectory();
+            var dir = Path.Combine(root, "report");
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+            return dir;
         }
 
         public async Task<ReportsOverviewResponse> GetReportsAsync(string? category, string? search)
         {
             var sql = new StringBuilder("""
-                SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag
+                SELECT id, title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag
                 FROM reports
                 WHERE deleted_flag = 1
             """);
@@ -138,7 +153,7 @@ namespace MyBackend.Application.Services
         {
             var report = await _context.Reports
                 .FromSqlRaw("""
-                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag
+                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag
                     FROM reports
                     WHERE id = {0} AND deleted_flag = 1
                 """, id)
@@ -147,6 +162,57 @@ namespace MyBackend.Application.Services
 
             if (report == null) return null;
 
+            // If a real file was uploaded and saved in the report/ directory, serve it!
+            if (!string.IsNullOrWhiteSpace(report.FileName))
+            {
+                var reportDir = GetReportDirectory();
+                var filePath = Path.Combine(reportDir, report.FileName);
+                if (File.Exists(filePath))
+                {
+                    var fileBytes = await File.ReadAllBytesAsync(filePath);
+                    var ext = Path.GetExtension(report.FileName).ToLowerInvariant();
+                    var contentType = ext switch
+                    {
+                        ".pdf" => "application/pdf",
+                        ".csv" => "text/csv",
+                        ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        ".xls" => "application/vnd.ms-excel",
+                        ".json" => "application/json",
+                        ".doc" => "application/msword",
+                        ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        ".txt" => "text/plain",
+                        ".png" => "image/png",
+                        ".jpg" or ".jpeg" => "image/jpeg",
+                        ".zip" => "application/zip",
+                        _ => "application/octet-stream"
+                    };
+
+                    // Extract original clean file name if prefixed with timestamp & guid
+                    var downloadFileName = report.FileName;
+                    var parts = report.FileName.Split('_', 3);
+                    if (parts.Length == 3 && long.TryParse(parts[0], out _))
+                    {
+                        downloadFileName = parts[2];
+                    }
+                    else
+                    {
+                        var safeTitle = string.Concat(report.Title.Split(Path.GetInvalidFileNameChars())).Replace(" ", "_");
+                        if (!string.IsNullOrWhiteSpace(safeTitle))
+                        {
+                            downloadFileName = $"{safeTitle}{ext}";
+                        }
+                    }
+
+                    return new ReportDownloadResult
+                    {
+                        FileBytes = fileBytes,
+                        ContentType = contentType,
+                        FileName = downloadFileName
+                    };
+                }
+            }
+
+            // Fallback for mock/seed reports without physical disk files
             var format = (report.Format ?? "PDF").ToUpper();
             if (format == "JSON")
             {
@@ -217,6 +283,54 @@ namespace MyBackend.Application.Services
             var format = string.IsNullOrWhiteSpace(request.Format) ? "PDF" : request.Format.Trim();
             var now = DateTime.UtcNow;
 
+            string? storedFileName = null;
+            string fileSize = "1.5 MB";
+
+            // Process uploaded file (must be less than 5 MB)
+            if (request.File != null && request.File.Length > 0)
+            {
+                if (request.File.Length > 5 * 1024 * 1024)
+                {
+                    throw new BadRequestException("Report file size cannot exceed 5 MB.");
+                }
+
+                var reportDir = GetReportDirectory();
+                var originalFileName = Path.GetFileName(request.File.FileName);
+                var extension = Path.GetExtension(originalFileName);
+                var rawName = Path.GetFileNameWithoutExtension(originalFileName);
+                var cleanName = string.Concat(rawName.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '-'));
+                if (string.IsNullOrWhiteSpace(cleanName)) cleanName = "report";
+
+                fileSize = request.File.Length >= 1024 * 1024
+                    ? $"{(request.File.Length / (1024.0 * 1024.0)):F1} MB"
+                    : $"{(request.File.Length / 1024.0):F0} KB";
+
+                if (string.IsNullOrWhiteSpace(request.Format) || request.Format == "PDF")
+                {
+                    var extClean = extension.TrimStart('.').ToLowerInvariant();
+                    format = extClean switch
+                    {
+                        "pdf" => "PDF",
+                        "csv" => "CSV",
+                        "xlsx" or "xls" => "Excel",
+                        "json" => "JSON",
+                        "docx" or "doc" => "Word",
+                        "txt" => "TXT",
+                        _ => string.IsNullOrWhiteSpace(extClean) ? format : extClean.ToUpperInvariant()
+                    };
+                }
+
+                var uniqueFileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Guid.NewGuid().ToString("N")[..6]}_{cleanName}{extension}";
+                var destinationPath = Path.Combine(reportDir, uniqueFileName);
+
+                using (var stream = new FileStream(destinationPath, FileMode.Create))
+                {
+                    await request.File.CopyToAsync(stream);
+                }
+
+                storedFileName = uniqueFileName;
+            }
+
             int? categoryId = request.CategoryId;
             string categoryName = request.Category?.Trim() ?? string.Empty;
 
@@ -261,15 +375,15 @@ namespace MyBackend.Application.Services
                 categoryName = "Compliance";
             }
 
-            var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO reports (title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag)
-                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {8}, 1)
+            var newId = _context.Database.SqlQueryRaw<int>("""
+                INSERT INTO reports (title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {9}, 1)
                 RETURNING id AS "Value"
-            """, title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, creatorName, "Ready", "1.5 MB", now).SingleAsync();
+            """, title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, creatorName, "Ready", fileSize, (object?)storedFileName ?? DBNull.Value, now).AsEnumerable().Single();
 
             var report = await _context.Reports
                 .FromSqlRaw("""
-                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag
+                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag
                     FROM reports
                     WHERE id = {0} AND deleted_flag = 1
                 """, newId)
@@ -309,18 +423,50 @@ namespace MyBackend.Application.Services
                 categoryName = "Compliance";
             }
 
+            string? newFileName = null;
+            string? newFileSize = null;
+            if (request.File != null && request.File.Length > 0)
+            {
+                if (request.File.Length > 5 * 1024 * 1024)
+                {
+                    throw new BadRequestException("Report file size cannot exceed 5 MB.");
+                }
+
+                var reportDir = GetReportDirectory();
+                var originalFileName = Path.GetFileName(request.File.FileName);
+                var extension = Path.GetExtension(originalFileName);
+                var rawName = Path.GetFileNameWithoutExtension(originalFileName);
+                var cleanName = string.Concat(rawName.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '-'));
+                if (string.IsNullOrWhiteSpace(cleanName)) cleanName = "report";
+
+                newFileSize = request.File.Length >= 1024 * 1024
+                    ? $"{(request.File.Length / (1024.0 * 1024.0)):F1} MB"
+                    : $"{(request.File.Length / 1024.0):F0} KB";
+
+                var uniqueFileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Guid.NewGuid().ToString("N")[..6]}_{cleanName}{extension}";
+                var destinationPath = Path.Combine(reportDir, uniqueFileName);
+
+                using (var stream = new FileStream(destinationPath, FileMode.Create))
+                {
+                    await request.File.CopyToAsync(stream);
+                }
+
+                newFileName = uniqueFileName;
+            }
+
             var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE reports
-                SET title = {0}, description = {1}, category_id = {2}, category = {3}, format = {4}, status = COALESCE(NULLIF({5}, ''), status), updated_at = {6}
-                WHERE id = {7} AND deleted_flag = 1
-            """, request.Title.Trim(), request.Description.Trim(), (object?)categoryId ?? DBNull.Value, categoryName, request.Format.Trim(), request.Status ?? string.Empty, now, id);
+                SET title = {0}, description = {1}, category_id = {2}, category = {3}, format = {4}, status = COALESCE(NULLIF({5}, ''), status),
+                    file_name = COALESCE({6}, file_name), file_size = COALESCE({7}, file_size), updated_at = {8}
+                WHERE id = {9} AND deleted_flag = 1
+            """, request.Title.Trim(), request.Description.Trim(), (object?)categoryId ?? DBNull.Value, categoryName, request.Format.Trim(), request.Status ?? string.Empty, (object?)newFileName ?? DBNull.Value, (object?)newFileSize ?? DBNull.Value, now, id);
 
             if (rowsAffected == 0) return null;
 
             var updated = await _context.Reports
                 .FromSqlRaw("""
-                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, created_at, updated_at, deleted_flag
+                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag
                     FROM reports
                     WHERE id = {0} AND deleted_flag = 1
                 """, id)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Http;
 
 namespace MyBackend.Application.Contracts
 {
@@ -14,6 +15,7 @@ namespace MyBackend.Application.Contracts
         public string CreatedBy { get; set; } = "System Admin";
         public string Status { get; set; } = "Generated";
         public string FileSize { get; set; } = "1.2 MB";
+        public string? FileName { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public int DeletedFlag { get; set; } = 1;
     }
@@ -25,6 +27,8 @@ namespace MyBackend.Application.Contracts
         public int? CategoryId { get; set; }
         public string Category { get; set; } = "Compliance";
         public string Format { get; set; } = "PDF";
+        public string? FileName { get; set; }
+        public IFormFile? File { get; set; }
     }
 
     public class UpdateReportRequest
@@ -35,6 +39,8 @@ namespace MyBackend.Application.Contracts
         public string Category { get; set; } = "Compliance";
         public string Format { get; set; } = "PDF";
         public string Status { get; set; } = "Generated";
+        public string? FileName { get; set; }
+        public IFormFile? File { get; set; }
     }
 
     public class ReportsOverviewResponse

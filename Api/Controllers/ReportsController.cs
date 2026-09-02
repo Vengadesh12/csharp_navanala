@@ -57,6 +57,7 @@ namespace MyBackend.Api.Controllers
                 return NotFound(new ErrorResponse { Message = $"Report with ID {id} not found." });
             }
 
+            Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
             return File(result.FileBytes, result.ContentType, result.FileName);
         }
 
@@ -64,9 +65,10 @@ namespace MyBackend.Api.Controllers
         /// Generate / Create a new compliance report in the database.
         /// </summary>
         [HttpPost]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(ApiResponse<ReportDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> CreateReport([FromBody] CreateReportRequest request)
+        public async Task<IActionResult> CreateReport([FromForm] CreateReportRequest request)
         {
             var callerName = User.FindFirstValue(ClaimTypes.Name) ?? "System Administrator";
             var report = await _reportService.CreateReportAsync(request, callerName);
@@ -83,9 +85,10 @@ namespace MyBackend.Api.Controllers
         /// Update an existing report's parameters or status.
         /// </summary>
         [HttpPut("{id:int}")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(ApiResponse<ReportDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> UpdateReport(int id, [FromBody] UpdateReportRequest request)
+        public async Task<IActionResult> UpdateReport(int id, [FromForm] UpdateReportRequest request)
         {
             var report = await _reportService.UpdateReportAsync(id, request);
             if (report == null)

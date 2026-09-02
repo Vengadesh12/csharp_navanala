@@ -145,6 +145,13 @@ if (!Directory.Exists(profilesDirectory))
     Directory.CreateDirectory(profilesDirectory);
 }
 
+// Dedicated Folder for Saved Report Documents (< 5 MB)
+var reportDirectory = Path.Combine(Directory.GetCurrentDirectory(), "report");
+if (!Directory.Exists(reportDirectory))
+{
+    Directory.CreateDirectory(reportDirectory);
+}
+
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDirectory),

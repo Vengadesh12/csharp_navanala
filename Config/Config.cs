@@ -928,6 +928,10 @@ namespace MyBackend.Configuration
                 .HasColumnName("file_size")
                 .HasMaxLength(50);
 
+            builder.Property(x => x.FileName)
+                .HasColumnName("file_name")
+                .HasMaxLength(255);
+
             builder.Property(x => x.CreatedAt)
                 .HasColumnName("created_at")
                 .IsRequired();

@@ -16,6 +16,7 @@ namespace MyBackend.Domain.Entities
         public string CreatedBy { get; set; } = string.Empty;
         public string Status { get; set; } = "Generated";
         public string FileSize { get; set; } = "1.2 MB";
+        public string? FileName { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
         public int DeletedFlag { get; set; } = 1;
@@ -33,7 +34,8 @@ namespace MyBackend.Domain.Entities
             string? format,
             string? createdBy,
             string? status = "Ready",
-            string? fileSize = "1.5 MB")
+            string? fileSize = "1.5 MB",
+            string? fileName = null)
         {
             if (string.IsNullOrWhiteSpace(title))
                 throw new ArgumentException("Report title is required.", nameof(title));
@@ -49,6 +51,7 @@ namespace MyBackend.Domain.Entities
                 CreatedBy = createdBy?.Trim() ?? string.Empty,
                 Status = string.IsNullOrWhiteSpace(status) ? "Ready" : status.Trim(),
                 FileSize = string.IsNullOrWhiteSpace(fileSize) ? "1.5 MB" : fileSize.Trim(),
+                FileName = fileName,
                 CreatedAt = now,
                 UpdatedAt = now,
                 DeletedFlag = 1
@@ -64,7 +67,9 @@ namespace MyBackend.Domain.Entities
             int? categoryId,
             string? category,
             string? format,
-            string? status)
+            string? status,
+            string? fileSize = null,
+            string? fileName = null)
         {
             if (string.IsNullOrWhiteSpace(title))
                 throw new ArgumentException("Report title cannot be empty.", nameof(title));
@@ -75,6 +80,16 @@ namespace MyBackend.Domain.Entities
             if (!string.IsNullOrWhiteSpace(category)) Category = category.Trim();
             if (!string.IsNullOrWhiteSpace(format)) Format = format.Trim();
             if (!string.IsNullOrWhiteSpace(status)) Status = status.Trim();
+            if (!string.IsNullOrWhiteSpace(fileSize)) FileSize = fileSize.Trim();
+            if (!string.IsNullOrWhiteSpace(fileName)) FileName = fileName.Trim();
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void UpdateFile(string fileName, string fileSize, string? format = null)
+        {
+            if (!string.IsNullOrWhiteSpace(fileName)) FileName = fileName.Trim();
+            if (!string.IsNullOrWhiteSpace(fileSize)) FileSize = fileSize.Trim();
+            if (!string.IsNullOrWhiteSpace(format)) Format = format.Trim();
             UpdatedAt = DateTime.UtcNow;
         }
 

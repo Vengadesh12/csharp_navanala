@@ -1,4 +1,4 @@
-﻿--
+--
 -- PostgreSQL database dump
 --
 
@@ -704,7 +704,8 @@ CREATE TABLE public.reports (
     file_size character varying(50) DEFAULT '1.2 MB'::character varying,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     deleted_flag integer DEFAULT 1,
-    category_id integer
+    category_id integer,
+    file_name character varying(255)
 );
 
 
