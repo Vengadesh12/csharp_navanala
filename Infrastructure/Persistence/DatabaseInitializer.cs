@@ -715,60 +715,6 @@ namespace MyBackend.Infrastructure.Persistence
                         DataType = "boolean",
                         UpdatedBy = "System Admin"
                     },
-                    new()
-                    {
-                        SettingKey = "smtp_host",
-                        SettingValue = "smtp.gmail.com",
-                        Category = "Email",
-                        Description = "Outgoing SMTP mail server hostname.",
-                        DataType = "string",
-                        UpdatedBy = "System Admin"
-                    },
-                    new()
-                    {
-                        SettingKey = "smtp_port",
-                        SettingValue = "587",
-                        Category = "Email",
-                        Description = "SMTP TLS/SSL connection port.",
-                        DataType = "number",
-                        UpdatedBy = "System Admin"
-                    },
-                    new()
-                    {
-                        SettingKey = "email_alerts_enabled",
-                        SettingValue = "true",
-                        Category = "Notifications",
-                        Description = "Send instant Gmail alerts when permissions or roles are modified.",
-                        DataType = "boolean",
-                        UpdatedBy = "System Admin"
-                    },
-                    new()
-                    {
-                        SettingKey = "browser_push_enabled",
-                        SettingValue = "true",
-                        Category = "Notifications",
-                        Description = "Enable in-app desktop push notifications.",
-                        DataType = "boolean",
-                        UpdatedBy = "System Admin"
-                    },
-                    new()
-                    {
-                        SettingKey = "dark_mode_enabled",
-                        SettingValue = "false",
-                        Category = "Appearance",
-                        Description = "Enable dark mode theme across workspace.",
-                        DataType = "boolean",
-                        UpdatedBy = "System Admin"
-                    },
-                    new()
-                    {
-                        SettingKey = "auto_backup_enabled",
-                        SettingValue = "true",
-                        Category = "Backup",
-                        Description = "Automated nightly PostgreSQL database snapshot backups.",
-                        DataType = "boolean",
-                        UpdatedBy = "System Admin"
-                    }
                 };
 
                 foreach (var item in defaultSettings)
@@ -795,38 +741,6 @@ namespace MyBackend.Infrastructure.Persistence
                         Name = "Security",
                         Description = "Authentication policies, 2FA, password expiry, and login limits.",
                         Icon = "ShieldOutlined",
-                        CreatedBy = "System Admin",
-                        DeletedFlag = 1
-                    },
-                    new()
-                    {
-                        Name = "Email",
-                        Description = "Configure outgoing SMTP mail server and email templates.",
-                        Icon = "LanguageOutlined",
-                        CreatedBy = "System Admin",
-                        DeletedFlag = 1
-                    },
-                    new()
-                    {
-                        Name = "Notifications",
-                        Description = "Email alerts, webhooks, and push notification channels.",
-                        Icon = "NotificationsNoneOutlined",
-                        CreatedBy = "System Admin",
-                        DeletedFlag = 1
-                    },
-                    new()
-                    {
-                        Name = "Appearance",
-                        Description = "Workspace theme, branding colors, and interface density.",
-                        Icon = "PaletteOutlined",
-                        CreatedBy = "System Admin",
-                        DeletedFlag = 1
-                    },
-                    new()
-                    {
-                        Name = "Backup",
-                        Description = "Automated database backups, exports, and disaster recovery.",
-                        Icon = "StorageOutlined",
                         CreatedBy = "System Admin",
                         DeletedFlag = 1
                     }

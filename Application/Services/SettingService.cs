@@ -36,6 +36,10 @@ namespace MyBackend.Application.Services
                 sql.Append($" AND LOWER(category) = LOWER({{{paramIndex++}}})");
                 parameters.Add(category.Trim());
             }
+            else
+            {
+                sql.Append(" AND LOWER(category) IN ('general', 'security')");
+            }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -55,7 +59,7 @@ namespace MyBackend.Application.Services
                 .FromSqlRaw("""
                     SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
                     FROM setting_categories
-                    WHERE deleted_flag = 1
+                    WHERE deleted_flag = 1 AND LOWER(name) IN ('general', 'security')
                     ORDER BY id ASC
                 """)
                 .AsNoTracking()
@@ -65,6 +69,7 @@ namespace MyBackend.Application.Services
                 .FromSqlRaw("""
                     SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
                     FROM system_settings
+                    WHERE LOWER(category) IN ('general', 'security')
                 """)
                 .AsNoTracking()
                 .ToListAsync())
@@ -76,6 +81,7 @@ namespace MyBackend.Application.Services
             var totalSettings = await _context.Database.SqlQueryRaw<int>("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM system_settings
+                WHERE LOWER(category) IN ('general', 'security')
             """).SingleOrDefaultAsync();
 
             var twoFactorVal = await _context.Database.SqlQueryRaw<string>("""
@@ -90,7 +96,7 @@ namespace MyBackend.Application.Services
             var alertChannels = await _context.Database.SqlQueryRaw<int>("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM setting_categories
-                WHERE deleted_flag = 1 AND (LOWER(name) = 'email' OR LOWER(name) = 'notifications')
+                WHERE deleted_flag = 1 AND LOWER(name) = 'security'
             """).SingleOrDefaultAsync();
 
             var sessionTimeoutVal = await _context.Database.SqlQueryRaw<string>("""
@@ -119,7 +125,7 @@ namespace MyBackend.Application.Services
                 .FromSqlRaw("""
                     SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
                     FROM setting_categories
-                    WHERE deleted_flag = 1
+                    WHERE deleted_flag = 1 AND LOWER(name) IN ('general', 'security')
                     ORDER BY id ASC
                 """)
                 .AsNoTracking()
@@ -129,6 +135,7 @@ namespace MyBackend.Application.Services
                 .FromSqlRaw("""
                     SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
                     FROM system_settings
+                    WHERE LOWER(category) IN ('general', 'security')
                 """)
                 .AsNoTracking()
                 .ToListAsync())
@@ -247,7 +254,7 @@ namespace MyBackend.Application.Services
 
             if (string.IsNullOrWhiteSpace(categoryName)) return false;
 
-            var protectedCategories = new[] { "general", "security", "notifications", "rbac", "sessions" };
+            var protectedCategories = new[] { "general", "security" };
             if (protectedCategories.Contains(categoryName.ToLower()))
             {
                 throw new BadRequestException($"Category '{categoryName}' is a core system category and cannot be deleted.");
