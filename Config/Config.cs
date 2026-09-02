@@ -1640,4 +1640,114 @@ namespace MyBackend.Configuration
                 .HasColumnName("updated_at");
         }
     }
+
+    public class UserPermissionConfiguration : IEntityTypeConfiguration<UserPermission>
+    {
+        public void Configure(EntityTypeBuilder<UserPermission> builder)
+        {
+            builder.ToTable("userpermissions");
+
+            builder.HasKey(x => x.Id);
+
+            builder.Property(x => x.Id)
+                .HasColumnName("Id");
+
+            builder.Property(x => x.UserId)
+                .HasColumnName("UserId")
+                .IsRequired();
+
+            builder.Property(x => x.PermissionId)
+                .HasColumnName("PermissionId")
+                .IsRequired();
+
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("CreatedAt");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("UpdatedAt");
+        }
+    }
+
+    public class AccessRequestConfiguration : IEntityTypeConfiguration<AccessRequest>
+    {
+        public void Configure(EntityTypeBuilder<AccessRequest> builder)
+        {
+            builder.ToTable("access_requests");
+
+            builder.HasKey(x => x.Id);
+
+            builder.Property(x => x.Id)
+                .HasColumnName("id");
+
+            builder.Property(x => x.UserId)
+                .HasColumnName("user_id")
+                .IsRequired();
+
+            builder.Property(x => x.UserName)
+                .HasColumnName("user_name")
+                .HasMaxLength(150)
+                .IsRequired();
+
+            builder.Property(x => x.UserEmail)
+                .HasColumnName("user_email")
+                .HasMaxLength(150);
+
+            builder.Property(x => x.DepartmentName)
+                .HasColumnName("department_name")
+                .HasMaxLength(150);
+
+            builder.Property(x => x.RoleName)
+                .HasColumnName("role_name")
+                .HasMaxLength(150);
+
+            builder.Property(x => x.PermissionKey)
+                .HasColumnName("permission_key")
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Property(x => x.PermissionName)
+                .HasColumnName("permission_name")
+                .HasMaxLength(150)
+                .IsRequired();
+
+            builder.Property(x => x.Module)
+                .HasColumnName("module")
+                .HasMaxLength(100);
+
+            builder.Property(x => x.Reason)
+                .HasColumnName("reason")
+                .IsRequired();
+
+            builder.Property(x => x.Priority)
+                .HasColumnName("priority")
+                .HasMaxLength(50);
+
+            builder.Property(x => x.Status)
+                .HasColumnName("status")
+                .HasMaxLength(50);
+
+            builder.Property(x => x.ReviewerId)
+                .HasColumnName("reviewer_id");
+
+            builder.Property(x => x.ReviewerName)
+                .HasColumnName("reviewer_name")
+                .HasMaxLength(150);
+
+            builder.Property(x => x.ReviewerComments)
+                .HasColumnName("reviewer_comments");
+
+            builder.Property(x => x.ReviewedAt)
+                .HasColumnName("reviewed_at");
+
+            builder.Property(x => x.DeletedFlag)
+                .HasColumnName("deleted_flag")
+                .HasDefaultValue(1);
+
+            builder.Property(x => x.CreatedAt)
+                .HasColumnName("created_at");
+
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at");
+        }
+    }
 }

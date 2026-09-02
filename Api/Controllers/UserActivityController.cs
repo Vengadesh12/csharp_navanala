@@ -182,7 +182,6 @@ namespace MyBackend.Api.Controllers
 
             return await _userService.HasPermissionAsync(userId,
                 "user_activity.force_logout",
-                "user_activity.manage",
                 "permissions.manage");
         }
     }

@@ -97,8 +97,14 @@ namespace MyBackend.Infrastructure.Repositories
                           INNER JOIN designations des ON des."DepartmentId" = dp."DepartmentId" AND des."DeletedFlag" = 1
                           WHERE des."Id" = {1}
                       ))
+                      OR
+                      ({2} > 0 AND p."Id" IN (
+                          SELECT up."PermissionId"
+                          FROM userpermissions up
+                          WHERE up."UserId" = {2}
+                      ))
                   )
-                """, roleId, designationId).ToListAsync();
+                """, roleId, designationId, userId).ToListAsync();
 
             return permissionKeys.Any(k => permissions.Contains(k, StringComparer.OrdinalIgnoreCase));
         }
@@ -144,9 +150,15 @@ namespace MyBackend.Infrastructure.Repositories
                           INNER JOIN designations des ON des."DepartmentId" = dp."DepartmentId" AND des."DeletedFlag" = 1
                           WHERE des."Id" = {1}
                       ))
+                      OR
+                      ({2} > 0 AND p."Id" IN (
+                          SELECT up."PermissionId"
+                          FROM userpermissions up
+                          WHERE up."UserId" = {2}
+                      ))
                   )
                 ORDER BY "Value"
-                """, roleId, designationId).ToListAsync();
+                """, roleId, designationId, userId).ToListAsync();
         }
 
         public async Task<bool> UpdatePasswordHashAsync(int userId, string newPasswordHash)

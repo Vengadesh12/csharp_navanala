@@ -85,10 +85,6 @@ namespace MyBackend.Api.Controllers
                 Message = "Password changed succesfully!"
             });
         }
-
-        /// <summary>
-        /// Upload a new profile picture for the currently logged-in user.
-        /// </summary>
         [HttpPost("upload-image")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(ApiResponse<UserProfileResponse>), StatusCodes.Status200OK)]

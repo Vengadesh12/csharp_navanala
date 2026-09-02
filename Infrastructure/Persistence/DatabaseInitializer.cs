@@ -165,6 +165,37 @@ namespace MyBackend.Infrastructure.Persistence
                         updated_at TIMESTAMPTZ DEFAULT NOW(),
                         deleted_flag INT NOT NULL DEFAULT 1
                     );
+
+                    CREATE TABLE IF NOT EXISTS userpermissions (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""UserId"" INT NOT NULL,
+                        ""PermissionId"" INT NOT NULL,
+                        ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        CONSTRAINT uq_user_permission UNIQUE (""UserId"", ""PermissionId"")
+                    );
+
+                    CREATE TABLE IF NOT EXISTS access_requests (
+                        ""id"" SERIAL PRIMARY KEY,
+                        ""user_id"" INT NOT NULL,
+                        ""user_name"" VARCHAR(150) NOT NULL,
+                        ""user_email"" VARCHAR(150) NOT NULL,
+                        ""department_name"" VARCHAR(150),
+                        ""role_name"" VARCHAR(150),
+                        ""permission_key"" VARCHAR(100) NOT NULL,
+                        ""permission_name"" VARCHAR(150) NOT NULL,
+                        ""module"" VARCHAR(100),
+                        ""reason"" TEXT NOT NULL,
+                        ""priority"" VARCHAR(50) NOT NULL DEFAULT 'Medium',
+                        ""status"" VARCHAR(50) NOT NULL DEFAULT 'Pending',
+                        ""reviewer_id"" INT,
+                        ""reviewer_name"" VARCHAR(150),
+                        ""reviewer_comments"" TEXT,
+                        ""reviewed_at"" TIMESTAMPTZ,
+                        ""created_at"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""updated_at"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        ""deleted_flag"" INT NOT NULL DEFAULT 1
+                    );
                 ");
 
                 // Seed / verify all standard system permissions
@@ -427,12 +458,13 @@ namespace MyBackend.Infrastructure.Persistence
                     new() { MenuKey = "approvals.view", Label = "Create Approval", Icon = "✓", Route = "/create-approval", GroupName = "Management", Description = "Raise and manage employee product & resource approvals", OrderIndex = 6, PermissionKey = "approvals.view", DeletedFlag = 1 },
                     new() { MenuKey = "purchases.view", Label = "Purchases", Icon = "🛒", Route = "/purchases", GroupName = "Management", Description = "Procure approved products and manage vendor quotations", OrderIndex = 7, PermissionKey = "purchases.view", DeletedFlag = 1 },
                     new() { MenuKey = "invoices.view", Label = "Invoice", Icon = "🧾", Route = "/invoices", GroupName = "Management", Description = "Generate and manage customer invoices with GST calculations and PDF download", OrderIndex = 8, PermissionKey = "invoices.view", DeletedFlag = 1 },
-                    new() { MenuKey = "user_activity.view", Label = "User Activity", Icon = "⏱", Route = "/user-activity", GroupName = "Operations & Audit", Description = "Live active sessions & login/logout tracking", OrderIndex = 9, PermissionKey = "user_activity.view", DeletedFlag = 1 },
-                    new() { MenuKey = "audit.view", Label = "Audit Logs", Icon = "◌", Route = "/audit", GroupName = "Operations & Audit", Description = "Activity & security events", OrderIndex = 10, PermissionKey = "audit.view", DeletedFlag = 1 },
-                    new() { MenuKey = "reports.view", Label = "Reports", Icon = "▤", Route = "/reports", GroupName = "Operations & Audit", Description = "Insights & exports", OrderIndex = 11, PermissionKey = "reports.view", DeletedFlag = 1 },
-                    new() { MenuKey = "projects.view", Label = "Projects", Icon = "◇", Route = "/projects", GroupName = "Operations & Audit", Description = "Project initiatives", OrderIndex = 12, PermissionKey = "projects.view", DeletedFlag = 1 },
-                    new() { MenuKey = "calendar.view", Label = "Schedule", Icon = "□", Route = "/calendar", GroupName = "Operations & Audit", Description = "Team rhythm & reviews", OrderIndex = 13, PermissionKey = "calendar.view", DeletedFlag = 1 },
-                    new() { MenuKey = "settings.view", Label = "Settings", Icon = "⚙", Route = "/settings", GroupName = "Preferences", Description = "Workspace configuration", OrderIndex = 14, PermissionKey = "settings.view", DeletedFlag = 1 }
+                    new() { MenuKey = "request_access.view", Label = "Request Access", Icon = "🔑", Route = "/request-access", GroupName = "Management", Description = "Request system permissions and review access requests", OrderIndex = 9, PermissionKey = null, DeletedFlag = 1 },
+                    new() { MenuKey = "user_activity.view", Label = "User Activity", Icon = "⏱", Route = "/user-activity", GroupName = "Operations & Audit", Description = "Live active sessions & login/logout tracking", OrderIndex = 10, PermissionKey = "user_activity.view", DeletedFlag = 1 },
+                    new() { MenuKey = "audit.view", Label = "Audit Logs", Icon = "◌", Route = "/audit", GroupName = "Operations & Audit", Description = "Activity & security events", OrderIndex = 11, PermissionKey = "audit.view", DeletedFlag = 1 },
+                    new() { MenuKey = "reports.view", Label = "Reports", Icon = "▤", Route = "/reports", GroupName = "Operations & Audit", Description = "Insights & exports", OrderIndex = 12, PermissionKey = "reports.view", DeletedFlag = 1 },
+                    new() { MenuKey = "projects.view", Label = "Projects", Icon = "◇", Route = "/projects", GroupName = "Operations & Audit", Description = "Project initiatives", OrderIndex = 13, PermissionKey = "projects.view", DeletedFlag = 1 },
+                    new() { MenuKey = "calendar.view", Label = "Schedule", Icon = "□", Route = "/calendar", GroupName = "Operations & Audit", Description = "Team rhythm & reviews", OrderIndex = 14, PermissionKey = "calendar.view", DeletedFlag = 1 },
+                    new() { MenuKey = "settings.view", Label = "Settings", Icon = "⚙", Route = "/settings", GroupName = "Preferences", Description = "Workspace configuration", OrderIndex = 15, PermissionKey = "settings.view", DeletedFlag = 1 }
                 };
 
                 foreach (var menu in defaultMenus)

@@ -30,6 +30,8 @@ namespace MyBackend.Infrastructure.Persistence
         public DbSet<SettingCategory> SettingCategories { get; set; }
         public DbSet<EventType> EventTypes { get; set; }
         public DbSet<ApprovalRequest> Approvals { get; set; }
+        public DbSet<AccessRequest> AccessRequests { get; set; }
+        public DbSet<UserPermission> UserPermissions { get; set; }
         public DbSet<Purchase> Purchases { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<InvoiceItem> InvoiceItems { get; set; }

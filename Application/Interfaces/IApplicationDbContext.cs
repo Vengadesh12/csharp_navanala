@@ -28,6 +28,8 @@ namespace MyBackend.Application.Interfaces
         DbSet<SettingCategory> SettingCategories { get; }
         DbSet<EventType> EventTypes { get; }
         DbSet<ApprovalRequest> Approvals { get; }
+        DbSet<AccessRequest> AccessRequests { get; }
+        DbSet<UserPermission> UserPermissions { get; }
         DbSet<Purchase> Purchases { get; }
         DbSet<Invoice> Invoices { get; }
         DbSet<InvoiceItem> InvoiceItems { get; }
