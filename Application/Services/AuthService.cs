@@ -64,6 +64,8 @@ namespace MyBackend.Application.Services
                 throw new UnauthorizedAccessException("This account has been deactivated. Please contact your administrator.");
             }
 
+            await EnsureMaintenanceAccessAllowedAsync(user);
+
             bool passwordMatches = false;
 
             if (string.IsNullOrWhiteSpace(user.PasswordHash))
@@ -222,6 +224,8 @@ namespace MyBackend.Application.Services
                 throw new KeyNotFoundException("User account not found or deactivated.");
             }
 
+            await EnsureMaintenanceAccessAllowedAsync(user);
+
             if (!_otpService.ConsumeOtp(user.Email, request.Otp, out var errorMessage))
             {
                 throw new InvalidOperationException(errorMessage ?? "Invalid or expired 2FA verification code.");
@@ -316,6 +320,8 @@ namespace MyBackend.Application.Services
             {
                 throw new UnauthorizedAccessException("This account has been deactivated. Please contact your administrator.");
             }
+
+            await EnsureMaintenanceAccessAllowedAsync(user);
 
             if (string.IsNullOrWhiteSpace(user.ProfileImage) && !string.IsNullOrWhiteSpace(request.ProfileImage))
             {
@@ -643,6 +649,55 @@ namespace MyBackend.Application.Services
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 IsFirstLogin = user.IsFirstLogin
             };
+        }
+
+        public async Task<MaintenanceStatusResponse> GetMaintenanceStatusAsync()
+        {
+            var maintenanceSetting = await _unitOfWork.SystemSettings
+                .FirstOrDefaultAsync(s => s.SettingKey == "maintenance_mode");
+
+            bool isMaintenance = maintenanceSetting != null &&
+                string.Equals(maintenanceSetting.SettingValue?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+
+            return new MaintenanceStatusResponse
+            {
+                IsMaintenanceMode = isMaintenance,
+                Message = isMaintenance
+                    ? "This website is under maintenance, please come again later."
+                    : string.Empty
+            };
+        }
+
+        private async Task EnsureMaintenanceAccessAllowedAsync(User user)
+        {
+            var maintenanceSetting = await _unitOfWork.SystemSettings
+                .FirstOrDefaultAsync(s => s.SettingKey == "maintenance_mode");
+
+            bool isMaintenance = maintenanceSetting != null &&
+                string.Equals(maintenanceSetting.SettingValue?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+
+            if (isMaintenance)
+            {
+                bool isAdmin = await IsAdminUserAsync(user);
+                if (!isAdmin)
+                {
+                    throw new UnauthorizedAccessException("This website is under maintenance, please come again later.");
+                }
+            }
+        }
+
+        private async Task<bool> IsAdminUserAsync(User user)
+        {
+            if (user.RoleId == 2) return true;
+            if (user.RoleId.HasValue)
+            {
+                var role = await _unitOfWork.Roles.GetByIdAsync(user.RoleId.Value);
+                if (role != null && (role.Id == 2 || role.Name.Contains("admin", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

@@ -389,3 +389,12 @@ public sealed class GoogleLoginRequest
     /// </summary>
     public string? ProfileImage { get; set; }
 }
+
+/// <summary>
+/// System maintenance mode status response.
+/// </summary>
+public sealed class MaintenanceStatusResponse
+{
+    public bool IsMaintenanceMode { get; set; }
+    public string Message { get; set; } = string.Empty;
+}

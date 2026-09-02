@@ -68,5 +68,10 @@ namespace MyBackend.Application.Interfaces
         /// Authenticates user credentials via Google OAuth credential, tracks session with IP address, and returns JWT token.
         /// </summary>
         Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request, string? ipAddress = null, string? userAgent = null);
+
+        /// <summary>
+        /// Retrieves the current system maintenance mode status.
+        /// </summary>
+        Task<MaintenanceStatusResponse> GetMaintenanceStatusAsync();
     }
 }

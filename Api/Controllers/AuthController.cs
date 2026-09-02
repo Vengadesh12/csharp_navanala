@@ -28,6 +28,19 @@ namespace MyBackend.Api.Controllers
         }
 
         /// <summary>
+        /// Retrieve the current system maintenance mode status.
+        /// </summary>
+        /// <response code="200">Returns maintenance mode boolean flag and notification message.</response>
+        [HttpGet("maintenance-status")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(MaintenanceStatusResponse), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetMaintenanceStatus()
+        {
+            var status = await _authService.GetMaintenanceStatusAsync();
+            return Ok(status);
+        }
+
+        /// <summary>
         /// Authenticate user credentials, record login session with client IP address &amp; timestamp in database, and generate JWT access token.
         /// </summary>
         /// <param name="request">User login credentials containing email and password.</param>
