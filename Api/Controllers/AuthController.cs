@@ -64,6 +64,47 @@ namespace MyBackend.Api.Controllers
         }
 
         /// <summary>
+        /// Authenticate user via Google OAuth 2.0 Identity Services credential, track session in database, and generate JWT access token.
+        /// </summary>
+        /// <param name="request">Google OAuth payload containing ID Token, email, name, and profile image.</param>
+        /// <response code="200">Google authentication successful; returns user profile, permissions, dynamic menus, and JWT token.</response>
+        /// <response code="400">Email was not provided or token payload is invalid.</response>
+        /// <response code="401">User account is deactivated.</response>
+        [HttpPost("google-login")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Email) && string.IsNullOrWhiteSpace(request.IdToken))
+            {
+                return BadRequest(new ErrorResponse { Message = "Google email address or ID token is required." });
+            }
+
+            var ipAddress = GetClientIpAddress();
+            var userAgent = Request.Headers.UserAgent.ToString();
+
+            try
+            {
+                var response = await _authService.GoogleLoginAsync(request, ipAddress, userAgent);
+                return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new ErrorResponse { Message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ErrorResponse { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Verify Two-Factor Authentication (2FA) OTP code, record active session with IP address in database, and generate JWT token upon validation.
         /// </summary>
         /// <param name="request">Payload containing user email and 6-digit 2FA OTP.</param>

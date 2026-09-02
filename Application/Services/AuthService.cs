@@ -267,6 +267,102 @@ namespace MyBackend.Application.Services
             };
         }
 
+        public async Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request, string? ipAddress = null, string? userAgent = null)
+        {
+            if (!string.IsNullOrWhiteSpace(request.IdToken))
+            {
+                try
+                {
+                    var handler = new JwtSecurityTokenHandler();
+                    if (handler.CanReadToken(request.IdToken))
+                    {
+                        var jwt = handler.ReadJwtToken(request.IdToken);
+                        var tokenEmail = jwt.Claims.FirstOrDefault(c => c.Type == "email" || c.Type == ClaimTypes.Email)?.Value;
+                        var tokenName = jwt.Claims.FirstOrDefault(c => c.Type == "name" || c.Type == ClaimTypes.Name)?.Value;
+                        var tokenPicture = jwt.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
+
+                        if (!string.IsNullOrWhiteSpace(tokenEmail))
+                        {
+                            request.Email = tokenEmail;
+                        }
+                        if (!string.IsNullOrWhiteSpace(tokenName) && string.IsNullOrWhiteSpace(request.Name))
+                        {
+                            request.Name = tokenName;
+                        }
+                        if (!string.IsNullOrWhiteSpace(tokenPicture) && string.IsNullOrWhiteSpace(request.ProfileImage))
+                        {
+                            request.ProfileImage = tokenPicture;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Fall back to request payload fields
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Email))
+            {
+                throw new ArgumentException("A valid Google email address is required.");
+            }
+
+            var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+            if (user == null)
+            {
+                throw new UnauthorizedAccessException($"No registered workspace account found for '{request.Email}'. Please contact your administrator to create your account or submit an access request.");
+            }
+
+            if (user.DeletedFlag == 0)
+            {
+                throw new UnauthorizedAccessException("This account has been deactivated. Please contact your administrator.");
+            }
+
+            if (string.IsNullOrWhiteSpace(user.ProfileImage) && !string.IsNullOrWhiteSpace(request.ProfileImage))
+            {
+                user.ProfileImage = request.ProfileImage;
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            var authData = await BuildAuthUserDataAsync(user);
+
+            // Record login session with IP Address and timestamp
+            try
+            {
+                var clientIp = string.IsNullOrWhiteSpace(ipAddress) ? "127.0.0.1" : ipAddress;
+                await _unitOfWork.Sessions.RecordLoginAsync(
+                    userId: user.Id,
+                    email: user.Email,
+                    userName: user.Name,
+                    ipAddress: clientIp,
+                    userAgent: userAgent,
+                    sessionToken: authData.Token
+                );
+
+                // Write Audit Log
+                await _unitOfWork.Repository<AuditLog>().AddAsync(AuditLog.CreateLog(
+                    action: "Google OAuth Login",
+                    module: "Auth",
+                    performedBy: user.Name,
+                    details: $"User signed in via Google OAuth from IP {clientIp}",
+                    ipAddress: clientIp,
+                    status: "Success"
+                ));
+                await _unitOfWork.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to record Google login session audit for user {Email}", user.Email);
+            }
+
+            return new LoginResponse
+            {
+                Success = true,
+                RequiresTwoFactor = false,
+                Message = "Signed in with Google successfully.",
+                Data = authData
+            };
+        }
+
         public async Task<MessageResponse> LogoutAsync(int userId, string? ipAddress = null, string? sessionToken = null, string? email = null)
         {
             var clientIp = string.IsNullOrWhiteSpace(ipAddress) ? "127.0.0.1" : ipAddress;

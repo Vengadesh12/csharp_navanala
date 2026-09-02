@@ -361,3 +361,31 @@ public sealed class UserSessionDto
     public bool IsActive { get; set; }
     public int DeletedFlag { get; set; } = 1;
 }
+
+/// <summary>
+/// Google Sign-In authentication request payload.
+/// </summary>
+public sealed class GoogleLoginRequest
+{
+    /// <summary>
+    /// Google OAuth ID Token (JWT) returned by Google Identity Services.
+    /// </summary>
+    public string? IdToken { get; set; }
+
+    /// <summary>
+    /// Email extracted from Google OAuth.
+    /// </summary>
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Full Name provided by Google.
+    /// </summary>
+    public string? Name { get; set; }
+
+    /// <summary>
+    /// Google avatar picture URL.
+    /// </summary>
+    public string? ProfileImage { get; set; }
+}

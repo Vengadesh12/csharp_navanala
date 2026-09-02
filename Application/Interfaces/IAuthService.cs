@@ -63,5 +63,10 @@ namespace MyBackend.Application.Interfaces
         /// Retrieves all recent user login and logout sessions with IP addresses.
         /// </summary>
         Task<List<UserSessionDto>> GetAllRecentSessionsAsync(int limit = 100);
+
+        /// <summary>
+        /// Authenticates user credentials via Google OAuth credential, tracks session with IP address, and returns JWT token.
+        /// </summary>
+        Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request, string? ipAddress = null, string? userAgent = null);
     }
 }
