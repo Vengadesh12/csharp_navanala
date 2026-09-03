@@ -1,3 +1,5 @@
+using System;
+
 namespace MyBackend.Domain.Entities.Model
 {
     public class RolePermission
@@ -5,15 +7,7 @@ namespace MyBackend.Domain.Entities.Model
         public int Id { get; set; }
         public int RoleId { get; set; }
         public int PermissionId { get; set; }
-        public System.DateTime CreatedAt { get; set; } = System.DateTime.UtcNow;
-        public System.DateTime? UpdatedAt { get; set; } = System.DateTime.UtcNow;
-
-        public static RolePermission Create(int roleId, int permissionId) => new()
-        {
-            RoleId = roleId,
-            PermissionId = permissionId,
-            CreatedAt = System.DateTime.UtcNow,
-            UpdatedAt = System.DateTime.UtcNow
-        };
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

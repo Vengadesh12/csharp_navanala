@@ -62,7 +62,14 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException($"A project category with the name '{trimmedName}' already exists.");
             }
 
-            var category = ProjectCategory.Create(trimmedName, request.Description);
+            var category = new ProjectCategory
+            {
+                Name = trimmedName,
+                Description = request.Description?.Trim() ?? string.Empty,
+                DeletedFlag = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
             await _projectCategoryRepository.AddCategoryAsync(category);
 
             return new ProjectCategoryDto

@@ -167,7 +167,12 @@ namespace MyBackend.Infrastructure.Repositories
             var request = await _context.AccessRequests.FirstOrDefaultAsync(r => r.Id == requestId && r.DeletedFlag == 1);
             if (request == null || request.Status != "Pending") return false;
 
-            request.Approve(reviewerId, reviewerName, comments);
+            request.Status = "Approved";
+            request.ReviewerId = reviewerId;
+            request.ReviewerName = reviewerName;
+            request.ReviewerComments = string.IsNullOrWhiteSpace(comments) ? null : comments.Trim();
+            request.ReviewedAt = DateTime.UtcNow;
+            request.UpdatedAt = DateTime.UtcNow;
 
             var permission = await _context.Permissions
                 .AsNoTracking()
@@ -180,20 +185,30 @@ namespace MyBackend.Infrastructure.Repositories
 
                 if (!alreadyAssigned)
                 {
-                    _context.UserPermissions.Add(UserPermission.Create(request.UserId, permission.Id));
+                    _context.UserPermissions.Add(new UserPermission
+                    {
+                        UserId = request.UserId,
+                        PermissionId = permission.Id,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
                 }
             }
 
             try
             {
-                _context.AuditLogs.Add(AuditLog.CreateLog(
-                    action: "AccessRequest.Approve",
-                    module: "Access Requests",
-                    performedBy: reviewerName,
-                    details: $"Granted permission '{request.PermissionKey}' ({request.PermissionName}) to user #{request.UserId} ({request.UserName}). Notes: {comments ?? "None"}",
-                    ipAddress: "127.0.0.1",
-                    status: "Success"
-                ));
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    Action = "AccessRequest.Approve",
+                    Module = "Access Requests",
+                    PerformedBy = reviewerName,
+                    Details = $"Granted permission '{request.PermissionKey}' ({request.PermissionName}) to user #{request.UserId} ({request.UserName}). Notes: {comments ?? "None"}",
+                    IpAddress = "127.0.0.1",
+                    Status = "Success",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    DeletedFlag = 1
+                });
             }
             catch
             {
@@ -209,18 +224,27 @@ namespace MyBackend.Infrastructure.Repositories
             var request = await _context.AccessRequests.FirstOrDefaultAsync(r => r.Id == requestId && r.DeletedFlag == 1);
             if (request == null || request.Status != "Pending") return false;
 
-            request.Reject(reviewerId, reviewerName, comments);
+            request.Status = "Rejected";
+            request.ReviewerId = reviewerId;
+            request.ReviewerName = reviewerName;
+            request.ReviewerComments = string.IsNullOrWhiteSpace(comments) ? null : comments.Trim();
+            request.ReviewedAt = DateTime.UtcNow;
+            request.UpdatedAt = DateTime.UtcNow;
 
             try
             {
-                _context.AuditLogs.Add(AuditLog.CreateLog(
-                    action: "AccessRequest.Reject",
-                    module: "Access Requests",
-                    performedBy: reviewerName,
-                    details: $"Rejected permission request for '{request.PermissionKey}' by user #{request.UserId} ({request.UserName}). Reason: {comments ?? "No comments"}",
-                    ipAddress: "127.0.0.1",
-                    status: "Success"
-                ));
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    Action = "AccessRequest.Reject",
+                    Module = "Access Requests",
+                    PerformedBy = reviewerName,
+                    Details = $"Rejected permission request for '{request.PermissionKey}' by user #{request.UserId} ({request.UserName}). Reason: {comments ?? "No comments"}",
+                    IpAddress = "127.0.0.1",
+                    Status = "Success",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    DeletedFlag = 1
+                });
             }
             catch
             {
@@ -242,7 +266,8 @@ namespace MyBackend.Infrastructure.Repositories
                     return false;
             }
 
-            request.SoftDelete();
+            request.DeletedFlag = 0;
+            request.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
         }

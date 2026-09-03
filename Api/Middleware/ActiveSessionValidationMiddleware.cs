@@ -76,14 +76,22 @@ namespace MyBackend.Api.Middleware
                                 ?? context.User.FindFirstValue("name")
                                 ?? (email.Contains('@') ? email.Split('@')[0] : $"User #{userId}");
 
-                            var newSession = UserSession.Start(
-                                userId: userId,
-                                email: email,
-                                userName: userName,
-                                ipAddress: string.IsNullOrWhiteSpace(clientIp) ? "127.0.0.1" : clientIp,
-                                userAgent: string.IsNullOrWhiteSpace(userAgent) ? null : userAgent,
-                                sessionToken: token
-                            );
+                            var now = DateTime.UtcNow;
+                            var newSession = new UserSession
+                            {
+                                UserId = userId,
+                                Email = email.Trim(),
+                                UserName = userName.Trim(),
+                                IpAddress = string.IsNullOrWhiteSpace(clientIp) ? "127.0.0.1" : clientIp.Trim(),
+                                UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : userAgent,
+                                SessionToken = token,
+                                LoginTime = now,
+                                LogoutTime = null,
+                                IsActive = true,
+                                DeletedFlag = 1,
+                                CreatedAt = now,
+                                UpdatedAt = now
+                            };
 
                             await sessionRepository.AddSessionAsync(newSession);
                         }

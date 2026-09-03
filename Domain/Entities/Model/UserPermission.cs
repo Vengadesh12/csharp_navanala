@@ -11,13 +11,5 @@ namespace MyBackend.Domain.Entities.Model
         public int PermissionId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
-
-        public static UserPermission Create(int userId, int permissionId) => new()
-        {
-            UserId = userId,
-            PermissionId = permissionId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MyBackend.Domain.Entities.Model
@@ -8,15 +9,7 @@ namespace MyBackend.Domain.Entities.Model
         public int Id { get; set; }
         public int DepartmentId { get; set; }
         public int PermissionId { get; set; }
-        public System.DateTime CreatedAt { get; set; } = System.DateTime.UtcNow;
-        public System.DateTime? UpdatedAt { get; set; } = System.DateTime.UtcNow;
-
-        public static DepartmentPermission Create(int departmentId, int permissionId) => new()
-        {
-            DepartmentId = departmentId,
-            PermissionId = permissionId,
-            CreatedAt = System.DateTime.UtcNow,
-            UpdatedAt = System.DateTime.UtcNow
-        };
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

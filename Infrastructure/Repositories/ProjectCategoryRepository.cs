@@ -65,7 +65,8 @@ namespace MyBackend.Infrastructure.Repositories
             var category = await _context.ProjectCategories.FirstOrDefaultAsync(c => c.Id == id && c.DeletedFlag == 1);
             if (category == null) return false;
 
-            category.SoftDelete();
+            category.DeletedFlag = 0;
+            category.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
         }

@@ -99,17 +99,28 @@ namespace MyBackend.Application.Services
             }
 
             var module = InferModule(permKey);
-            var entity = AccessRequest.Create(
-                userId,
-                user.Name,
-                user.Email,
-                deptName,
-                roleName,
-                permKey,
-                permission.Name,
-                module,
-                dto.Reason,
-                dto.Priority);
+            var now = DateTime.UtcNow;
+            var entity = new AccessRequest
+            {
+                UserId = userId,
+                UserName = user.Name.Trim(),
+                UserEmail = user.Email.Trim(),
+                DepartmentName = string.IsNullOrWhiteSpace(deptName) ? null : deptName.Trim(),
+                RoleName = string.IsNullOrWhiteSpace(roleName) ? null : roleName.Trim(),
+                PermissionKey = permKey.Trim(),
+                PermissionName = string.IsNullOrWhiteSpace(permission.Name) ? permKey.Trim() : permission.Name.Trim(),
+                Module = string.IsNullOrWhiteSpace(module) ? "General" : module.Trim(),
+                Reason = dto.Reason.Trim(),
+                Priority = string.IsNullOrWhiteSpace(dto.Priority) ? "Medium" : dto.Priority.Trim(),
+                Status = "Pending",
+                ReviewerId = null,
+                ReviewerName = null,
+                ReviewerComments = null,
+                ReviewedAt = null,
+                CreatedAt = now,
+                UpdatedAt = now,
+                DeletedFlag = 1
+            };
 
             await _unitOfWork.AccessRequests.AddRequestAsync(entity);
 

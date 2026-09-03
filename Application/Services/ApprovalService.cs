@@ -85,18 +85,28 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException("Reason / justification is required.");
             }
 
-            var entity = ApprovalRequest.Create(
-                userId: userId,
-                userName: userName,
-                userEmail: userEmail,
-                departmentName: departmentName,
-                itemName: request.ItemName,
-                category: request.Category,
-                description: request.Description,
-                quantity: request.Quantity,
-                priority: request.Priority,
-                estimatedAmount: request.EstimatedAmount
-            );
+            var now = DateTime.UtcNow;
+            var entity = new ApprovalRequest
+            {
+                UserId = userId,
+                EmployeeName = userName.Trim(),
+                EmployeeEmail = userEmail.Trim(),
+                DepartmentName = string.IsNullOrWhiteSpace(departmentName) ? null : departmentName.Trim(),
+                ItemName = request.ItemName.Trim(),
+                Category = string.IsNullOrWhiteSpace(request.Category) ? "Hardware & Devices" : request.Category.Trim(),
+                Description = request.Description.Trim(),
+                Quantity = request.Quantity > 0 ? request.Quantity : 1,
+                Priority = string.IsNullOrWhiteSpace(request.Priority) ? "Medium" : request.Priority.Trim(),
+                EstimatedAmount = request.EstimatedAmount,
+                Status = "Pending",
+                Comments = null,
+                ReviewedById = null,
+                ReviewedByName = null,
+                ReviewedAt = null,
+                CreatedAt = now,
+                UpdatedAt = now,
+                DeletedFlag = 1
+            };
 
             await _approvalRepository.AddApprovalAsync(entity);
             return entity.ToDto();
@@ -119,11 +129,21 @@ namespace MyBackend.Application.Services
 
             if (actionLower == "approve")
             {
-                entity.Approve(reviewerId, reviewerName, request.Comments);
+                entity.Status = "Approved";
+                entity.Comments = string.IsNullOrWhiteSpace(request.Comments) ? null : request.Comments.Trim();
+                entity.ReviewedById = reviewerId;
+                entity.ReviewedByName = reviewerName;
+                entity.ReviewedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
             }
             else
             {
-                entity.Reject(reviewerId, reviewerName, request.Comments);
+                entity.Status = "Rejected";
+                entity.Comments = string.IsNullOrWhiteSpace(request.Comments) ? null : request.Comments.Trim();
+                entity.ReviewedById = reviewerId;
+                entity.ReviewedByName = reviewerName;
+                entity.ReviewedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
             }
 
             await _approvalRepository.UpdateApprovalAsync(entity);
@@ -135,7 +155,8 @@ namespace MyBackend.Application.Services
             var entity = await _approvalRepository.GetByIdAsync(id);
             if (entity == null) return false;
 
-            if (!isManagerOrAdmin && (entity.UserId != currentUserId || !entity.IsPending()))
+            var isPending = string.Equals(entity.Status, "Pending", StringComparison.OrdinalIgnoreCase);
+            if (!isManagerOrAdmin && (entity.UserId != currentUserId || !isPending))
             {
                 return false;
             }

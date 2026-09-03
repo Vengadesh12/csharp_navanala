@@ -109,7 +109,8 @@ namespace MyBackend.Infrastructure.Repositories
             var purchase = await _context.Purchases.FirstOrDefaultAsync(p => p.Id == id && p.DeletedFlag == 1);
             if (purchase == null) return false;
 
-            purchase.SoftDelete();
+            purchase.DeletedFlag = 0;
+            purchase.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
         }

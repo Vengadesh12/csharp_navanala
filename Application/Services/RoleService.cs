@@ -33,7 +33,15 @@ namespace MyBackend.Application.Services
 
         public async Task<RoleDto> CreateRoleAsync(CreateRoleRequest request)
         {
-            var role = Role.Create(request.Name, request.Description);
+            var now = DateTime.UtcNow;
+            var role = new Role
+            {
+                Name = request.Name.Trim(),
+                Description = request.Description?.Trim() ?? string.Empty,
+                DeletedFlag = 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
 
             await _unitOfWork.Roles.AddAsync(role);
             await _unitOfWork.SaveChangesAsync();
@@ -46,7 +54,9 @@ namespace MyBackend.Application.Services
             var role = await _unitOfWork.Roles.GetActiveRoleByIdAsync(id);
             if (role is null) return null;
 
-            role.UpdateDetails(request.Name, request.Description);
+            role.Name = request.Name.Trim();
+            role.Description = request.Description?.Trim() ?? string.Empty;
+            role.UpdatedAt = DateTime.UtcNow;
 
             _unitOfWork.Roles.Update(role);
             await _unitOfWork.SaveChangesAsync();

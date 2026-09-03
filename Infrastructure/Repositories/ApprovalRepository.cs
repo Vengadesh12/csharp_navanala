@@ -138,7 +138,8 @@ namespace MyBackend.Infrastructure.Repositories
             var approval = await _context.Approvals.FirstOrDefaultAsync(a => a.Id == id && a.DeletedFlag == 1);
             if (approval == null) return false;
 
-            approval.SoftDelete();
+            approval.DeletedFlag = 0;
+            approval.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
         }

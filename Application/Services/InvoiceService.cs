@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
+using MyBackend.Application.Common.Helpers;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
@@ -82,35 +83,53 @@ namespace MyBackend.Application.Services
             int orderIdx = 1;
             foreach (var itemReq in request.Items ?? Enumerable.Empty<CreateInvoiceItemRequest>())
             {
-                lineItems.Add(InvoiceItem.Create(
-                    productName: itemReq.ProductName,
-                    description: itemReq.Description,
-                    quantity: itemReq.Quantity,
-                    unitPrice: itemReq.UnitPrice,
-                    taxRate: itemReq.TaxRate,
-                    orderIndex: orderIdx++
-                ));
+                var qty = Math.Max(1, itemReq.Quantity);
+                var price = Math.Max(0, itemReq.UnitPrice);
+                var rate = Math.Max(0, itemReq.TaxRate);
+                var baseAmount = qty * price;
+                var taxAmount = Math.Round((baseAmount * rate) / 100m, 2);
+                lineItems.Add(new InvoiceItem
+                {
+                    ProductName = itemReq.ProductName.Trim(),
+                    Description = itemReq.Description?.Trim(),
+                    Quantity = qty,
+                    UnitPrice = price,
+                    TaxRate = rate,
+                    TaxAmount = taxAmount,
+                    TotalAmount = baseAmount + taxAmount,
+                    OrderIndex = orderIdx++,
+                    DeletedFlag = 1,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
             }
 
-            var invoice = Invoice.Create(
-                invoiceNumber: invoiceNumber,
-                customerName: request.CustomerName,
-                customerEmail: request.CustomerEmail,
-                customerPhone: request.CustomerPhone,
-                customerAddress: request.CustomerAddress,
-                customerGstin: request.CustomerGstin,
-                companyGstin: companyGstin,
-                invoiceDate: request.InvoiceDate,
-                dueDate: request.DueDate,
-                discountAmount: request.DiscountAmount,
-                status: request.Status,
-                paymentMethod: request.PaymentMethod,
-                notes: request.Notes,
-                termsAndConditions: request.TermsAndConditions,
-                createdByUserId: userId,
-                createdByName: userName,
-                lineItems: lineItems
-            );
+            var now = DateTime.UtcNow;
+            var invoice = new Invoice
+            {
+                InvoiceNumber = invoiceNumber,
+                CustomerName = request.CustomerName.Trim(),
+                CustomerEmail = request.CustomerEmail?.Trim(),
+                CustomerPhone = request.CustomerPhone?.Trim(),
+                CustomerAddress = request.CustomerAddress?.Trim(),
+                CustomerGstin = request.CustomerGstin?.Trim().ToUpper(),
+                CompanyGstin = companyGstin,
+                InvoiceDate = request.InvoiceDate ?? DateTime.UtcNow,
+                DueDate = request.DueDate,
+                DiscountAmount = Math.Max(0, request.DiscountAmount),
+                Status = string.IsNullOrWhiteSpace(request.Status) ? "Draft" : request.Status.Trim(),
+                PaymentMethod = request.PaymentMethod?.Trim(),
+                Notes = request.Notes?.Trim(),
+                TermsAndConditions = request.TermsAndConditions?.Trim(),
+                CreatedByUserId = userId,
+                CreatedByName = userName,
+                DeletedFlag = 1,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Items = lineItems
+            };
+
+            InvoiceCalculationHelper.RecalculateTotals(invoice);
 
             await _invoiceRepository.AddInvoiceAsync(invoice);
 
@@ -123,15 +142,26 @@ namespace MyBackend.Application.Services
             int orderIdx = 1;
             foreach (var itemReq in request.Items ?? Enumerable.Empty<CreateInvoiceItemRequest>())
             {
-                lineItems.Add(InvoiceItem.Create(
-                    productName: itemReq.ProductName,
-                    description: itemReq.Description,
-                    quantity: itemReq.Quantity,
-                    unitPrice: itemReq.UnitPrice,
-                    taxRate: itemReq.TaxRate,
-                    orderIndex: orderIdx++,
-                    invoiceId: id
-                ));
+                var qty = Math.Max(1, itemReq.Quantity);
+                var price = Math.Max(0, itemReq.UnitPrice);
+                var rate = Math.Max(0, itemReq.TaxRate);
+                var baseAmount = qty * price;
+                var taxAmount = Math.Round((baseAmount * rate) / 100m, 2);
+                lineItems.Add(new InvoiceItem
+                {
+                    InvoiceId = id,
+                    ProductName = itemReq.ProductName.Trim(),
+                    Description = itemReq.Description?.Trim(),
+                    Quantity = qty,
+                    UnitPrice = price,
+                    TaxRate = rate,
+                    TaxAmount = taxAmount,
+                    TotalAmount = baseAmount + taxAmount,
+                    OrderIndex = orderIdx++,
+                    DeletedFlag = 1,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
             }
 
             var companyGstinToUse = (canEditGst && !string.IsNullOrWhiteSpace(request.CompanyGstin))

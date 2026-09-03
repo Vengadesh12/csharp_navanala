@@ -258,7 +258,14 @@ namespace MyBackend.Application.Services
                 }
                 else
                 {
-                    var newCat = ReportCategory.Create(categoryName, $"{categoryName} reports");
+                    var newCat = new ReportCategory
+                    {
+                        Name = categoryName.Trim(),
+                        Description = $"{categoryName} reports",
+                        DeletedFlag = 1,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
                     var addedCat = await _reportRepository.AddCategoryAsync(newCat);
                     categoryId = addedCat.Id;
                 }

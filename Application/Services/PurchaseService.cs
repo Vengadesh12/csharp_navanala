@@ -122,28 +122,33 @@ namespace MyBackend.Application.Services
                 throw new InvalidOperationException($"Cannot create purchase quotation. Approval request status is '{approval.Status}', but must be 'Approved'.");
             }
 
-            var purchase = Purchase.CreateFromApproval(
-                approvalRequestId: approval.Id,
-                itemName: approval.ItemName,
-                category: approval.Category,
-                quantity: approval.Quantity,
-                estimatedAmount: approval.EstimatedAmount,
-                employeeName: approval.EmployeeName,
-                employeeEmail: approval.EmployeeEmail,
-                departmentName: approval.DepartmentName,
-                vendorName: request.VendorName,
-                vendorContact: request.VendorContact,
-                vendorEmail: request.VendorEmail,
-                quotationNumber: request.QuotationNumber,
-                quotationAmount: request.QuotationAmount,
-                quotationDate: request.QuotationDate,
-                deliveryTimeline: request.DeliveryTimeline,
-                paymentTerms: request.PaymentTerms,
-                notes: request.Notes,
-                status: request.Status,
-                createdByUserId: createdByUserId,
-                createdByName: createdByName
-            );
+            var now = DateTime.UtcNow;
+            var purchase = new Purchase
+            {
+                ApprovalRequestId = approval.Id,
+                ItemName = approval.ItemName.Trim(),
+                Category = string.IsNullOrWhiteSpace(approval.Category) ? "Hardware & Devices" : approval.Category.Trim(),
+                Quantity = approval.Quantity > 0 ? approval.Quantity : 1,
+                EstimatedAmount = approval.EstimatedAmount,
+                EmployeeName = approval.EmployeeName.Trim(),
+                EmployeeEmail = approval.EmployeeEmail.Trim(),
+                DepartmentName = string.IsNullOrWhiteSpace(approval.DepartmentName) ? null : approval.DepartmentName.Trim(),
+                VendorName = request.VendorName.Trim(),
+                VendorContact = request.VendorContact?.Trim(),
+                VendorEmail = request.VendorEmail?.Trim(),
+                QuotationNumber = request.QuotationNumber?.Trim(),
+                QuotationAmount = Math.Max(0, request.QuotationAmount),
+                QuotationDate = request.QuotationDate ?? now,
+                DeliveryTimeline = string.IsNullOrWhiteSpace(request.DeliveryTimeline) ? "3-5 Business Days" : request.DeliveryTimeline.Trim(),
+                PaymentTerms = string.IsNullOrWhiteSpace(request.PaymentTerms) ? "Net 30" : request.PaymentTerms.Trim(),
+                Notes = request.Notes?.Trim(),
+                Status = string.IsNullOrWhiteSpace(request.Status) ? "Quotation Received" : request.Status.Trim(),
+                CreatedByUserId = createdByUserId,
+                CreatedByName = createdByName,
+                CreatedAt = now,
+                UpdatedAt = now,
+                DeletedFlag = 1
+            };
 
             await _purchaseRepository.AddPurchaseAsync(purchase);
 
@@ -155,18 +160,17 @@ namespace MyBackend.Application.Services
             var purchase = await _purchaseRepository.GetPurchaseByIdAsync(id);
             if (purchase == null) return null;
 
-            purchase.UpdateQuotation(
-                vendorName: request.VendorName,
-                vendorContact: request.VendorContact,
-                vendorEmail: request.VendorEmail,
-                quotationNumber: request.QuotationNumber,
-                quotationAmount: request.QuotationAmount,
-                quotationDate: request.QuotationDate,
-                deliveryTimeline: request.DeliveryTimeline,
-                paymentTerms: request.PaymentTerms,
-                notes: request.Notes,
-                status: request.Status
-            );
+            if (!string.IsNullOrWhiteSpace(request.VendorName)) purchase.VendorName = request.VendorName.Trim();
+            purchase.VendorContact = request.VendorContact?.Trim();
+            purchase.VendorEmail = request.VendorEmail?.Trim();
+            purchase.QuotationNumber = request.QuotationNumber?.Trim();
+            purchase.QuotationAmount = Math.Max(0, request.QuotationAmount);
+            if (request.QuotationDate.HasValue) purchase.QuotationDate = request.QuotationDate.Value;
+            if (!string.IsNullOrWhiteSpace(request.DeliveryTimeline)) purchase.DeliveryTimeline = request.DeliveryTimeline.Trim();
+            if (!string.IsNullOrWhiteSpace(request.PaymentTerms)) purchase.PaymentTerms = request.PaymentTerms.Trim();
+            purchase.Notes = request.Notes?.Trim();
+            if (!string.IsNullOrWhiteSpace(request.Status)) purchase.Status = request.Status.Trim();
+            purchase.UpdatedAt = DateTime.UtcNow;
 
             await _purchaseRepository.UpdatePurchaseAsync(purchase);
 

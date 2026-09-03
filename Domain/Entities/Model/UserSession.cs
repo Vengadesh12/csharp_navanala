@@ -19,49 +19,5 @@ namespace MyBackend.Domain.Entities.Model
         public int DeletedFlag { get; set; } = 1;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
-
-        #region Business Object Domain Methods
-
-        public static UserSession Start(
-            int userId,
-            string email,
-            string userName,
-            string ipAddress,
-            string? userAgent,
-            string? sessionToken)
-        {
-            var now = DateTime.UtcNow;
-            return new UserSession
-            {
-                UserId = userId,
-                Email = email.Trim(),
-                UserName = userName.Trim(),
-                IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? "127.0.0.1" : ipAddress.Trim(),
-                UserAgent = userAgent,
-                SessionToken = sessionToken,
-                LoginTime = now,
-                LogoutTime = null,
-                IsActive = true,
-                DeletedFlag = 1,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-        }
-
-        public void EndSession(DateTime? logoutTime = null)
-        {
-            var now = logoutTime ?? DateTime.UtcNow;
-            IsActive = false;
-            LogoutTime = now;
-            UpdatedAt = now;
-        }
-
-        public void SoftDelete()
-        {
-            DeletedFlag = 0;
-            UpdatedAt = DateTime.UtcNow;
-        }
-
-        #endregion
     }
 }

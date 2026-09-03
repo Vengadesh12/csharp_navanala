@@ -68,21 +68,26 @@ namespace MyBackend.Application.Services
                 throw new ArgumentException(errors.Count > 0 ? errors[0] : "Password does not meet strong security requirements.");
             }
 
-            // Create using Business Object Factory Method
-            var user = User.Create(
-                name: request.Name,
-                email: request.Email,
-                phone: request.Phone,
-                age: request.Age,
-                address: request.Address,
-                roleId: request.RoleId,
-                designationId: request.DesignationId,
-                isFirstLogin: true
-            );
+            // Create User entity directly
+            var now = DateTime.UtcNow;
+            var user = new User
+            {
+                Name = request.Name.Trim(),
+                Email = request.Email.Trim().ToLowerInvariant(),
+                Phone = request.Phone?.Trim() ?? string.Empty,
+                Age = request.Age,
+                Address = request.Address?.Trim() ?? string.Empty,
+                RoleId = request.RoleId,
+                DesignationId = request.DesignationId,
+                DeletedFlag = 1,
+                IsFirstLogin = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             var hashedPassword = _passwordHasher.HashPassword(user, plainPassword);
-            user.SetPasswordHash(hashedPassword);
+            user.PasswordHash = hashedPassword;
 
             await _unitOfWork.Users.AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
@@ -118,16 +123,15 @@ namespace MyBackend.Application.Services
             var user = await _unitOfWork.Users.GetUserByIdAsync(id);
             if (user is null) return null;
 
-            // Use Business Object update method
-            user.UpdateDetails(
-                name: request.Name,
-                email: request.Email,
-                phone: request.Phone,
-                age: request.Age,
-                address: request.Address,
-                roleId: request.RoleId,
-                designationId: request.DesignationId
-            );
+            // Update user properties directly
+            if (!string.IsNullOrWhiteSpace(request.Name)) user.Name = request.Name.Trim();
+            if (!string.IsNullOrWhiteSpace(request.Email)) user.Email = request.Email.Trim().ToLowerInvariant();
+            if (request.Phone != null) user.Phone = request.Phone.Trim();
+            if (request.Age > 0) user.Age = request.Age;
+            if (request.Address != null) user.Address = request.Address.Trim();
+            user.RoleId = request.RoleId;
+            user.DesignationId = request.DesignationId;
+            user.UpdatedAt = DateTime.UtcNow;
 
             if (!string.IsNullOrWhiteSpace(request.Password))
             {
@@ -138,7 +142,8 @@ namespace MyBackend.Application.Services
                 }
 
                 var newHash = _passwordHasher.HashPassword(user, request.Password);
-                user.SetPasswordHash(newHash);
+                user.PasswordHash = newHash;
+                user.UpdatedAt = DateTime.UtcNow;
             }
 
             _unitOfWork.Users.Update(user);

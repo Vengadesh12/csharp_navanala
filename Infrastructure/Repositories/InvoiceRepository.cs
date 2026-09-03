@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.DTO;
+using MyBackend.Application.Common.Helpers;
 using MyBackend.Domain.Entities;
 using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;
@@ -140,22 +141,23 @@ namespace MyBackend.Infrastructure.Repositories
             }
 
             invoice.Items = newItems;
-            invoice.UpdateDetails(
-                invoiceNumber: invoiceNumber,
-                customerName: customerName,
-                customerEmail: customerEmail,
-                customerPhone: customerPhone,
-                customerAddress: customerAddress,
-                customerGstin: customerGstin,
-                companyGstin: companyGstin,
-                invoiceDate: invoiceDate,
-                dueDate: dueDate,
-                discountAmount: discountAmount,
-                status: status,
-                paymentMethod: paymentMethod,
-                notes: notes,
-                termsAndConditions: termsAndConditions
-            );
+            if (!string.IsNullOrWhiteSpace(invoiceNumber)) invoice.InvoiceNumber = invoiceNumber.Trim();
+            invoice.CustomerName = customerName.Trim();
+            invoice.CustomerEmail = customerEmail?.Trim();
+            invoice.CustomerPhone = customerPhone?.Trim();
+            invoice.CustomerAddress = customerAddress?.Trim();
+            if (customerGstin != null) invoice.CustomerGstin = customerGstin.Trim().ToUpper();
+            if (!string.IsNullOrWhiteSpace(companyGstin)) invoice.CompanyGstin = companyGstin.Trim().ToUpper();
+            if (invoiceDate.HasValue) invoice.InvoiceDate = invoiceDate.Value;
+            if (dueDate.HasValue) invoice.DueDate = dueDate.Value;
+            invoice.DiscountAmount = Math.Max(0, discountAmount);
+            if (!string.IsNullOrWhiteSpace(status)) invoice.Status = status.Trim();
+            if (paymentMethod != null) invoice.PaymentMethod = paymentMethod.Trim();
+            if (notes != null) invoice.Notes = notes.Trim();
+            if (termsAndConditions != null) invoice.TermsAndConditions = termsAndConditions.Trim();
+            invoice.UpdatedAt = DateTime.UtcNow;
+
+            InvoiceCalculationHelper.RecalculateTotals(invoice);
 
             await _context.SaveChangesAsync();
             return invoice;
@@ -169,10 +171,12 @@ namespace MyBackend.Infrastructure.Repositories
 
             if (invoice == null) return false;
 
-            invoice.SoftDelete();
+            invoice.DeletedFlag = 0;
+            invoice.UpdatedAt = DateTime.UtcNow;
             foreach (var item in invoice.Items)
             {
-                item.SoftDelete();
+                item.DeletedFlag = 0;
+                item.UpdatedAt = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();

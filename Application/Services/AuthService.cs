@@ -185,14 +185,18 @@ namespace MyBackend.Application.Services
                 );
 
                 // Write Audit Log
-                await _unitOfWork.Repository<AuditLog>().AddAsync(AuditLog.CreateLog(
-                    action: "User Login",
-                    module: "Auth",
-                    performedBy: user.Name,
-                    details: $"User logged in successfully from IP {clientIp}",
-                    ipAddress: clientIp,
-                    status: "Success"
-                ));
+                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
+                {
+                    Action = "User Login",
+                    Module = "Auth",
+                    PerformedBy = user.Name,
+                    Details = $"User logged in successfully from IP {clientIp}",
+                    IpAddress = clientIp,
+                    Status = "Success",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    DeletedFlag = 1
+                });
                 await _unitOfWork.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -241,14 +245,18 @@ namespace MyBackend.Application.Services
                 );
 
                 // Write Audit Log
-                await _unitOfWork.Repository<AuditLog>().AddAsync(AuditLog.CreateLog(
-                    action: "2FA Login Verification",
-                    module: "Auth",
-                    performedBy: user.Name,
-                    details: $"User 2FA verified and signed in from IP {clientIp}",
-                    ipAddress: clientIp,
-                    status: "Success"
-                ));
+                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
+                {
+                    Action = "2FA Login Verification",
+                    Module = "Auth",
+                    PerformedBy = user.Name,
+                    Details = $"User 2FA verified and signed in from IP {clientIp}",
+                    IpAddress = clientIp,
+                    Status = "Success",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    DeletedFlag = 1
+                });
                 await _unitOfWork.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -331,14 +339,18 @@ namespace MyBackend.Application.Services
                 );
 
                 // Write Audit Log
-                await _unitOfWork.Repository<AuditLog>().AddAsync(AuditLog.CreateLog(
-                    action: "Google OAuth Login",
-                    module: "Auth",
-                    performedBy: user.Name,
-                    details: $"User signed in via Google OAuth from IP {clientIp}",
-                    ipAddress: clientIp,
-                    status: "Success"
-                ));
+                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
+                {
+                    Action = "Google OAuth Login",
+                    Module = "Auth",
+                    PerformedBy = user.Name,
+                    Details = $"User signed in via Google OAuth from IP {clientIp}",
+                    IpAddress = clientIp,
+                    Status = "Success",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    DeletedFlag = 1
+                });
                 await _unitOfWork.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -375,14 +387,18 @@ namespace MyBackend.Application.Services
             // Record audit log for logout
             try
             {
-                await _unitOfWork.Repository<AuditLog>().AddAsync(AuditLog.CreateLog(
-                    action: "User Logout",
-                    module: "Auth",
-                    performedBy: user?.Name ?? $"User ID: {userId}",
-                    details: $"User logged out at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC from IP {clientIp}",
-                    ipAddress: clientIp,
-                    status: "Success"
-                ));
+                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
+                {
+                    Action = "User Logout",
+                    Module = "Auth",
+                    PerformedBy = user?.Name ?? $"User ID: {userId}",
+                    Details = $"User logged out at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC from IP {clientIp}",
+                    IpAddress = clientIp,
+                    Status = "Success",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    DeletedFlag = 1
+                });
                 await _unitOfWork.SaveChangesAsync();
             }
             catch (Exception ex)

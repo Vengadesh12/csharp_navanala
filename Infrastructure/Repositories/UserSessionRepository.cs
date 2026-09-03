@@ -314,14 +314,18 @@ namespace MyBackend.Infrastructure.Repositories
             if (session == null) return false;
 
             var now = DateTime.UtcNow;
-            session.EndSession(now);
+            session.IsActive = false;
+            session.LogoutTime = now;
+            session.UpdatedAt = now;
 
             if (session.UserId > 0)
             {
                 var otherSessions = await GetActiveSessionsForUserAsync(session.UserId, session.Id);
                 foreach (var other in otherSessions)
                 {
-                    other.EndSession(now);
+                    other.IsActive = false;
+                    other.LogoutTime = now;
+                    other.UpdatedAt = now;
                 }
             }
 
@@ -337,14 +341,18 @@ namespace MyBackend.Infrastructure.Repositories
 
                 var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";
 
-                _context.AuditLogs.Add(AuditLog.CreateLog(
-                    action: "Force Terminate Session",
-                    module: "Auth",
-                    performedBy: adminName,
-                    details: $"Terminated active session #{sessionId} for user {session.UserName} ({session.Email})",
-                    ipAddress: session.IpAddress,
-                    status: "Success"
-                ));
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    Action = "Force Terminate Session",
+                    Module = "Auth",
+                    PerformedBy = adminName,
+                    Details = $"Terminated active session #{sessionId} for user {session.UserName} ({session.Email})",
+                    IpAddress = session.IpAddress,
+                    Status = "Success",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    DeletedFlag = 1
+                });
             }
             catch
             {
@@ -372,7 +380,9 @@ namespace MyBackend.Infrastructure.Repositories
             {
                 foreach (var session in activeSessions)
                 {
-                    session.EndSession(now);
+                    session.IsActive = false;
+                    session.LogoutTime = now;
+                    session.UpdatedAt = now;
                 }
             }
             else if (user != null)
@@ -380,7 +390,9 @@ namespace MyBackend.Infrastructure.Repositories
                 var emailSessions = await GetActiveSessionsForEmailAsync(user.Email);
                 foreach (var s in emailSessions)
                 {
-                    s.EndSession(now);
+                    s.IsActive = false;
+                    s.LogoutTime = now;
+                    s.UpdatedAt = now;
                 }
             }
 
@@ -396,14 +408,18 @@ namespace MyBackend.Infrastructure.Repositories
 
                 var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";
 
-                _context.AuditLogs.Add(AuditLog.CreateLog(
-                    action: "Force User Logout",
-                    module: "Auth",
-                    performedBy: adminName,
-                    details: $"Terminated all active sessions for {user?.Name ?? $"User #{targetUserId}"}",
-                    ipAddress: "127.0.0.1",
-                    status: "Success"
-                ));
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    Action = "Force User Logout",
+                    Module = "Auth",
+                    PerformedBy = adminName,
+                    Details = $"Terminated all active sessions for {user?.Name ?? $"User #{targetUserId}"}",
+                    IpAddress = "127.0.0.1",
+                    Status = "Success",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    DeletedFlag = 1
+                });
             }
             catch
             {

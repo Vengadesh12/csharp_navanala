@@ -67,15 +67,14 @@ namespace MyBackend.Application.Services
                 throw new NotFoundException("User profile not found.");
             }
 
-            user.UpdateDetails(
-                name: !string.IsNullOrWhiteSpace(request.Name) ? request.Name : user.Name,
-                email: !string.IsNullOrWhiteSpace(request.Email) ? request.Email : user.Email,
-                phone: request.Phone ?? user.Phone,
-                age: request.Age > 0 ? request.Age : user.Age,
-                address: request.Address ?? user.Address,
-                roleId: user.RoleId,
-                designationId: user.DesignationId
-            );
+            if (!string.IsNullOrWhiteSpace(request.Name)) user.Name = request.Name.Trim();
+            if (!string.IsNullOrWhiteSpace(request.Email)) user.Email = request.Email.Trim().ToLowerInvariant();
+            if (request.Phone != null) user.Phone = request.Phone.Trim();
+            if (request.Age > 0) user.Age = request.Age;
+            if (request.Address != null) user.Address = request.Address.Trim();
+            user.RoleId = user.RoleId;
+            user.DesignationId = user.DesignationId;
+            user.UpdatedAt = DateTime.UtcNow;
 
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
@@ -122,8 +121,9 @@ namespace MyBackend.Application.Services
             }
 
             var newHash = _passwordHasher.HashPassword(user, request.NewPassword);
-            user.SetPasswordHash(newHash);
-            user.CompleteFirstLogin();
+            user.PasswordHash = newHash;
+            user.IsFirstLogin = false;
+            user.UpdatedAt = DateTime.UtcNow;
 
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
@@ -174,7 +174,8 @@ namespace MyBackend.Application.Services
             await using var stream = file.OpenReadStream();
             var relativePath = await _fileService.SaveProfileImageAsync(stream, file.FileName, userId);
 
-            user.UpdateProfileImage(relativePath);
+            user.ProfileImage = relativePath;
+            user.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
 
@@ -192,7 +193,8 @@ namespace MyBackend.Application.Services
             if (!string.IsNullOrWhiteSpace(user.ProfileImage))
             {
                 await _fileService.DeleteFileAsync(user.ProfileImage);
-                user.UpdateProfileImage(null);
+                user.ProfileImage = null;
+                user.UpdatedAt = DateTime.UtcNow;
                 _unitOfWork.Users.Update(user);
                 await _unitOfWork.SaveChangesAsync();
             }

@@ -59,7 +59,15 @@ namespace MyBackend.Application.Services
                 }
             }
 
-            var designation = Designation.Create(trimmedName, request.Description, request.DepartmentId);
+            var designation = new Designation
+            {
+                Name = trimmedName,
+                Description = request.Description?.Trim() ?? string.Empty,
+                DepartmentId = request.DepartmentId,
+                DeletedFlag = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             await _unitOfWork.Designations.AddAsync(designation);
             await _unitOfWork.SaveChangesAsync();
@@ -90,7 +98,10 @@ namespace MyBackend.Application.Services
                 }
             }
 
-            designation.UpdateDetails(trimmedName, request.Description, request.DepartmentId);
+            designation.Name = trimmedName;
+            designation.Description = request.Description?.Trim() ?? string.Empty;
+            designation.DepartmentId = request.DepartmentId;
+            designation.UpdatedAt = DateTime.UtcNow;
 
             _unitOfWork.Designations.Update(designation);
             await _unitOfWork.SaveChangesAsync();

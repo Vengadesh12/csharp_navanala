@@ -84,7 +84,14 @@ namespace MyBackend.Application.Services
                 throw new InvalidOperationException($"A department named '{trimmedName}' already exists.");
             }
 
-            var department = Department.Create(trimmedName, request.Description);
+            var department = new Department
+            {
+                Name = trimmedName,
+                Description = request.Description?.Trim() ?? string.Empty,
+                DeletedFlag = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             await _unitOfWork.Departments.AddAsync(department);
             await _unitOfWork.SaveChangesAsync();
@@ -95,7 +102,8 @@ namespace MyBackend.Application.Services
 
                 foreach (var des in designations)
                 {
-                    des.AssignDepartment(department.Id);
+                    des.DepartmentId = department.Id;
+                    des.UpdatedAt = DateTime.UtcNow;
                     _unitOfWork.Designations.Update(des);
                 }
 
@@ -118,7 +126,9 @@ namespace MyBackend.Application.Services
                 throw new InvalidOperationException($"A department named '{trimmedName}' already exists.");
             }
 
-            department.UpdateDetails(trimmedName, request.Description);
+            department.Name = trimmedName;
+            department.Description = request.Description?.Trim() ?? string.Empty;
+            department.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.Departments.Update(department);
 
             if (request.DesignationIds != null)
@@ -129,7 +139,8 @@ namespace MyBackend.Application.Services
                 {
                     if (!request.DesignationIds.Contains(des.Id))
                     {
-                        des.UnassignDepartment();
+                        des.DepartmentId = null;
+                        des.UpdatedAt = DateTime.UtcNow;
                         _unitOfWork.Designations.Update(des);
                     }
                 }
@@ -138,7 +149,8 @@ namespace MyBackend.Application.Services
 
                 foreach (var des in newDesignations)
                 {
-                    des.AssignDepartment(id);
+                    des.DepartmentId = id;
+                    des.UpdatedAt = DateTime.UtcNow;
                     _unitOfWork.Designations.Update(des);
                 }
             }
@@ -152,14 +164,16 @@ namespace MyBackend.Application.Services
             var department = await _unitOfWork.Departments.GetActiveDepartmentByIdAsync(id);
             if (department is null || department.DeletedFlag == 0) return false;
 
-            department.SoftDelete();
+            department.DeletedFlag = 0;
+            department.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.Departments.Update(department);
 
             var assignedDesignations = await _unitOfWork.Designations.GetDesignationsByDepartmentIdAsync(id);
 
             foreach (var des in assignedDesignations)
             {
-                des.UnassignDepartment();
+                des.DepartmentId = null;
+                des.UpdatedAt = DateTime.UtcNow;
                 _unitOfWork.Designations.Update(des);
             }
 
@@ -178,7 +192,8 @@ namespace MyBackend.Application.Services
 
                 foreach (var des in designations)
                 {
-                    des.AssignDepartment(departmentId);
+                    des.DepartmentId = departmentId;
+                    des.UpdatedAt = DateTime.UtcNow;
                     _unitOfWork.Designations.Update(des);
                 }
 
