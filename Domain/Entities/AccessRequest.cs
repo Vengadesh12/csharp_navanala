@@ -19,9 +19,6 @@ namespace MyBackend.Domain.Entities
         /// </summary>
         public int UserId { get; set; }
 
-        /// <summary>
-        /// Full name of the requesting user.
-        /// </summary>
         public string UserName { get; set; } = string.Empty;
 
         /// <summary>
