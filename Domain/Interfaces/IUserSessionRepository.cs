@@ -21,5 +21,23 @@ namespace MyBackend.Domain.Interfaces
         Task<int> TerminateAllUserSessionsAsync(int userId);
 
         Task<(int ActiveCount, int TodayLogins, int TodayLogouts, int TotalSessions)> GetActivityStatsAsync();
+
+        Task<UserSession?> GetSessionByIdAsync(int sessionId);
+
+        Task<List<UserSession>> GetActiveSessionsForUserAsync(int userId, int? excludeSessionId = null);
+
+        Task<List<UserSession>> GetActiveSessionsForEmailAsync(string email);
+
+        Task<UserSession?> FindActiveSessionByTokenAsync(int userId, string token);
+
+        Task TouchSessionAsync(int sessionId, string clientIp);
+
+        Task<int> GetActiveSessionsCountAsync();
+
+        Task<bool> TerminateSessionWithAuditAsync(int sessionId, int adminUserId);
+
+        Task<int> ForceLogoutUserWithAuditAsync(int targetUserId, int adminUserId);
+
+        Task AddSessionAsync(UserSession session);
     }
 }

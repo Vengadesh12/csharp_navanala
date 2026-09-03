@@ -17,9 +17,19 @@ namespace MyBackend.Infrastructure.Repositories
         private IDepartmentRepository? _departments;
         private IDesignationRepository? _designations;
         private IPermissionRepository? _permissions;
-        private IRepository<SystemSetting>? _systemSettings;
-        private IRepository<Menu>? _menus;
+        private ISettingRepository? _systemSettings;
+        private IMenuRepository? _menus;
         private IUserSessionRepository? _sessions;
+        private IScheduleRepository? _schedules;
+        private IReportRepository? _reports;
+        private IAuditLogRepository? _auditLogs;
+        private IApprovalRepository? _approvals;
+        private IAccessRequestRepository? _accessRequests;
+        private IPurchaseRepository? _purchases;
+        private IInvoiceRepository? _invoices;
+        private IDashboardRepository? _dashboard;
+        private IProjectRepository? _projects;
+        private IProjectCategoryRepository? _projectCategories;
 
         public UnitOfWork(AppDbContext context)
         {
@@ -31,9 +41,19 @@ namespace MyBackend.Infrastructure.Repositories
         public IDepartmentRepository Departments => _departments ??= new DepartmentRepository(_context);
         public IDesignationRepository Designations => _designations ??= new DesignationRepository(_context);
         public IPermissionRepository Permissions => _permissions ??= new PermissionRepository(_context);
-        public IRepository<SystemSetting> SystemSettings => _systemSettings ??= new Repository<SystemSetting>(_context);
-        public IRepository<Menu> Menus => _menus ??= new Repository<Menu>(_context);
+        public ISettingRepository SystemSettings => _systemSettings ??= new SettingRepository(_context);
+        public IMenuRepository Menus => _menus ??= new MenuRepository(_context);
         public IUserSessionRepository Sessions => _sessions ??= new UserSessionRepository(_context);
+        public IScheduleRepository Schedules => _schedules ??= new ScheduleRepository(_context);
+        public IReportRepository Reports => _reports ??= new ReportRepository(_context);
+        public IAuditLogRepository AuditLogs => _auditLogs ??= new AuditLogRepository(_context);
+        public IApprovalRepository Approvals => _approvals ??= new ApprovalRepository(_context);
+        public IAccessRequestRepository AccessRequests => _accessRequests ??= new AccessRequestRepository(_context);
+        public IPurchaseRepository Purchases => _purchases ??= new PurchaseRepository(_context);
+        public IInvoiceRepository Invoices => _invoices ??= new InvoiceRepository(_context);
+        public IDashboardRepository Dashboard => _dashboard ??= new DashboardRepository(_context);
+        public IProjectRepository Projects => _projects ??= new ProjectRepository(_context);
+        public IProjectCategoryRepository ProjectCategories => _projectCategories ??= new ProjectCategoryRepository(_context);
 
         public IRepository<T> Repository<T>() where T : class
         {

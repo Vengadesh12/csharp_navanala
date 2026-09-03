@@ -1,56 +1,40 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Entities;
+using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
     public class ProjectCategoryService : IProjectCategoryService
     {
-        private readonly IApplicationDbContext _context;
+        private readonly IProjectCategoryRepository _projectCategoryRepository;
 
-        public ProjectCategoryService(IApplicationDbContext context)
+        public ProjectCategoryService(IProjectCategoryRepository projectCategoryRepository)
         {
-            _context = context;
+            _projectCategoryRepository = projectCategoryRepository;
         }
 
         public async Task<List<ProjectCategoryDto>> GetAllCategoriesAsync()
         {
-            return await _context.ProjectCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, deleted_flag, created_at, updated_at
-                    FROM project_categories
-                    WHERE deleted_flag = 1
-                    ORDER BY name ASC
-                """)
-                .AsNoTracking()
-                .Select(c => new ProjectCategoryDto
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    Description = c.Description ?? string.Empty,
-                    DeletedFlag = c.DeletedFlag,
-                    CreatedAt = c.CreatedAt
-                })
-                .ToListAsync();
+            var categories = await _projectCategoryRepository.GetAllCategoriesAsync();
+
+            return categories.Select(c => new ProjectCategoryDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Description = c.Description ?? string.Empty,
+                DeletedFlag = c.DeletedFlag,
+                CreatedAt = c.CreatedAt
+            }).ToList();
         }
 
         public async Task<ProjectCategoryDto?> GetCategoryByIdAsync(int id)
         {
-            var category = await _context.ProjectCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, deleted_flag, created_at, updated_at
-                    FROM project_categories
-                    WHERE id = {0} AND deleted_flag = 1
-                """, id)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
-
+            var category = await _projectCategoryRepository.GetCategoryByIdAsync(id);
             if (category is null) return null;
 
             return new ProjectCategoryDto
@@ -71,11 +55,7 @@ namespace MyBackend.Application.Services
             }
 
             var trimmedName = request.Name.Trim();
-            var exists = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM project_categories
-                WHERE deleted_flag = 1 AND LOWER(name) = LOWER({0})
-            """, trimmedName).SingleOrDefaultAsync() > 0;
+            var exists = await _projectCategoryRepository.CategoryExistsByNameAsync(trimmedName);
 
             if (exists)
             {
@@ -83,9 +63,7 @@ namespace MyBackend.Application.Services
             }
 
             var category = ProjectCategory.Create(trimmedName, request.Description);
-
-            _context.ProjectCategories.Add(category);
-            await _context.SaveChangesAsync();
+            await _projectCategoryRepository.AddCategoryAsync(category);
 
             return new ProjectCategoryDto
             {
@@ -99,19 +77,7 @@ namespace MyBackend.Application.Services
 
         public async Task<bool> DeleteCategoryAsync(int id)
         {
-            var category = await _context.ProjectCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, deleted_flag, created_at, updated_at
-                    FROM project_categories
-                    WHERE id = {0} AND deleted_flag = 1
-                """, id)
-                .FirstOrDefaultAsync();
-
-            if (category is null) return false;
-
-            category.SoftDelete();
-            await _context.SaveChangesAsync();
-            return true;
+            return await _projectCategoryRepository.SoftDeleteCategoryAsync(id);
         }
     }
 }

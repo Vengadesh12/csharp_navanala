@@ -1,10 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Entities;
 
 namespace MyBackend.Infrastructure.Persistence
 {
-    public class AppDbContext : DbContext, IApplicationDbContext
+    public class AppDbContext : DbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options)

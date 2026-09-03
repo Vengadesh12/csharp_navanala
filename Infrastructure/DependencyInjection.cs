@@ -20,8 +20,6 @@ namespace MyBackend.Infrastructure
                 options.UseNpgsql(Config.DbConnectionString)
             );
 
-            services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
-
             // Email Settings & Service
             services.Configure<EmailSettings>(options =>
             {
@@ -44,6 +42,18 @@ namespace MyBackend.Infrastructure
             services.AddScoped<IDesignationRepository, DesignationRepository>();
             services.AddScoped<IPermissionRepository, PermissionRepository>();
             services.AddScoped<IUserSessionRepository, UserSessionRepository>();
+            services.AddScoped<ISettingRepository, SettingRepository>();
+            services.AddScoped<IScheduleRepository, ScheduleRepository>();
+            services.AddScoped<IReportRepository, ReportRepository>();
+            services.AddScoped<IMenuRepository, MenuRepository>();
+            services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+            services.AddScoped<IApprovalRepository, ApprovalRepository>();
+            services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
+            services.AddScoped<IPurchaseRepository, PurchaseRepository>();
+            services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+            services.AddScoped<IDashboardRepository, DashboardRepository>();
+            services.AddScoped<IProjectRepository, ProjectRepository>();
+            services.AddScoped<IProjectCategoryRepository, ProjectCategoryRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IFileService, FileService>();

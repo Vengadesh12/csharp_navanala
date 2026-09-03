@@ -1,110 +1,35 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
+using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
     public class SettingService : ISettingService
     {
-        private readonly IApplicationDbContext _context;
+        private readonly ISettingRepository _settingRepository;
 
-        public SettingService(IApplicationDbContext context)
+        public SettingService(ISettingRepository settingRepository)
         {
-            _context = context;
+            _settingRepository = settingRepository;
         }
 
         public async Task<SettingsOverviewResponse> GetSettingsAsync(string? category, string? search)
         {
-            var sql = new StringBuilder("""
-                SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
-                FROM system_settings
-                WHERE 1=1
-            """);
+            var (rawSettings, categoriesList, settingCounts, totalSettings, twoFactorVal, alertChannels, sessionTimeoutVal) =
+                await _settingRepository.GetSettingsOverviewDataAsync(category, search);
 
-            var parameters = new List<object>();
-            int paramIndex = 0;
-
-            if (!string.IsNullOrWhiteSpace(category) && category != "ALL")
-            {
-                sql.Append($" AND LOWER(category) = LOWER({{{paramIndex++}}})");
-                parameters.Add(category.Trim());
-            }
-            else
-            {
-                sql.Append(" AND LOWER(category) IN ('general', 'security')");
-            }
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var pattern = $"%{search.Trim().ToLower()}%";
-                sql.Append($" AND (LOWER(setting_key) LIKE {{{paramIndex}}} OR LOWER(description) LIKE {{{paramIndex}}} OR LOWER(category) LIKE {{{paramIndex++}}})");
-                parameters.Add(pattern);
-            }
-
-            sql.Append(" ORDER BY category ASC, setting_key ASC");
-
-            var rawSettings = await _context.SystemSettings
-                .FromSqlRaw(sql.ToString(), parameters.ToArray())
-                .AsNoTracking()
-                .ToListAsync();
-
-            var categoriesList = await _context.SettingCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
-                    FROM setting_categories
-                    WHERE deleted_flag = 1 AND LOWER(name) IN ('general', 'security')
-                    ORDER BY id ASC
-                """)
-                .AsNoTracking()
-                .ToListAsync();
-
-            var settingCounts = (await _context.SystemSettings
-                .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
-                    FROM system_settings
-                    WHERE LOWER(category) IN ('general', 'security')
-                """)
-                .AsNoTracking()
-                .ToListAsync())
-                .GroupBy(s => s.Category)
-                .ToDictionary(g => g.Key.ToLower(), g => g.Count());
-
-            var categoryDtos = categoriesList.Select(c => c.ToDto(settingCounts.TryGetValue(c.Name.ToLower(), out var count) ? count : 0)).ToList();
-
-            var totalSettings = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM system_settings
-                WHERE LOWER(category) IN ('general', 'security')
-            """).SingleOrDefaultAsync();
-
-            var twoFactorVal = await _context.Database.SqlQueryRaw<string>("""
-                SELECT setting_value AS "Value"
-                FROM system_settings
-                WHERE setting_key = 'two_factor_auth'
-            """).FirstOrDefaultAsync();
+            var categoryDtos = categoriesList
+                .Select(c => c.ToDto(settingCounts.TryGetValue(c.Name.ToLower(), out var count) ? count : 0))
+                .ToList();
 
             var is2Fa = string.Equals(twoFactorVal?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
             var securityLevel = is2Fa ? "High (2FA & RBAC)" : "Standard (RBAC)";
-
-            var alertChannels = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM setting_categories
-                WHERE deleted_flag = 1 AND LOWER(name) = 'security'
-            """).SingleOrDefaultAsync();
-
-            var sessionTimeoutVal = await _context.Database.SqlQueryRaw<string>("""
-                SELECT setting_value AS "Value"
-                FROM system_settings
-                WHERE setting_key = 'session_timeout'
-            """).FirstOrDefaultAsync();
-
             var sessionTimeout = !string.IsNullOrWhiteSpace(sessionTimeoutVal) ? sessionTimeoutVal : "30 Minutes";
 
             return new SettingsOverviewResponse
@@ -121,28 +46,11 @@ namespace MyBackend.Application.Services
 
         public async Task<List<SettingCategoryDto>> GetCategoriesAsync()
         {
-            var categories = await _context.SettingCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
-                    FROM setting_categories
-                    WHERE deleted_flag = 1 AND LOWER(name) IN ('general', 'security')
-                    ORDER BY id ASC
-                """)
-                .AsNoTracking()
-                .ToListAsync();
+            var (categories, settingCounts) = await _settingRepository.GetCategoriesWithCountsAsync();
 
-            var settingCounts = (await _context.SystemSettings
-                .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
-                    FROM system_settings
-                    WHERE LOWER(category) IN ('general', 'security')
-                """)
-                .AsNoTracking()
-                .ToListAsync())
-                .GroupBy(s => s.Category)
-                .ToDictionary(g => g.Key.ToLower(), g => g.Count());
-
-            return categories.Select(c => c.ToDto(settingCounts.TryGetValue(c.Name.ToLower(), out var count) ? count : 0)).ToList();
+            return categories
+                .Select(c => c.ToDto(settingCounts.TryGetValue(c.Name.ToLower(), out var count) ? count : 0))
+                .ToList();
         }
 
         public async Task<SettingCategoryDto> CreateCategoryAsync(CreateSettingCategoryRequest request, string callerName)
@@ -157,22 +65,13 @@ namespace MyBackend.Application.Services
             var icon = string.IsNullOrWhiteSpace(request.Icon) ? "Tune" : request.Icon.Trim();
             var now = DateTime.UtcNow;
 
-            var existingCount = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM setting_categories
-                WHERE deleted_flag = 1 AND LOWER(name) = LOWER({0})
-            """, trimmedName).SingleOrDefaultAsync();
-
-            if (existingCount > 0)
+            var exists = await _settingRepository.CategoryExistsByNameAsync(trimmedName);
+            if (exists)
             {
                 throw new BadRequestException($"Category '{trimmedName}' already exists in database.");
             }
 
-            var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO setting_categories (name, description, icon, created_at, updated_at, created_by, deleted_flag)
-                VALUES ({0}, {1}, {2}, {3}, {3}, {4}, 1)
-                RETURNING id AS "Value"
-            """, trimmedName, desc, icon, now, callerName).SingleAsync();
+            var newId = await _settingRepository.CreateCategoryAsync(trimmedName, desc, icon, callerName);
 
             return new SettingCategoryDto
             {
@@ -189,15 +88,7 @@ namespace MyBackend.Application.Services
 
         public async Task<SettingCategoryDto?> UpdateCategoryAsync(int id, UpdateSettingCategoryRequest request)
         {
-            var category = await _context.SettingCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
-                    FROM setting_categories
-                    WHERE id = {0} AND deleted_flag = 1
-                """, id)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
-
+            var category = await _settingRepository.GetCategoryByIdAsync(id);
             if (category == null) return null;
 
             var name = !string.IsNullOrWhiteSpace(request.Name) ? request.Name.Trim() : category.Name;
@@ -206,30 +97,15 @@ namespace MyBackend.Application.Services
 
             if (!string.IsNullOrWhiteSpace(request.Name))
             {
-                var dupCount = await _context.Database.SqlQueryRaw<int>("""
-                    SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                    FROM setting_categories
-                    WHERE id <> {0} AND deleted_flag = 1 AND LOWER(name) = LOWER({1})
-                """, id, name).SingleOrDefaultAsync();
-
-                if (dupCount > 0)
+                var dupExists = await _settingRepository.CategoryExistsByNameAsync(name, id);
+                if (dupExists)
                 {
                     throw new BadRequestException($"Another category with name '{name}' already exists.");
                 }
             }
 
-            var now = DateTime.UtcNow;
-            await _context.Database.ExecuteSqlRawAsync("""
-                UPDATE setting_categories
-                SET name = {0}, description = {1}, icon = {2}, updated_at = {3}
-                WHERE id = {4} AND deleted_flag = 1
-            """, name, desc, icon, now, id);
-
-            var count = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM system_settings
-                WHERE LOWER(category) = LOWER({0})
-            """, name).SingleOrDefaultAsync();
+            await _settingRepository.UpdateCategoryAsync(id, name, desc, icon);
+            var count = await _settingRepository.GetCategorySettingCountAsync(name);
 
             return new SettingCategoryDto
             {
@@ -246,52 +122,21 @@ namespace MyBackend.Application.Services
 
         public async Task<bool> DeleteCategoryAsync(int id)
         {
-            var categoryName = await _context.Database.SqlQueryRaw<string>("""
-                SELECT name AS "Value"
-                FROM setting_categories
-                WHERE id = {0} AND deleted_flag = 1
-            """, id).FirstOrDefaultAsync();
-
-            if (string.IsNullOrWhiteSpace(categoryName)) return false;
+            var category = await _settingRepository.GetCategoryByIdAsync(id);
+            if (category == null) return false;
 
             var protectedCategories = new[] { "general", "security" };
-            if (protectedCategories.Contains(categoryName.ToLower()))
+            if (protectedCategories.Contains(category.Name.ToLower()))
             {
-                throw new BadRequestException($"Category '{categoryName}' is a core system category and cannot be deleted.");
+                throw new BadRequestException($"Category '{category.Name}' is a core system category and cannot be deleted.");
             }
 
-            var now = DateTime.UtcNow;
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
-                UPDATE setting_categories
-                SET deleted_flag = 0, updated_at = {0}
-                WHERE id = {1} AND deleted_flag = 1
-            """, now, id);
-
-            return rowsAffected > 0;
+            return await _settingRepository.SoftDeleteCategoryAsync(id);
         }
 
         public async Task<bool> UpdateSettingsBulkAsync(UpdateSettingsBulkRequest request, string callerName)
         {
-            var now = DateTime.UtcNow;
-
-            foreach (var kvp in request.Settings)
-            {
-                var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
-                    UPDATE system_settings
-                    SET setting_value = {0}, updated_at = {1}, updated_by = {2}
-                    WHERE setting_key = {3}
-                """, kvp.Value, now, callerName, kvp.Key);
-
-                if (rowsAffected == 0)
-                {
-                    await _context.Database.ExecuteSqlRawAsync("""
-                        INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by)
-                        VALUES ({0}, {1}, 'General', {2}, 'string', {3}, {3}, {4})
-                    """, kvp.Key, kvp.Value, kvp.Key, now, callerName);
-                }
-            }
-
-            return true;
+            return await _settingRepository.BulkUpdateSettingsAsync(request.Settings, callerName);
         }
 
         public async Task<SystemSettingDto> CreateSettingAsync(CreateSettingRequest request, string callerName)
@@ -306,48 +151,22 @@ namespace MyBackend.Application.Services
             var cat = string.IsNullOrWhiteSpace(request.Category) ? "General" : request.Category.Trim();
             var desc = request.Description.Trim();
             var dataType = string.IsNullOrWhiteSpace(request.DataType) ? "string" : request.DataType.Trim();
-            var now = DateTime.UtcNow;
 
-            var existingCount = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM system_settings
-                WHERE setting_key = {0}
-            """, key).SingleOrDefaultAsync();
-
-            if (existingCount > 0)
+            var exists = await _settingRepository.SettingExistsByKeyAsync(key);
+            if (exists)
             {
                 throw new BadRequestException($"Setting with key '{key}' already exists.");
             }
 
-            var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by)
-                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {5}, {6})
-                RETURNING id AS "Value"
-            """, key, val, cat, desc, dataType, now, callerName).SingleAsync();
-
-            var setting = await _context.SystemSettings
-                .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
-                    FROM system_settings
-                    WHERE id = {0}
-                """, newId)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
+            var newId = await _settingRepository.CreateSettingAsync(key, val, cat, desc, dataType, callerName);
+            var setting = await _settingRepository.GetSettingByIdAsync(newId);
 
             return setting!.ToDto();
         }
 
         public async Task<SystemSettingDto?> UpdateSettingAsync(int id, UpdateSettingRequest request, string callerName)
         {
-            var existing = await _context.SystemSettings
-                .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
-                    FROM system_settings
-                    WHERE id = {0}
-                """, id)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
-
+            var existing = await _settingRepository.GetSettingByIdAsync(id);
             if (existing == null) return null;
 
             var key = string.IsNullOrWhiteSpace(request.SettingKey) ? existing.SettingKey : request.SettingKey.Trim();
@@ -355,34 +174,16 @@ namespace MyBackend.Application.Services
             var cat = string.IsNullOrWhiteSpace(request.Category) ? existing.Category : request.Category.Trim();
             var desc = request.Description ?? existing.Description;
             var dataType = string.IsNullOrWhiteSpace(request.DataType) ? existing.DataType : request.DataType.Trim();
-            var now = DateTime.UtcNow;
 
-            await _context.Database.ExecuteSqlRawAsync("""
-                UPDATE system_settings
-                SET setting_key = {0}, setting_value = {1}, category = {2}, description = {3}, data_type = {4}, updated_at = {5}, updated_by = {6}
-                WHERE id = {7}
-            """, key, val, cat, desc, dataType, now, callerName, id);
-
-            var updated = await _context.SystemSettings
-                .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
-                    FROM system_settings
-                    WHERE id = {0}
-                """, id)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
+            await _settingRepository.UpdateSettingAsync(id, key, val, cat, desc, dataType, callerName);
+            var updated = await _settingRepository.GetSettingByIdAsync(id);
 
             return updated?.ToDto();
         }
 
         public async Task<bool> DeleteSettingAsync(int id)
         {
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
-                DELETE FROM system_settings
-                WHERE id = {0}
-            """, id);
-
-            return rowsAffected > 0;
+            return await _settingRepository.DeleteSettingAsync(id);
         }
     }
 }

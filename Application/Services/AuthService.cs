@@ -141,11 +141,8 @@ namespace MyBackend.Application.Services
             }
 
             // Check if Two-Factor Authentication is active
-            var twoFactorSetting = await _unitOfWork.SystemSettings
-                .FirstOrDefaultAsync(s => s.SettingKey == "two_factor_auth");
-
-            bool isTwoFactorEnabled = twoFactorSetting != null &&
-                string.Equals(twoFactorSetting.SettingValue?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+            var twoFactorVal = await _unitOfWork.SystemSettings.GetSettingValueAsync("two_factor_auth");
+            bool isTwoFactorEnabled = string.Equals(twoFactorVal?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
 
             if (isTwoFactorEnabled)
             {
@@ -576,25 +573,11 @@ namespace MyBackend.Application.Services
             {
                 if (user.RoleId == 2)
                 {
-                    menus = (await _unitOfWork.Menus.FindAsync(m => m.DeletedFlag == 1))
-                        .OrderBy(m => m.OrderIndex)
-                        .ThenBy(m => m.Id)
-                        .ToList();
-                }
-                else if (user.RoleId.HasValue)
-                {
-                    menus = (await _unitOfWork.Menus.FindAsync(m => m.DeletedFlag == 1 &&
-                        (string.IsNullOrEmpty(m.PermissionKey) || permissions.Contains(m.PermissionKey))))
-                        .OrderBy(m => m.OrderIndex)
-                        .ThenBy(m => m.Id)
-                        .ToList();
+                    menus = await _unitOfWork.Menus.GetAllActiveMenusAsync();
                 }
                 else
                 {
-                    menus = (await _unitOfWork.Menus.FindAsync(m => m.DeletedFlag == 1 && string.IsNullOrEmpty(m.PermissionKey)))
-                        .OrderBy(m => m.OrderIndex)
-                        .ThenBy(m => m.Id)
-                        .ToList();
+                    menus = await _unitOfWork.Menus.GetUserMenusAsync(user.RoleId ?? 0, user.DesignationId ?? 0);
                 }
             }
             catch
@@ -622,11 +605,8 @@ namespace MyBackend.Application.Services
 
         public async Task<MaintenanceStatusResponse> GetMaintenanceStatusAsync()
         {
-            var maintenanceSetting = await _unitOfWork.SystemSettings
-                .FirstOrDefaultAsync(s => s.SettingKey == "maintenance_mode");
-
-            bool isMaintenance = maintenanceSetting != null &&
-                string.Equals(maintenanceSetting.SettingValue?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+            var maintenanceVal = await _unitOfWork.SystemSettings.GetSettingValueAsync("maintenance_mode");
+            bool isMaintenance = string.Equals(maintenanceVal?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
 
             return new MaintenanceStatusResponse
             {
@@ -639,11 +619,8 @@ namespace MyBackend.Application.Services
 
         private async Task EnsureMaintenanceAccessAllowedAsync(User user)
         {
-            var maintenanceSetting = await _unitOfWork.SystemSettings
-                .FirstOrDefaultAsync(s => s.SettingKey == "maintenance_mode");
-
-            bool isMaintenance = maintenanceSetting != null &&
-                string.Equals(maintenanceSetting.SettingValue?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+            var maintenanceVal = await _unitOfWork.SystemSettings.GetSettingValueAsync("maintenance_mode");
+            bool isMaintenance = string.Equals(maintenanceVal?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
 
             if (isMaintenance)
             {

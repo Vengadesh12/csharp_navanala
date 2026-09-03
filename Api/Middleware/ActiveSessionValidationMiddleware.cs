@@ -1,10 +1,9 @@
 using System;
-using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Interfaces;
+using MyBackend.Domain.Entities;
+using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Api.Middleware
 {
@@ -17,7 +16,7 @@ namespace MyBackend.Api.Middleware
             _next = next;
         }
 
-        public async Task InvokeAsync(HttpContext context, IApplicationDbContext dbContext)
+        public async Task InvokeAsync(HttpContext context, IUserSessionRepository sessionRepository)
         {
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
 
@@ -44,10 +43,7 @@ namespace MyBackend.Api.Middleware
 
                     if (!string.IsNullOrWhiteSpace(token))
                     {
-                        var session = await dbContext.UserSessions
-                            .Where(s => s.UserId == userId && s.SessionToken == token && s.DeletedFlag == 1)
-                            .OrderByDescending(s => s.LoginTime)
-                            .FirstOrDefaultAsync();
+                        var session = await sessionRepository.FindActiveSessionByTokenAsync(userId, token);
 
                         if (session != null)
                         {
@@ -63,13 +59,8 @@ namespace MyBackend.Api.Middleware
                             var now = DateTime.UtcNow;
                             if (session.UpdatedAt == null || (now - session.UpdatedAt.Value).TotalSeconds >= 15)
                             {
-                                session.UpdatedAt = now;
                                 var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
-                                if (!string.IsNullOrWhiteSpace(clientIp) && session.IpAddress != clientIp)
-                                {
-                                    session.IpAddress = clientIp;
-                                }
-                                await dbContext.SaveChangesAsync();
+                                await sessionRepository.TouchSessionAsync(session.Id, clientIp);
                             }
                         }
                         else
@@ -85,7 +76,7 @@ namespace MyBackend.Api.Middleware
                                 ?? context.User.FindFirstValue("name")
                                 ?? (email.Contains('@') ? email.Split('@')[0] : $"User #{userId}");
 
-                            var newSession = MyBackend.Domain.Entities.UserSession.Start(
+                            var newSession = UserSession.Start(
                                 userId: userId,
                                 email: email,
                                 userName: userName,
@@ -94,15 +85,7 @@ namespace MyBackend.Api.Middleware
                                 sessionToken: token
                             );
 
-                            dbContext.UserSessions.Add(newSession);
-                            try
-                            {
-                                await dbContext.SaveChangesAsync();
-                            }
-                            catch
-                            {
-                                // Ignore concurrency collision if another request created it simultaneously
-                            }
+                            await sessionRepository.AddSessionAsync(newSession);
                         }
                     }
                 }

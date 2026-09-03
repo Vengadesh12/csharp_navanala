@@ -2,67 +2,42 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
+using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
     public class PurchaseService : IPurchaseService
     {
-        private readonly IApplicationDbContext _context;
+        private readonly IPurchaseRepository _purchaseRepository;
+        private readonly IApprovalRepository _approvalRepository;
 
-        public PurchaseService(IApplicationDbContext context)
+        public PurchaseService(
+            IPurchaseRepository purchaseRepository,
+            IApprovalRepository approvalRepository)
         {
-            _context = context;
+            _purchaseRepository = purchaseRepository;
+            _approvalRepository = approvalRepository;
         }
 
         public async Task<PagedPurchaseResponse> GetPurchasesAsync(PurchaseQueryParameters query)
         {
-            var dbQuery = _context.Purchases.AsNoTracking().Where(p => p.DeletedFlag == 1);
-
-            if (!string.IsNullOrWhiteSpace(query.Status) && !query.Status.Equals("ALL", StringComparison.OrdinalIgnoreCase))
-            {
-                var statusLower = query.Status.Trim().ToLower();
-                dbQuery = dbQuery.Where(p => p.Status.ToLower() == statusLower);
-            }
-
-            if (!string.IsNullOrWhiteSpace(query.Category) && !query.Category.Equals("ALL", StringComparison.OrdinalIgnoreCase))
-            {
-                var categoryLower = query.Category.Trim().ToLower();
-                dbQuery = dbQuery.Where(p => p.Category.ToLower() == categoryLower);
-            }
-
-            if (!string.IsNullOrWhiteSpace(query.Search))
-            {
-                var search = query.Search.Trim().ToLower();
-                dbQuery = dbQuery.Where(p =>
-                    p.ItemName.ToLower().Contains(search) ||
-                    p.VendorName.ToLower().Contains(search) ||
-                    (p.VendorContact != null && p.VendorContact.ToLower().Contains(search)) ||
-                    (p.VendorEmail != null && p.VendorEmail.ToLower().Contains(search)) ||
-                    (p.QuotationNumber != null && p.QuotationNumber.ToLower().Contains(search)) ||
-                    p.EmployeeName.ToLower().Contains(search) ||
-                    (p.DepartmentName != null && p.DepartmentName.ToLower().Contains(search)));
-            }
-
-            var totalCount = await dbQuery.CountAsync();
             var page = query.Page > 0 ? query.Page : 1;
             var pageSize = query.PageSize > 0 ? query.PageSize : 50;
 
-            var rawPurchases = await dbQuery
-                .OrderByDescending(p => p.CreatedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var items = rawPurchases.Select(p => p.ToDto()).ToList();
+            var (items, totalCount) = await _purchaseRepository.GetPurchasesPagedAsync(
+                query.Status,
+                query.Category,
+                query.Search,
+                page,
+                pageSize);
 
             return new PagedPurchaseResponse
             {
-                Data = items,
+                Data = items.Select(p => p.ToDto()).ToList(),
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize
@@ -71,30 +46,14 @@ namespace MyBackend.Application.Services
 
         public async Task<List<ApprovedProductDto>> GetApprovedProductsAsync()
         {
-            // Only items with status 'Approved' and deleted_flag == 1
-            var approvedApprovals = await _context.Approvals
-                .AsNoTracking()
-                .Where(a => a.DeletedFlag == 1 && a.Status.ToLower() == "approved")
-                .OrderByDescending(a => a.ReviewedAt ?? a.CreatedAt)
-                .ToListAsync();
-
-            var purchaseGroups = await _context.Purchases
-                .AsNoTracking()
-                .Where(p => p.DeletedFlag == 1)
-                .GroupBy(p => p.ApprovalRequestId)
-                .Select(g => new
-                {
-                    ApprovalRequestId = g.Key,
-                    Count = g.Count(),
-                    FirstPurchaseId = g.OrderBy(p => p.Id).Select(p => p.Id).FirstOrDefault()
-                })
-                .ToDictionaryAsync(g => g.ApprovalRequestId);
+            var approvedApprovals = await _approvalRepository.GetApprovedApprovalsAsync();
+            var purchaseGroups = await _purchaseRepository.GetPurchaseGroupsByApprovalRequestIdAsync();
 
             return approvedApprovals.Select(a =>
             {
                 var hasQuotes = purchaseGroups.TryGetValue(a.Id, out var groupInfo);
-                var count = hasQuotes && groupInfo != null ? groupInfo.Count : 0;
-                var firstId = hasQuotes && groupInfo != null && groupInfo.FirstPurchaseId > 0 ? (int?)groupInfo.FirstPurchaseId : null;
+                var count = hasQuotes ? groupInfo.Count : 0;
+                var firstId = hasQuotes && groupInfo.FirstPurchaseId > 0 ? (int?)groupInfo.FirstPurchaseId : null;
 
                 return new ApprovedProductDto
                 {
@@ -119,14 +78,9 @@ namespace MyBackend.Application.Services
 
         public async Task<PurchaseSummaryDto> GetSummaryAsync()
         {
-            var activePurchases = await _context.Purchases
-                .AsNoTracking()
-                .Where(p => p.DeletedFlag == 1)
-                .ToListAsync();
-
-            var totalApprovedCount = await _context.Approvals
-                .AsNoTracking()
-                .CountAsync(a => a.DeletedFlag == 1 && a.Status.ToLower() == "approved");
+            var activePurchases = await _purchaseRepository.GetAllActivePurchasesAsync();
+            var approvedApprovals = await _approvalRepository.GetApprovedApprovalsAsync();
+            var totalApprovedCount = approvedApprovals.Count;
 
             var purchasesWithApprovedIdCount = activePurchases
                 .Select(p => p.ApprovalRequestId)
@@ -150,17 +104,13 @@ namespace MyBackend.Application.Services
 
         public async Task<PurchaseDto?> GetPurchaseByIdAsync(int id)
         {
-            var purchase = await _context.Purchases
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == id && p.DeletedFlag == 1);
-
+            var purchase = await _purchaseRepository.GetPurchaseByIdAsync(id);
             return purchase?.ToDto();
         }
 
         public async Task<PurchaseDto> CreatePurchaseAsync(CreatePurchaseRequest request, int createdByUserId, string createdByName)
         {
-            var approval = await _context.Approvals
-                .FirstOrDefaultAsync(a => a.Id == request.ApprovalRequestId && a.DeletedFlag == 1);
+            var approval = await _approvalRepository.GetByIdAsync(request.ApprovalRequestId);
 
             if (approval == null)
             {
@@ -195,17 +145,14 @@ namespace MyBackend.Application.Services
                 createdByName: createdByName
             );
 
-            _context.Purchases.Add(purchase);
-            await _context.SaveChangesAsync();
+            await _purchaseRepository.AddPurchaseAsync(purchase);
 
             return purchase.ToDto();
         }
 
         public async Task<PurchaseDto?> UpdatePurchaseAsync(int id, UpdatePurchaseRequest request)
         {
-            var purchase = await _context.Purchases
-                .FirstOrDefaultAsync(p => p.Id == id && p.DeletedFlag == 1);
-
+            var purchase = await _purchaseRepository.GetPurchaseByIdAsync(id);
             if (purchase == null) return null;
 
             purchase.UpdateQuotation(
@@ -221,22 +168,14 @@ namespace MyBackend.Application.Services
                 status: request.Status
             );
 
-            await _context.SaveChangesAsync();
+            await _purchaseRepository.UpdatePurchaseAsync(purchase);
 
             return purchase.ToDto();
         }
 
         public async Task<bool> DeletePurchaseAsync(int id)
         {
-            var purchase = await _context.Purchases
-                .FirstOrDefaultAsync(p => p.Id == id && p.DeletedFlag == 1);
-
-            if (purchase == null) return false;
-
-            purchase.SoftDelete();
-
-            await _context.SaveChangesAsync();
-            return true;
+            return await _purchaseRepository.SoftDeletePurchaseAsync(id);
         }
     }
 }

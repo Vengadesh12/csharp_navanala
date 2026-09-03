@@ -17,5 +17,25 @@ namespace MyBackend.Domain.Interfaces
         Task<List<string>> GetUserPermissionKeysAsync(int userId);
 
         Task<bool> UpdatePasswordHashAsync(int userId, string newPasswordHash);
+
+        Task<Dictionary<int, string>> GetActiveRolesLookupAsync();
+
+        Task<Dictionary<int, string>> GetActiveDesignationsLookupAsync();
+
+        Task<string?> GetRoleNameByIdAsync(int roleId);
+
+        Task<string?> GetDesignationNameByIdAsync(int designationId);
+
+        Task<bool> EmailExistsAsync(string email, int? excludeUserId = null);
+
+        Task<bool> PhoneExistsAsync(string phone, int? excludeUserId = null);
+
+        Task<int> GetActiveUsersCountAsync();
+
+        Task<int> GetUsersWithRoleCountAsync();
+
+        Task<List<string>> GetUserPermissionKeysForProfileAsync(int roleId, int designationId);
+
+        Task<Dictionary<int, string>> GetUserRoleMapAsync();
     }
 }

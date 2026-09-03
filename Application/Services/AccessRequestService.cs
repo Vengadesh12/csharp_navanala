@@ -2,66 +2,58 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
     public class AccessRequestService : IAccessRequestService
     {
-        private readonly IApplicationDbContext _context;
         private readonly IUnitOfWork _unitOfWork;
 
-        public AccessRequestService(IApplicationDbContext context, IUnitOfWork unitOfWork)
+        public AccessRequestService(IUnitOfWork unitOfWork)
         {
-            _context = context;
             _unitOfWork = unitOfWork;
         }
 
         public async Task<List<AvailablePermissionDto>> GetAvailablePermissionsAsync(int userId)
         {
-            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId && u.DeletedFlag == 1);
-            if (user == null) return [];
+            var user = await _unitOfWork.Users.GetUserByIdAsync(userId);
+            if (user == null || user.DeletedFlag != 1) return [];
 
-            var userPerms = await _unitOfWork.Users.GetUserPermissionKeysAsync(userId);
-            var userPermSet = new HashSet<string>(userPerms, StringComparer.OrdinalIgnoreCase);
+            var userPermissionKeys = (await _unitOfWork.Users.GetUserPermissionKeysAsync(userId))
+                .Select(k => k.ToLowerInvariant())
+                .ToHashSet();
 
-            var pendingKeys = await _context.AccessRequests
-                .AsNoTracking()
-                .Where(r => r.UserId == userId && r.Status == "Pending" && r.DeletedFlag == 1)
-                .Select(r => r.PermissionKey)
-                .ToListAsync();
-            var pendingKeySet = new HashSet<string>(pendingKeys, StringComparer.OrdinalIgnoreCase);
+            var pendingKeys = (await _unitOfWork.AccessRequests.GetPendingKeysForUserAsync(userId))
+                .Select(k => k.ToLowerInvariant())
+                .ToHashSet();
 
-            var allPermissions = await _context.Permissions
-                .AsNoTracking()
-                .Where(p => p.DeletedFlag == 1)
-                .OrderBy(p => p.Id)
-                .ToListAsync();
+            var allPermissions = await _unitOfWork.AccessRequests.GetAllActivePermissionsAsync();
 
-            return allPermissions.Select(p => new AvailablePermissionDto
+            return allPermissions.Select(p =>
             {
-                Id = p.Id,
-                PermissionKey = p.PermissionKey,
-                Name = p.Name,
-                Description = p.Description,
-                Module = InferModule(p.PermissionKey),
-                IsGranted = user.RoleId == 2 || userPermSet.Contains(p.PermissionKey),
-                HasPendingRequest = pendingKeySet.Contains(p.PermissionKey)
+                var pKeyLower = p.PermissionKey.ToLowerInvariant();
+                var alreadyAssigned = userPermissionKeys.Contains(pKeyLower);
+                var isPending = pendingKeys.Contains(pKeyLower);
+
+                return new AvailablePermissionDto
+                {
+                    Id = p.Id,
+                    PermissionKey = p.PermissionKey,
+                    Name = p.Name,
+                    Module = InferModule(p.PermissionKey),
+                    Description = p.Description,
+                    IsGranted = alreadyAssigned,
+                    HasPendingRequest = isPending
+                };
             }).ToList();
         }
 
         public async Task<List<AccessRequestDto>> GetMyRequestsAsync(int userId)
         {
-            var requests = await _context.AccessRequests
-                .AsNoTracking()
-                .Where(r => r.UserId == userId && r.DeletedFlag == 1)
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
-
+            var requests = await _unitOfWork.AccessRequests.GetRequestsForUserAsync(userId);
             return requests.Select(MapToDto).ToList();
         }
 
@@ -69,59 +61,41 @@ namespace MyBackend.Application.Services
         {
             if (string.IsNullOrWhiteSpace(dto.PermissionKey))
                 throw new ArgumentException("Permission key is required.");
+
             if (string.IsNullOrWhiteSpace(dto.Reason))
-                throw new ArgumentException("Please provide a business justification / reason for your request.");
+                throw new ArgumentException("A reason for the access request must be provided.");
+
+            var user = await _unitOfWork.Users.GetUserByIdAsync(userId);
+            if (user == null || user.DeletedFlag != 1)
+                throw new InvalidOperationException("User not found or deactivated.");
 
             var permKey = dto.PermissionKey.Trim();
-
-            // Verify permission exists
-            var permission = await _context.Permissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.PermissionKey.ToLower() == permKey.ToLower() && p.DeletedFlag == 1);
+            var permission = await _unitOfWork.AccessRequests.GetPermissionByKeyAsync(permKey);
 
             if (permission == null)
-                throw new ArgumentException($"System permission '{permKey}' was not found.");
+                throw new ArgumentException($"Permission with key '{permKey}' not found.");
 
-            // Verify user exists and doesn't already have the permission
-            var user = await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == userId && u.DeletedFlag == 1);
+            var userPermissionKeys = (await _unitOfWork.Users.GetUserPermissionKeysAsync(userId))
+                .Select(k => k.ToLowerInvariant())
+                .ToHashSet();
 
-            if (user == null)
-                throw new ArgumentException("User not found.");
+            if (userPermissionKeys.Contains(permKey.ToLower()))
+                throw new InvalidOperationException($"You already have active access to '{permission.Name}'.");
 
-            if (user.RoleId == 2)
-                throw new InvalidOperationException("Super Admin already possesses all system permissions.");
-
-            var currentPerms = await _unitOfWork.Users.GetUserPermissionKeysAsync(userId);
-            if (currentPerms.Contains(permKey, StringComparer.OrdinalIgnoreCase))
-                throw new InvalidOperationException($"You already have the '{permission.Name}' permission active.");
-
-            // Check if active pending request already exists
-            var existingPending = await _context.AccessRequests
-                .AsNoTracking()
-                .AnyAsync(r => r.UserId == userId && r.PermissionKey.ToLower() == permKey.ToLower() && r.Status == "Pending" && r.DeletedFlag == 1);
-
+            var existingPending = await _unitOfWork.AccessRequests.HasPendingRequestAsync(userId, permKey);
             if (existingPending)
                 throw new InvalidOperationException($"You already have a pending access request for '{permission.Name}'.");
 
-            // Look up Department & Role names
             string? deptName = null;
             if (user.DesignationId.HasValue)
             {
-                deptName = await (from des in _context.Designations
-                                  join d in _context.Departments on des.DepartmentId equals d.Id
-                                  where des.Id == user.DesignationId.Value
-                                  select d.Name).FirstOrDefaultAsync();
+                deptName = await _unitOfWork.AccessRequests.GetDepartmentNameForDesignationAsync(user.DesignationId.Value);
             }
 
             string? roleName = null;
             if (user.RoleId.HasValue)
             {
-                roleName = await _context.Roles
-                    .Where(r => r.Id == user.RoleId.Value)
-                    .Select(r => r.Name)
-                    .FirstOrDefaultAsync();
+                roleName = await _unitOfWork.Users.GetRoleNameByIdAsync(user.RoleId.Value);
             }
 
             var module = InferModule(permKey);
@@ -137,60 +111,26 @@ namespace MyBackend.Application.Services
                 dto.Reason,
                 dto.Priority);
 
-            _context.AccessRequests.Add(entity);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.AccessRequests.AddRequestAsync(entity);
 
             return MapToDto(entity);
         }
 
         public async Task<PagedAccessRequestResponse> GetRequestsAsync(AccessRequestQueryParameters query, int currentUserId, bool isSuperAdmin)
         {
-            var queryable = _context.AccessRequests
-                .AsNoTracking()
-                .Where(r => r.DeletedFlag == 1);
-
-            if (!isSuperAdmin || query.OnlyMyRequests)
-            {
-                queryable = queryable.Where(r => r.UserId == currentUserId);
-            }
-
-            if (!string.IsNullOrWhiteSpace(query.Status) && query.Status != "all")
-            {
-                queryable = queryable.Where(r => r.Status.ToLower() == query.Status.Trim().ToLower());
-            }
-
-            if (!string.IsNullOrWhiteSpace(query.Priority) && query.Priority != "all")
-            {
-                queryable = queryable.Where(r => r.Priority.ToLower() == query.Priority.Trim().ToLower());
-            }
-
-            if (!string.IsNullOrWhiteSpace(query.Module) && query.Module != "all")
-            {
-                queryable = queryable.Where(r => r.Module != null && r.Module.ToLower() == query.Module.Trim().ToLower());
-            }
-
-            if (!string.IsNullOrWhiteSpace(query.Search))
-            {
-                var search = query.Search.Trim().ToLower();
-                queryable = queryable.Where(r =>
-                    r.UserName.ToLower().Contains(search) ||
-                    r.UserEmail.ToLower().Contains(search) ||
-                    r.PermissionName.ToLower().Contains(search) ||
-                    r.PermissionKey.ToLower().Contains(search) ||
-                    (r.DepartmentName != null && r.DepartmentName.ToLower().Contains(search)) ||
-                    (r.RoleName != null && r.RoleName.ToLower().Contains(search)) ||
-                    r.Reason.ToLower().Contains(search));
-            }
-
-            var totalCount = await queryable.CountAsync();
             var page = query.Page > 0 ? query.Page : 1;
             var pageSize = query.PageSize > 0 ? query.PageSize : 10;
 
-            var items = await queryable
-                .OrderByDescending(r => r.CreatedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var (items, totalCount) = await _unitOfWork.AccessRequests.GetPagedRequestsAsync(
+                query.OnlyMyRequests,
+                query.Status,
+                query.Priority,
+                query.Module,
+                query.Search,
+                currentUserId,
+                isSuperAdmin,
+                page,
+                pageSize);
 
             return new PagedAccessRequestResponse
             {
@@ -203,17 +143,8 @@ namespace MyBackend.Application.Services
 
         public async Task<AccessRequestSummaryDto> GetSummaryAsync(int currentUserId, bool isSuperAdmin)
         {
-            var queryable = _context.AccessRequests
-                .AsNoTracking()
-                .Where(r => r.DeletedFlag == 1);
-
-            var all = await queryable.ToListAsync();
-
-            var total = isSuperAdmin ? all.Count : all.Count(r => r.UserId == currentUserId);
-            var pending = isSuperAdmin ? all.Count(r => r.Status == "Pending") : all.Count(r => r.UserId == currentUserId && r.Status == "Pending");
-            var approved = isSuperAdmin ? all.Count(r => r.Status == "Approved") : all.Count(r => r.UserId == currentUserId && r.Status == "Approved");
-            var rejected = isSuperAdmin ? all.Count(r => r.Status == "Rejected") : all.Count(r => r.UserId == currentUserId && r.Status == "Rejected");
-            var myPending = all.Count(r => r.UserId == currentUserId && r.Status == "Pending");
+            var (total, pending, approved, rejected, myPending) =
+                await _unitOfWork.AccessRequests.GetSummaryCountsAsync(currentUserId, isSuperAdmin);
 
             return new AccessRequestSummaryDto
             {
@@ -227,93 +158,23 @@ namespace MyBackend.Application.Services
 
         public async Task<AccessRequestDto?> GetRequestByIdAsync(int requestId)
         {
-            var request = await _context.AccessRequests
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.Id == requestId && r.DeletedFlag == 1);
-
+            var request = await _unitOfWork.AccessRequests.GetRequestByIdAsync(requestId);
             return request == null ? null : MapToDto(request);
         }
 
         public async Task<bool> ApproveRequestAsync(int requestId, int reviewerId, string reviewerName, ReviewAccessRequestDto dto)
         {
-            var request = await _context.AccessRequests
-                .FirstOrDefaultAsync(r => r.Id == requestId && r.DeletedFlag == 1);
-
-            if (request == null || request.Status != "Pending") return false;
-
-            // Mark request approved
-            request.Approve(reviewerId, reviewerName, dto.Comments);
-
-            // Find matching permission to assign
-            var permission = await _context.Permissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.PermissionKey.ToLower() == request.PermissionKey.ToLower() && p.DeletedFlag == 1);
-
-            if (permission != null)
-            {
-                var alreadyAssigned = await _context.UserPermissions
-                    .AnyAsync(up => up.UserId == request.UserId && up.PermissionId == permission.Id);
-
-                if (!alreadyAssigned)
-                {
-                    _context.UserPermissions.Add(UserPermission.Create(request.UserId, permission.Id));
-                }
-            }
-
-            // Create Audit Log
-            _context.AuditLogs.Add(AuditLog.CreateLog(
-                action: "AccessRequest.Approve",
-                module: "Access Requests",
-                performedBy: reviewerName,
-                details: $"Granted permission '{request.PermissionKey}' ({request.PermissionName}) to user #{request.UserId} ({request.UserName}). Notes: {dto.Comments ?? "None"}",
-                ipAddress: "127.0.0.1",
-                status: "Success"
-            ));
-
-            await _context.SaveChangesAsync();
-            return true;
+            return await _unitOfWork.AccessRequests.ApproveRequestAsync(requestId, reviewerId, reviewerName, dto.Comments);
         }
 
         public async Task<bool> RejectRequestAsync(int requestId, int reviewerId, string reviewerName, ReviewAccessRequestDto dto)
         {
-            var request = await _context.AccessRequests
-                .FirstOrDefaultAsync(r => r.Id == requestId && r.DeletedFlag == 1);
-
-            if (request == null || request.Status != "Pending") return false;
-
-            request.Reject(reviewerId, reviewerName, dto.Comments);
-
-            // Create Audit Log
-            _context.AuditLogs.Add(AuditLog.CreateLog(
-                action: "AccessRequest.Reject",
-                module: "Access Requests",
-                performedBy: reviewerName,
-                details: $"Rejected permission request for '{request.PermissionKey}' by user #{request.UserId} ({request.UserName}). Reason: {dto.Comments ?? "No comments"}",
-                ipAddress: "127.0.0.1",
-                status: "Success"
-            ));
-
-            await _context.SaveChangesAsync();
-            return true;
+            return await _unitOfWork.AccessRequests.RejectRequestAsync(requestId, reviewerId, reviewerName, dto.Comments);
         }
 
         public async Task<bool> DeleteRequestAsync(int requestId, int currentUserId, bool isSuperAdmin)
         {
-            var request = await _context.AccessRequests
-                .FirstOrDefaultAsync(r => r.Id == requestId && r.DeletedFlag == 1);
-
-            if (request == null) return false;
-
-            // Non-admin can only delete/cancel their own request while still pending
-            if (!isSuperAdmin)
-            {
-                if (request.UserId != currentUserId || request.Status != "Pending")
-                    return false;
-            }
-
-            request.SoftDelete();
-            await _context.SaveChangesAsync();
-            return true;
+            return await _unitOfWork.AccessRequests.SoftDeleteRequestAsync(requestId, currentUserId, isSuperAdmin);
         }
 
         private static AccessRequestDto MapToDto(AccessRequest r) => new()

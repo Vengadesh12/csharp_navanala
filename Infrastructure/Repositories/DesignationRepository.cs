@@ -34,5 +34,62 @@ namespace MyBackend.Infrastructure.Repositories
                 .Where(d => d.DeletedFlag == 1)
                 .ToDictionaryAsync(d => d.Id, d => d.Name);
         }
+
+        public async Task<bool> DesignationExistsByNameAsync(string name, int? excludeId = null)
+        {
+            var trimmed = name.Trim();
+            if (excludeId.HasValue)
+            {
+                var count = await _context.Database.SqlQueryRaw<int>("""
+                    SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                    FROM designations
+                    WHERE "DeletedFlag" = 1 AND LOWER("Name") = LOWER({0}) AND "Id" <> {1}
+                """, trimmed, excludeId.Value).SingleOrDefaultAsync();
+                return count > 0;
+            }
+            else
+            {
+                var count = await _context.Database.SqlQueryRaw<int>("""
+                    SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                    FROM designations
+                    WHERE "DeletedFlag" = 1 AND LOWER("Name") = LOWER({0})
+                """, trimmed).SingleOrDefaultAsync();
+                return count > 0;
+            }
+        }
+
+        public async Task<string?> GetDepartmentNameByIdAsync(int departmentId)
+        {
+            return await _context.Database.SqlQueryRaw<string>("""
+                SELECT "Name" AS "Value"
+                FROM departments
+                WHERE "Id" = {0} AND "DeletedFlag" = 1
+            """, departmentId).FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> SetDeletedFlagAsync(int id, int deletedFlag)
+        {
+            var rows = await _context.Database.ExecuteSqlInterpolatedAsync($"""
+                UPDATE designations SET "DeletedFlag" = {deletedFlag} WHERE "Id" = {id}
+                """);
+            return rows > 0;
+        }
+
+        public async Task<List<Designation>> GetDesignationsByIdsAsync(IEnumerable<int> ids)
+        {
+            var idList = ids.ToList();
+            if (idList.Count == 0) return [];
+
+            return await _context.Designations
+                .Where(d => idList.Contains(d.Id) && d.DeletedFlag == 1)
+                .ToListAsync();
+        }
+
+        public async Task<List<Designation>> GetDesignationsByDepartmentIdAsync(int departmentId)
+        {
+            return await _context.Designations
+                .Where(d => d.DepartmentId == departmentId)
+                .ToListAsync();
+        }
     }
 }

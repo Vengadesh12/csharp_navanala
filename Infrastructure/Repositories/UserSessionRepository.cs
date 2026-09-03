@@ -232,5 +232,199 @@ namespace MyBackend.Infrastructure.Repositories
 
             return (activeCount, todayLogins, todayLogouts, totalSessions);
         }
+
+        public async Task<UserSession?> GetSessionByIdAsync(int sessionId)
+        {
+            return await _context.UserSessions
+                .FromSqlRaw("""
+                    SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                    FROM user_sessions
+                    WHERE id = {0} AND deleted_flag = 1
+                """, sessionId)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<List<UserSession>> GetActiveSessionsForUserAsync(int userId, int? excludeSessionId = null)
+        {
+            if (excludeSessionId.HasValue)
+            {
+                return await _context.UserSessions
+                    .FromSqlRaw("""
+                        SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                        FROM user_sessions
+                        WHERE user_id = {0} AND id != {1} AND (is_active = true OR logout_time IS NULL)
+                    """, userId, excludeSessionId.Value)
+                    .ToListAsync();
+            }
+
+            return await _context.UserSessions
+                .FromSqlRaw("""
+                    SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                    FROM user_sessions
+                    WHERE user_id = {0} AND (is_active = true OR logout_time IS NULL)
+                """, userId)
+                .ToListAsync();
+        }
+
+        public async Task<List<UserSession>> GetActiveSessionsForEmailAsync(string email)
+        {
+            return await _context.UserSessions
+                .FromSqlRaw("""
+                    SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                    FROM user_sessions
+                    WHERE LOWER(email) = LOWER({0}) AND (is_active = true OR logout_time IS NULL)
+                """, email)
+                .ToListAsync();
+        }
+
+        public async Task<UserSession?> FindActiveSessionByTokenAsync(int userId, string token)
+        {
+            return await _context.UserSessions
+                .Where(s => s.UserId == userId && s.SessionToken == token && s.DeletedFlag == 1)
+                .OrderByDescending(s => s.LoginTime)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task TouchSessionAsync(int sessionId, string clientIp)
+        {
+            var session = await _context.UserSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
+            if (session != null)
+            {
+                session.UpdatedAt = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(clientIp) && session.IpAddress != clientIp)
+                {
+                    session.IpAddress = clientIp;
+                }
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<int> GetActiveSessionsCountAsync()
+        {
+            return await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM user_sessions
+                WHERE deleted_flag = 1 AND is_active = true AND logout_time IS NULL
+            """).SingleOrDefaultAsync();
+        }
+
+        public async Task<bool> TerminateSessionWithAuditAsync(int sessionId, int adminUserId)
+        {
+            var session = await GetSessionByIdAsync(sessionId);
+            if (session == null) return false;
+
+            var now = DateTime.UtcNow;
+            session.EndSession(now);
+
+            if (session.UserId > 0)
+            {
+                var otherSessions = await GetActiveSessionsForUserAsync(session.UserId, session.Id);
+                foreach (var other in otherSessions)
+                {
+                    other.EndSession(now);
+                }
+            }
+
+            try
+            {
+                var adminUser = await _context.Users
+                    .FromSqlRaw("""
+                        SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                        FROM users
+                        WHERE "Id" = {0} AND "DeletedFlag" = 1
+                    """, adminUserId)
+                    .FirstOrDefaultAsync();
+
+                var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";
+
+                _context.AuditLogs.Add(AuditLog.CreateLog(
+                    action: "Force Terminate Session",
+                    module: "Auth",
+                    performedBy: adminName,
+                    details: $"Terminated active session #{sessionId} for user {session.UserName} ({session.Email})",
+                    ipAddress: session.IpAddress,
+                    status: "Success"
+                ));
+            }
+            catch
+            {
+                // Ignore audit log error
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<int> ForceLogoutUserWithAuditAsync(int targetUserId, int adminUserId)
+        {
+            var user = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, targetUserId)
+                .FirstOrDefaultAsync();
+
+            var now = DateTime.UtcNow;
+            var activeSessions = await GetActiveSessionsForUserAsync(targetUserId);
+
+            if (activeSessions.Count > 0)
+            {
+                foreach (var session in activeSessions)
+                {
+                    session.EndSession(now);
+                }
+            }
+            else if (user != null)
+            {
+                var emailSessions = await GetActiveSessionsForEmailAsync(user.Email);
+                foreach (var s in emailSessions)
+                {
+                    s.EndSession(now);
+                }
+            }
+
+            try
+            {
+                var adminUser = await _context.Users
+                    .FromSqlRaw("""
+                        SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                        FROM users
+                        WHERE "Id" = {0} AND "DeletedFlag" = 1
+                    """, adminUserId)
+                    .FirstOrDefaultAsync();
+
+                var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";
+
+                _context.AuditLogs.Add(AuditLog.CreateLog(
+                    action: "Force User Logout",
+                    module: "Auth",
+                    performedBy: adminName,
+                    details: $"Terminated all active sessions for {user?.Name ?? $"User #{targetUserId}"}",
+                    ipAddress: "127.0.0.1",
+                    status: "Success"
+                ));
+            }
+            catch
+            {
+                // Ignore audit log error
+            }
+
+            await _context.SaveChangesAsync();
+            return Math.Max(1, activeSessions.Count);
+        }
+
+        public async Task AddSessionAsync(UserSession session)
+        {
+            _context.UserSessions.Add(session);
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                // Ignore concurrency collision if another request created it simultaneously
+            }
+        }
     }
 }

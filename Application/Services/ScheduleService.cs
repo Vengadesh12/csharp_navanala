@@ -1,83 +1,34 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
+using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
     public class ScheduleService : IScheduleService
     {
-        private readonly IApplicationDbContext _context;
+        private readonly IScheduleRepository _scheduleRepository;
 
-        public ScheduleService(IApplicationDbContext context)
+        public ScheduleService(IScheduleRepository scheduleRepository)
         {
-            _context = context;
+            _scheduleRepository = scheduleRepository;
         }
 
         public async Task<SchedulesOverviewResponse> GetSchedulesAsync(string? eventType, string? search)
         {
-            var sql = new StringBuilder("""
-                SELECT id, title, description, event_type, event_date, start_time, end_time, location, organizer, status, priority, attendees_count, created_at, updated_at, deleted_flag
-                FROM schedules
-                WHERE deleted_flag = 1
-            """);
-
-            var parameters = new List<object>();
-            int paramIndex = 0;
-
-            if (!string.IsNullOrWhiteSpace(eventType) && eventType != "ALL")
-            {
-                sql.Append($" AND LOWER(event_type) = LOWER({{{paramIndex++}}})");
-                parameters.Add(eventType.Trim());
-            }
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var pattern = $"%{search.Trim().ToLower()}%";
-                sql.Append($" AND (LOWER(title) LIKE {{{paramIndex}}} OR LOWER(description) LIKE {{{paramIndex}}} OR LOWER(organizer) LIKE {{{paramIndex}}} OR LOWER(location) LIKE {{{paramIndex++}}})");
-                parameters.Add(pattern);
-            }
-
-            sql.Append(" ORDER BY event_date ASC, start_time ASC");
-
-            var rawSchedules = await _context.Schedules
-                .FromSqlRaw(sql.ToString(), parameters.ToArray())
-                .AsNoTracking()
-                .ToListAsync();
-
-            var upcomingReviews = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM schedules
-                WHERE deleted_flag = 1 AND status = 'Scheduled'
-            """).SingleOrDefaultAsync();
-
-            var dueThisWeek = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM schedules
-                WHERE deleted_flag = 1 AND (priority = 'High' OR priority = 'Urgent')
-            """).SingleOrDefaultAsync();
+            var (rawSchedules, upcomingReviews, dueThisWeek, totalUsers, activeSessions) =
+                await _scheduleRepository.GetSchedulesOverviewDataAsync(eventType, search);
 
             var eventTypes = await GetEventTypesAsync();
 
-            var totalUsers = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM users
-                WHERE "DeletedFlag" = 1
-            """).SingleOrDefaultAsync();
-
-            var activeSessions = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM user_sessions
-                WHERE deleted_flag = 1 AND is_active = TRUE AND logout_time IS NULL
-            """).SingleOrDefaultAsync();
-
-            var teamAvailability = totalUsers > 0 ? $"{Math.Max(0, (int)Math.Round((double)(totalUsers - activeSessions) / totalUsers * 100))}%" : "100%";
+            var teamAvailability = totalUsers > 0
+                ? $"{Math.Max(0, (int)Math.Round((double)(totalUsers - activeSessions) / totalUsers * 100))}%"
+                : "100%";
 
             return new SchedulesOverviewResponse
             {
@@ -91,21 +42,7 @@ namespace MyBackend.Application.Services
 
         public async Task<List<EventTypeDto>> GetEventTypesAsync()
         {
-            var types = await _context.EventTypes
-                .FromSqlRaw("""
-                    SELECT id, name, description, color, icon, created_at, updated_at, created_by, deleted_flag
-                    FROM event_types
-                    WHERE deleted_flag = 1
-                    ORDER BY id ASC
-                """)
-                .AsNoTracking()
-                .ToListAsync();
-
-            var activeSchedules = await _context.Database.SqlQueryRaw<string>("""
-                SELECT event_type AS "Value"
-                FROM schedules
-                WHERE deleted_flag = 1
-            """).ToListAsync();
+            var (types, activeSchedules) = await _scheduleRepository.GetEventTypesWithCountsAsync();
 
             return types.Select(t => new EventTypeDto
             {
@@ -134,15 +71,7 @@ namespace MyBackend.Application.Services
             var createdBy = string.IsNullOrWhiteSpace(creatorName) ? "System Admin" : creatorName;
             var now = DateTime.UtcNow;
 
-            var existing = await _context.EventTypes
-                .FromSqlRaw("""
-                    SELECT id, name, description, color, icon, created_at, updated_at, created_by, deleted_flag
-                    FROM event_types
-                    WHERE LOWER(name) = LOWER({0})
-                """, trimmedName)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
-
+            var existing = await _scheduleRepository.GetEventTypeByNameAsync(trimmedName);
             if (existing != null)
             {
                 if (existing.DeletedFlag == 1)
@@ -150,17 +79,8 @@ namespace MyBackend.Application.Services
                     throw new BadRequestException($"Event type '{trimmedName}' already exists.");
                 }
 
-                await _context.Database.ExecuteSqlRawAsync("""
-                    UPDATE event_types
-                    SET deleted_flag = 1, description = {0}, color = {1}, icon = {2}, updated_at = {3}
-                    WHERE id = {4}
-                """, desc, color, icon, now, existing.Id);
-
-                var eventCount = await _context.Database.SqlQueryRaw<int>("""
-                    SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                    FROM schedules
-                    WHERE deleted_flag = 1 AND LOWER(event_type) = LOWER({0})
-                """, existing.Name).SingleOrDefaultAsync();
+                await _scheduleRepository.UpdateEventTypeAsync(existing.Id, desc, color, icon);
+                var eventCount = await _scheduleRepository.GetActiveEventCountForTypeAsync(existing.Name);
 
                 return new EventTypeDto
                 {
@@ -175,11 +95,7 @@ namespace MyBackend.Application.Services
                 };
             }
 
-            var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO event_types (name, description, color, icon, created_at, updated_at, created_by, deleted_flag)
-                VALUES ({0}, {1}, {2}, {3}, {4}, {4}, {5}, 1)
-                RETURNING id AS "Value"
-            """, trimmedName, desc, color, icon, now, createdBy).SingleAsync();
+            var newId = await _scheduleRepository.CreateEventTypeAsync(trimmedName, desc, color, icon, createdBy);
 
             return new EventTypeDto
             {
@@ -196,14 +112,7 @@ namespace MyBackend.Application.Services
 
         public async Task<bool> DeleteEventTypeAsync(int id)
         {
-            var now = DateTime.UtcNow;
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
-                UPDATE event_types
-                SET deleted_flag = 0, updated_at = {0}
-                WHERE id = {1} AND deleted_flag = 1
-            """, now, id);
-
-            return rowsAffected > 0;
+            return await _scheduleRepository.SoftDeleteEventTypeAsync(id);
         }
 
         public async Task<ScheduleEventDto> CreateScheduleAsync(CreateScheduleRequest request, string creatorName)
@@ -224,59 +133,39 @@ namespace MyBackend.Application.Services
             var status = string.IsNullOrWhiteSpace(request.Status) ? "Scheduled" : request.Status.Trim();
             var priority = string.IsNullOrWhiteSpace(request.Priority) ? "Normal" : request.Priority.Trim();
             var attendeesCount = Math.Max(1, request.AttendeesCount);
-            var now = DateTime.UtcNow;
 
-            var newId = await _context.Database.SqlQueryRaw<int>("""
-                INSERT INTO schedules (title, description, event_type, event_date, start_time, end_time, location, organizer, status, priority, attendees_count, created_at, updated_at, deleted_flag)
-                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {11}, 1)
-                RETURNING id AS "Value"
-            """, title, description, eventType, eventDate, startTime, endTime, location, organizer, status, priority, attendeesCount, now).SingleAsync();
-
-            var schedule = await _context.Schedules
-                .FromSqlRaw("""
-                    SELECT id, title, description, event_type, event_date, start_time, end_time, location, organizer, status, priority, attendees_count, created_at, updated_at, deleted_flag
-                    FROM schedules
-                    WHERE id = {0} AND deleted_flag = 1
-                """, newId)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
+            var newId = await _scheduleRepository.CreateScheduleAsync(title, description, eventType, eventDate, startTime, endTime, location, organizer, status, priority, attendeesCount);
+            var schedule = await _scheduleRepository.GetScheduleByIdAsync(newId);
 
             return schedule!.ToDto();
         }
 
         public async Task<ScheduleEventDto?> UpdateScheduleAsync(int id, UpdateScheduleRequest request)
         {
-            var now = DateTime.UtcNow;
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
-                UPDATE schedules
-                SET title = {0}, description = {1}, event_type = {2}, event_date = {3}, start_time = {4}, end_time = {5}, location = {6}, organizer = {7}, status = {8}, priority = {9}, attendees_count = {10}, updated_at = {11}
-                WHERE id = {12} AND deleted_flag = 1
-            """, request.Title.Trim(), request.Description.Trim(), request.EventType.Trim(), request.EventDate.Trim(), request.StartTime.Trim(), request.EndTime.Trim(), request.Location.Trim(), request.Organizer.Trim(), request.Status.Trim(), request.Priority.Trim(), Math.Max(1, request.AttendeesCount), now, id);
+            var attendeesCount = Math.Max(1, request.AttendeesCount);
+            var updated = await _scheduleRepository.UpdateScheduleAsync(
+                id,
+                request.Title.Trim(),
+                request.Description.Trim(),
+                request.EventType.Trim(),
+                request.EventDate.Trim(),
+                request.StartTime.Trim(),
+                request.EndTime.Trim(),
+                request.Location.Trim(),
+                request.Organizer.Trim(),
+                request.Status.Trim(),
+                request.Priority.Trim(),
+                attendeesCount);
 
-            if (rowsAffected == 0) return null;
+            if (!updated) return null;
 
-            var updated = await _context.Schedules
-                .FromSqlRaw("""
-                    SELECT id, title, description, event_type, event_date, start_time, end_time, location, organizer, status, priority, attendees_count, created_at, updated_at, deleted_flag
-                    FROM schedules
-                    WHERE id = {0} AND deleted_flag = 1
-                """, id)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
-
-            return updated?.ToDto();
+            var schedule = await _scheduleRepository.GetScheduleByIdAsync(id);
+            return schedule?.ToDto();
         }
 
         public async Task<bool> DeleteScheduleAsync(int id)
         {
-            var now = DateTime.UtcNow;
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
-                UPDATE schedules
-                SET deleted_flag = 0, updated_at = {0}
-                WHERE id = {1} AND deleted_flag = 1
-            """, now, id);
-
-            return rowsAffected > 0;
+            return await _scheduleRepository.SoftDeleteScheduleAsync(id);
         }
     }
 }

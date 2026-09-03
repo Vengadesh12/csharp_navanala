@@ -2,30 +2,26 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
     public class DashboardService : IDashboardService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IApplicationDbContext _context;
 
-        public DashboardService(IUnitOfWork unitOfWork, IApplicationDbContext context)
+        public DashboardService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
-            _context = context;
         }
 
         public async Task<DashboardSummaryResponse> GetDashboardSummaryAsync(string? timeframe = "7d")
         {
             var users = await _unitOfWork.Users.GetAllUsersAsync();
             var roles = await _unitOfWork.Roles.GetActiveRolesAsync();
-            var permissionsCount = await _unitOfWork.Permissions.CountAsync(p => p.DeletedFlag == 1);
+            var permissionsCount = await _unitOfWork.Dashboard.GetPermissionsCountAsync();
 
             var activeUsersList = users.Where(u => u.DeletedFlag == 1).ToList();
             var inactiveUsersList = users.Where(u => u.DeletedFlag == 0).ToList();
@@ -35,10 +31,7 @@ namespace MyBackend.Application.Services
             var inactiveUsersCount = inactiveUsersList.Count;
             var totalRoles = roles.Count;
 
-            // Query real active sessions count from database
-            var activeSessions = await _context.UserSessions
-                .AsNoTracking()
-                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null);
+            var activeSessions = await _unitOfWork.Dashboard.GetActiveSessionsCountAsync();
 
             var roleMap = roles.ToDictionary(r => r.Id, r => r.Name);
             var colorPalette = new[]
@@ -87,12 +80,7 @@ namespace MyBackend.Application.Services
                 currentOffset -= dashLength;
             }
 
-            // Query latest sessions for each user to get the true last login time
-            var allSessions = await _context.UserSessions
-                .AsNoTracking()
-                .Where(s => s.DeletedFlag == 1)
-                .OrderByDescending(s => s.LoginTime)
-                .ToListAsync();
+            var allSessions = await _unitOfWork.Dashboard.GetAllActiveSessionsForDashboardAsync();
 
             var latestSessionByUserId = allSessions
                 .GroupBy(s => s.UserId)
@@ -117,7 +105,6 @@ namespace MyBackend.Application.Services
                         _ => "bg-slate-50 text-slate-700 border border-slate-200"
                     };
 
-                    // Find latest session for this user
                     UserSession? latestSession = null;
                     if (latestSessionByUserId.TryGetValue(u.Id, out var sById))
                     {
@@ -161,13 +148,7 @@ namespace MyBackend.Application.Services
                 })
                 .ToList();
 
-            // Query real recent audit logs
-            var recentAuditLogs = await _context.AuditLogs
-                .AsNoTracking()
-                .Where(a => a.DeletedFlag == 1)
-                .OrderByDescending(a => a.CreatedAt)
-                .Take(5)
-                .ToListAsync();
+            var recentAuditLogs = await _unitOfWork.Dashboard.GetDashboardRecentAuditLogsAsync(5);
 
             var recentActivities = recentAuditLogs.Select((log, idx) =>
             {
@@ -201,7 +182,6 @@ namespace MyBackend.Application.Services
                 };
             }).ToList();
 
-            // If audit logs are empty, fallback to recent login sessions
             if (recentActivities.Count == 0)
             {
                 var recentSess = allSessions.Take(3).ToList();
@@ -233,10 +213,7 @@ namespace MyBackend.Application.Services
             var today = DateTime.UtcNow.Date;
             var startDate = today.AddDays(-daysCount);
 
-            var allAuditLogsInPeriod = await _context.AuditLogs
-                .AsNoTracking()
-                .Where(a => a.DeletedFlag == 1 && a.CreatedAt >= startDate)
-                .ToListAsync();
+            var allAuditLogsInPeriod = await _unitOfWork.Dashboard.GetAuditLogsSinceDateAsync(startDate);
 
             var chartData = new List<DashboardChartPoint>();
 

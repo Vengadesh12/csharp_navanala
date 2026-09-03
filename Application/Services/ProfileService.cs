@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Common.Validators;
 using MyBackend.Application.DTO;
@@ -16,28 +14,20 @@ namespace MyBackend.Application.Services
 {
     public class ProfileService : IProfileService
     {
-        private readonly IApplicationDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IFileService _fileService;
         private readonly PasswordHasher<User> _passwordHasher = new();
 
-        public ProfileService(IApplicationDbContext context, IFileService fileService)
+        public ProfileService(IUnitOfWork unitOfWork, IFileService fileService)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _fileService = fileService;
         }
 
         public async Task<UserProfileResponse> GetProfileAsync(int userId)
         {
-            var user = await _context.Users
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                    FROM users
-                    WHERE "Id" = {0} AND "DeletedFlag" = 1
-                """, userId)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
-
-            if (user == null)
+            var user = await _unitOfWork.Users.GetUserByIdAsync(userId);
+            if (user == null || user.DeletedFlag != 1)
             {
                 throw new NotFoundException("User profile not found or account is deactivated.");
             }
@@ -45,49 +35,13 @@ namespace MyBackend.Application.Services
             string roleName = "Member";
             if (user.RoleId.HasValue)
             {
-                roleName = await _context.Database.SqlQueryRaw<string>("""
-                    SELECT "Name" AS "Value"
-                    FROM roles
-                    WHERE "Id" = {0} AND "DeletedFlag" = 1
-                """, user.RoleId.Value).FirstOrDefaultAsync() ?? "Member";
+                roleName = await _unitOfWork.Users.GetRoleNameByIdAsync(user.RoleId.Value) ?? "Member";
             }
 
             var roleId = user.RoleId ?? 0;
             var designationId = user.DesignationId ?? 0;
 
-            List<string> permissions;
-            if (roleId == 2)
-            {
-                permissions = await _context.Database.SqlQueryRaw<string>("""
-                    SELECT "PermissionKey" AS "Value"
-                    FROM permissions
-                    WHERE "DeletedFlag" = 1
-                    ORDER BY "Id"
-                """).ToListAsync();
-            }
-            else
-            {
-                permissions = await _context.Database.SqlQueryRaw<string>("""
-                    SELECT DISTINCT p."PermissionKey" AS "Value"
-                    FROM permissions p
-                    WHERE p."DeletedFlag" = 1
-                      AND (
-                          ({0} > 0 AND p."Id" IN (
-                              SELECT rp."PermissionId" 
-                              FROM rolepermissions rp 
-                              WHERE rp."RoleId" = {0}
-                          ))
-                          OR
-                          ({1} > 0 AND p."Id" IN (
-                              SELECT dp."PermissionId"
-                              FROM departmentpermissions dp
-                              INNER JOIN designations des ON des."DepartmentId" = dp."DepartmentId" AND des."DeletedFlag" = 1
-                              WHERE des."Id" = {1}
-                          ))
-                      )
-                    ORDER BY "Value"
-                    """, roleId, designationId).ToListAsync();
-            }
+            var permissions = await _unitOfWork.Users.GetUserPermissionKeysForProfileAsync(roleId, designationId);
 
             return new UserProfileResponse
             {
@@ -107,15 +61,8 @@ namespace MyBackend.Application.Services
 
         public async Task<UserProfileResponse> UpdateProfileAsync(int userId, UpdateProfileRequest request)
         {
-            var user = await _context.Users
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                    FROM users
-                    WHERE "Id" = {0} AND "DeletedFlag" = 1
-                """, userId)
-                .FirstOrDefaultAsync();
-
-            if (user == null)
+            var user = await _unitOfWork.Users.GetUserByIdAsync(userId);
+            if (user == null || user.DeletedFlag != 1)
             {
                 throw new NotFoundException("User profile not found.");
             }
@@ -130,7 +77,8 @@ namespace MyBackend.Application.Services
                 designationId: user.DesignationId
             );
 
-            await _context.SaveChangesAsync();
+            _unitOfWork.Users.Update(user);
+            await _unitOfWork.SaveChangesAsync();
 
             return await GetProfileAsync(userId);
         }
@@ -158,19 +106,12 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException("New password and confirm password do not match.");
             }
 
-            var user = await _context.Users
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                    FROM users
-                    WHERE "Id" = {0} AND "DeletedFlag" = 1
-                """, userId)
-                .FirstOrDefaultAsync();
-            if (user == null)
+            var user = await _unitOfWork.Users.GetUserByIdAsync(userId);
+            if (user == null || user.DeletedFlag != 1)
             {
                 throw new NotFoundException("User profile not found.");
             }
 
-            // Verify current password if user has one
             if (!string.IsNullOrEmpty(user.PasswordHash))
             {
                 var verify = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
@@ -184,7 +125,8 @@ namespace MyBackend.Application.Services
             user.SetPasswordHash(newHash);
             user.CompleteFirstLogin();
 
-            await _context.SaveChangesAsync();
+            _unitOfWork.Users.Update(user);
+            await _unitOfWork.SaveChangesAsync();
 
             return true;
         }
@@ -196,7 +138,6 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException("No image file was provided for upload.");
             }
 
-            // Allowed extensions check
             var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 ".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"
@@ -208,57 +149,42 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException("Invalid file format. Only images (.jpg, .jpeg, .png, .webp, .gif, .avif) are allowed.");
             }
 
-            // MIME type check
             if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             {
                 throw new BadRequestException("The uploaded file does not appear to be a valid image.");
             }
 
-            // 5 MB max limit
             const long maxFileSize = 5 * 1024 * 1024;
             if (file.Length > maxFileSize)
             {
                 throw new BadRequestException("Image file size cannot exceed 5MB.");
             }
 
-            var user = await _context.Users
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                    FROM users
-                    WHERE "Id" = {0} AND "DeletedFlag" = 1
-                """, userId)
-                .FirstOrDefaultAsync();
-            if (user == null)
+            var user = await _unitOfWork.Users.GetUserByIdAsync(userId);
+            if (user == null || user.DeletedFlag != 1)
             {
                 throw new NotFoundException("User profile not found.");
             }
 
-            // Remove old uploaded file if exists
             if (!string.IsNullOrWhiteSpace(user.ProfileImage))
             {
                 await _fileService.DeleteFileAsync(user.ProfileImage);
             }
 
-            // Save new profile image via IFileService
             await using var stream = file.OpenReadStream();
             var relativePath = await _fileService.SaveProfileImageAsync(stream, file.FileName, userId);
 
             user.UpdateProfileImage(relativePath);
-            await _context.SaveChangesAsync();
+            _unitOfWork.Users.Update(user);
+            await _unitOfWork.SaveChangesAsync();
 
             return await GetProfileAsync(userId);
         }
 
         public async Task<UserProfileResponse> RemoveProfileImageAsync(int userId)
         {
-            var user = await _context.Users
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                    FROM users
-                    WHERE "Id" = {0} AND "DeletedFlag" = 1
-                """, userId)
-                .FirstOrDefaultAsync();
-            if (user == null)
+            var user = await _unitOfWork.Users.GetUserByIdAsync(userId);
+            if (user == null || user.DeletedFlag != 1)
             {
                 throw new NotFoundException("User profile not found.");
             }
@@ -267,7 +193,8 @@ namespace MyBackend.Application.Services
             {
                 await _fileService.DeleteFileAsync(user.ProfileImage);
                 user.UpdateProfileImage(null);
-                await _context.SaveChangesAsync();
+                _unitOfWork.Users.Update(user);
+                await _unitOfWork.SaveChangesAsync();
             }
 
             return await GetProfileAsync(userId);

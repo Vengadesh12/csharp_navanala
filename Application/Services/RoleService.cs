@@ -1,52 +1,31 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
     public class RoleService : IRoleService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IApplicationDbContext _context;
 
-        public RoleService(IUnitOfWork unitOfWork, IApplicationDbContext context)
+        public RoleService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
-            _context = context;
         }
 
         public async Task<List<RoleDto>> GetAllRolesAsync()
         {
-            var roles = await _context.Roles
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
-                    FROM roles
-                    WHERE "DeletedFlag" = 1
-                    ORDER BY "Id"
-                """)
-                .AsNoTracking()
-                .ToListAsync();
-
+            var roles = await _unitOfWork.Roles.GetActiveRolesAsync();
             return roles.Select(r => r.ToDto()).ToList();
         }
 
         public async Task<RoleDto?> GetRoleByIdAsync(int id)
         {
-            var role = await _context.Roles
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
-                    FROM roles
-                    WHERE "Id" = {0} AND "DeletedFlag" = 1
-                """, id)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
-
+            var role = await _unitOfWork.Roles.GetActiveRoleByIdAsync(id);
             if (role is null) return null;
 
             return role.ToDto();
@@ -64,14 +43,7 @@ namespace MyBackend.Application.Services
 
         public async Task<RoleDto?> UpdateRoleAsync(int id, UpdateRoleRequest request)
         {
-            var role = await _context.Roles
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
-                    FROM roles
-                    WHERE "Id" = {0} AND "DeletedFlag" = 1
-                """, id)
-                .FirstOrDefaultAsync();
-
+            var role = await _unitOfWork.Roles.GetActiveRoleByIdAsync(id);
             if (role is null) return null;
 
             role.UpdateDetails(request.Name, request.Description);
