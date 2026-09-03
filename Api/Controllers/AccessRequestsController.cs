@@ -9,9 +9,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Employee permission request management and Super Admin decision endpoints.
-    /// </summary>
     [ApiController]
     [Route("api/access-requests")]
     [Tags("Access Requests")]
@@ -30,9 +27,6 @@ namespace MyBackend.Api.Controllers
             _userService = userService;
         }
 
-        /// <summary>
-        /// Retrieves all system permissions categorized by module with grant status for the calling user.
-        /// </summary>
         [HttpGet("available-permissions")]
         [ProducesResponseType(typeof(ApiResponse<System.Collections.Generic.List<AvailablePermissionDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAvailablePermissions()
@@ -49,9 +43,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Retrieves access requests submitted by the calling user.
-        /// </summary>
         [HttpGet("my-requests")]
         [ProducesResponseType(typeof(ApiResponse<System.Collections.Generic.List<AccessRequestDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyRequests()
@@ -68,9 +59,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Retrieves summary KPI metric counts for the access request dashboard.
-        /// </summary>
         [HttpGet("summary")]
         [ProducesResponseType(typeof(AccessRequestSummaryDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetSummary()
@@ -82,9 +70,6 @@ namespace MyBackend.Api.Controllers
             return Ok(summary);
         }
 
-        /// <summary>
-        /// Retrieves paginated access requests with status, priority, and search filters.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedAccessRequestResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRequests([FromQuery] AccessRequestQueryParameters query)
@@ -96,9 +81,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Retrieves a specific access request by its unique ID.
-        /// </summary>
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<AccessRequestDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -127,9 +109,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Submits a new permission access request.
-        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<AccessRequestDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -154,9 +133,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Approves a pending permission request and immediately grants the permission to the user.
-        /// </summary>
         [HttpPost("{id:int}/approve")]
         [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
@@ -185,9 +161,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Rejects a pending permission request with reviewer feedback notes.
-        /// </summary>
         [HttpPost("{id:int}/reject")]
         [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
@@ -216,9 +189,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Cancels or soft-deletes a pending access request.
-        /// </summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

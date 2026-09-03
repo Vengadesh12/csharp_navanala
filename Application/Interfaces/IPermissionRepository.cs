@@ -6,9 +6,6 @@ using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Interfaces
 {
-    /// <summary>
-    /// Specialized repository contract for Permissions catalog and RolePermission assignments.
-    /// </summary>
     public interface IPermissionRepository : IRepository<Permission>
     {
         Task<PermissionsMatrixResponse> GetPermissionsMatrixAsync();

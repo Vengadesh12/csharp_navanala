@@ -6,9 +6,6 @@ using System.Security.Claims;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Permission matrix configuration and role-capability assignments.
-    /// </summary>
     [ApiController]
     [Route("api/permissions")]
     [Tags("Permissions")]
@@ -25,12 +22,6 @@ namespace MyBackend.Api.Controllers
             _userService = userService;
         }
 
-        /// <summary>
-        /// Retrieve the full RBAC permission matrix and role assignments.
-        /// </summary>
-        /// <response code="200">Permission matrix returned successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks permission management privileges.</response>
         [HttpGet]
         [ProducesResponseType(typeof(PermissionsMatrixResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -46,16 +37,6 @@ namespace MyBackend.Api.Controllers
             return Ok(matrix);
         }
 
-        /// <summary>
-        /// Update granted permission keys for a specific role.
-        /// </summary>
-        /// <param name="roleId">The unique integer identifier of the target role.</param>
-        /// <param name="request">Array of valid permission keys to assign to this role.</param>
-        /// <response code="200">Role permissions updated successfully.</response>
-        /// <response code="400">One or more supplied permission keys are invalid.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks permission management privileges.</response>
-        /// <response code="404">Role not found.</response>
         [HttpPut("{roleId:int}")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -85,9 +66,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Retrieve granted permission keys for a specific department.
-        /// </summary>
         [HttpGet("departments/{departmentId:int}")]
         [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -103,9 +81,6 @@ namespace MyBackend.Api.Controllers
             return Ok(keys);
         }
 
-        /// <summary>
-        /// Update granted permission keys for a specific department.
-        /// </summary>
         [HttpPut("departments/{departmentId:int}")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]

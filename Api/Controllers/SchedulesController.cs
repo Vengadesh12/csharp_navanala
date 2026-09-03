@@ -23,9 +23,6 @@ namespace MyBackend.Api.Controllers
             _scheduleService = scheduleService;
         }
 
-        /// <summary>
-        /// Retrieve all calendar events, audits, and governance schedules.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(SchedulesOverviewResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetSchedules([FromQuery] string? eventType, [FromQuery] string? search)
@@ -34,9 +31,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Schedule a new event or audit session.
-        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<ScheduleEventDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -53,9 +47,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Update an existing scheduled event.
-        /// </summary>
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<ScheduleEventDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -75,9 +66,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Delete / soft-delete a scheduled event.
-        /// </summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -98,9 +86,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Retrieve all calendar event types / categories.
-        /// </summary>
         [HttpGet("types")]
         [ProducesResponseType(typeof(List<EventTypeDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetEventTypes()
@@ -109,9 +94,6 @@ namespace MyBackend.Api.Controllers
             return Ok(types);
         }
 
-        /// <summary>
-        /// Create a new calendar event type / category.
-        /// </summary>
         [HttpPost("types")]
         [ProducesResponseType(typeof(ApiResponse<EventTypeDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -128,9 +110,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Delete / soft-delete a calendar event type.
-        /// </summary>
         [HttpDelete("types/{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

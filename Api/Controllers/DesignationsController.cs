@@ -5,9 +5,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Workspace job designations management and catalog endpoints.
-    /// </summary>
     [ApiController]
     [Route("api/designations")]
     [Tags("Designations")]
@@ -22,11 +19,6 @@ namespace MyBackend.Api.Controllers
             _designationService = designationService;
         }
 
-        /// <summary>
-        /// Retrieves all active designations.
-        /// </summary>
-        /// <response code="200">List of designations returned.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet]
         [ProducesResponseType(typeof(List<DesignationDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -36,12 +28,6 @@ namespace MyBackend.Api.Controllers
             return Ok(designations);
         }
 
-        /// <summary>
-        /// Retrieves a specific designation by ID.
-        /// </summary>
-        /// <param name="id">Designation ID.</param>
-        /// <response code="200">Designation details returned.</response>
-        /// <response code="404">Designation not found.</response>
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(DesignationDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -55,13 +41,6 @@ namespace MyBackend.Api.Controllers
             return Ok(designation);
         }
 
-        /// <summary>
-        /// Creates and saves a new job designation in the system.
-        /// </summary>
-        /// <param name="request">New designation creation payload.</param>
-        /// <response code="201">Designation created successfully.</response>
-        /// <response code="400">Invalid payload or designation name already exists.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<DesignationDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -96,14 +75,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Updates an existing job designation.
-        /// </summary>
-        /// <param name="id">Designation ID.</param>
-        /// <param name="request">Updated designation payload.</param>
-        /// <response code="200">Designation updated successfully.</response>
-        /// <response code="400">Invalid payload.</response>
-        /// <response code="404">Designation not found.</response>
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<DesignationDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -140,12 +111,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Deletes / soft-deletes a job designation.
-        /// </summary>
-        /// <param name="id">Designation ID.</param>
-        /// <response code="200">Designation deleted successfully.</response>
-        /// <response code="404">Designation not found.</response>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

@@ -10,9 +10,6 @@ using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// Implements report category management and queries in PostgreSQL.
-    /// </summary>
     public class ReportCategoryService : IReportCategoryService
     {
         private readonly IApplicationDbContext _context;

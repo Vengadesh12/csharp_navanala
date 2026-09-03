@@ -2,9 +2,6 @@ using System;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Audit log business object recording security, administrative, and data change events.
-    /// </summary>
     public class AuditLog
     {
         public int Id { get; set; }
@@ -20,9 +17,6 @@ namespace MyBackend.Domain.Entities
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Factory method to create an immutable Audit Log record.
-        /// </summary>
         public static AuditLog CreateLog(
             string action,
             string module,
@@ -46,9 +40,6 @@ namespace MyBackend.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Soft deletes the audit log entry.
-        /// </summary>
         public void SoftDelete()
         {
             DeletedFlag = 0;

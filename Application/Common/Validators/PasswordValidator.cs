@@ -16,9 +16,6 @@ namespace MyBackend.Application.Common.Validators
         public List<string> Errors { get; set; } = [];
     }
 
-    /// <summary>
-    /// Validates password complexity: minimum 8 characters, uppercase, lowercase, numeric digit, and special character.
-    /// </summary>
     public static class PasswordValidator
     {
         public static (bool IsValid, List<string> Errors) Validate(string? password)

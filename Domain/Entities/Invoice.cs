@@ -5,148 +5,63 @@ using System.Linq;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Represents a commercial invoice business object issued to clients/customers with financial calculations and business methods.
-    /// </summary>
     [Table("invoices")]
     public class Invoice
     {
-        /// <summary>
-        /// Unique invoice identifier.
-        /// </summary>
         public int Id { get; set; }
 
-        /// <summary>
-        /// Unique invoice reference code (e.g. INV-2026-0001).
-        /// </summary>
         public string InvoiceNumber { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Billed client / customer / organization name.
-        /// </summary>
         public string CustomerName { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Customer contact email address.
-        /// </summary>
         public string? CustomerEmail { get; set; }
 
-        /// <summary>
-        /// Customer contact phone number.
-        /// </summary>
         public string? CustomerPhone { get; set; }
 
-        /// <summary>
-        /// Customer billing address.
-        /// </summary>
         public string? CustomerAddress { get; set; }
 
-        /// <summary>
-        /// Customer's GST identification number.
-        /// </summary>
         public string? CustomerGstin { get; set; }
 
-        /// <summary>
-        /// MyBackend Technologies Company GST identification number.
-        /// Can only be modified by Super Admins / users with full management permissions.
-        /// </summary>
         public string CompanyGstin { get; set; } = "36AAAAA0000A1Z5";
 
-        /// <summary>
-        /// Date of invoice issuance.
-        /// </summary>
         public DateTime InvoiceDate { get; set; } = DateTime.UtcNow;
 
-        /// <summary>
-        /// Payment due date.
-        /// </summary>
         public DateTime? DueDate { get; set; }
 
-        /// <summary>
-        /// Net subtotal before taxes and discounts.
-        /// </summary>
         public decimal Subtotal { get; set; } = 0.00m;
 
-        /// <summary>
-        /// Applicable GST percentage rate (e.g. 18.00%).
-        /// </summary>
         public decimal TaxRate { get; set; } = 18.00m;
 
-        /// <summary>
-        /// Calculated GST tax amount.
-        /// </summary>
         public decimal TaxAmount { get; set; } = 0.00m;
 
-        /// <summary>
-        /// Optional discount amount deducted from total.
-        /// </summary>
         public decimal DiscountAmount { get; set; } = 0.00m;
 
-        /// <summary>
-        /// Final payable grand total amount.
-        /// </summary>
         public decimal TotalAmount { get; set; } = 0.00m;
 
-        /// <summary>
-        /// Formal Grand Total amount expressed in words (e.g. "Rupees Fifty-Four Thousand Only").
-        /// </summary>
         public string TotalAmountInWords { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Payment status: Draft, Pending, Paid, Overdue, Cancelled.
-        /// </summary>
         public string Status { get; set; } = "Draft";
 
-        /// <summary>
-        /// Payment mode (e.g. Bank Transfer, UPI, Credit Card, Cheque, Cash).
-        /// </summary>
         public string? PaymentMethod { get; set; }
 
-        /// <summary>
-        /// Additional client notes or delivery instructions.
-        /// </summary>
         public string? Notes { get; set; }
 
-        /// <summary>
-        /// Legal terms, payment terms, or warranty conditions.
-        /// </summary>
         public string? TermsAndConditions { get; set; }
 
-        /// <summary>
-        /// ID of user who created this invoice.
-        /// </summary>
         public int CreatedByUserId { get; set; }
 
-        /// <summary>
-        /// Name of user who created this invoice.
-        /// </summary>
         public string? CreatedByName { get; set; }
 
-        /// <summary>
-        /// Record creation timestamp.
-        /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        /// <summary>
-        /// Record last modification timestamp.
-        /// </summary>
         public DateTime? UpdatedAt { get; set; }
 
-        /// <summary>
-        /// Soft delete flag (1 = Active, 0 = Deleted).
-        /// </summary>
         public int DeletedFlag { get; set; } = 1;
 
-        /// <summary>
-        /// Navigation property for associated line item products.
-        /// </summary>
         public virtual ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Business Object Factory Method to create and calculate a new Invoice.
-        /// </summary>
         public static Invoice Create(
             string invoiceNumber,
             string customerName,
@@ -193,9 +108,6 @@ namespace MyBackend.Domain.Entities
             return invoice;
         }
 
-        /// <summary>
-        /// Recalculates subtotal, tax amount, average tax rate, total amount and word representation based on active items and discount.
-        /// </summary>
         public void RecalculateTotals()
         {
             var activeItems = Items.Where(i => i.DeletedFlag == 1).ToList();
@@ -218,9 +130,6 @@ namespace MyBackend.Domain.Entities
             TotalAmountInWords = ConvertAmountToWords(TotalAmount);
         }
 
-        /// <summary>
-        /// Updates the invoice general information, customer details, and payment options.
-        /// </summary>
         public void UpdateDetails(
             string? invoiceNumber,
             string customerName,
@@ -261,9 +170,6 @@ namespace MyBackend.Domain.Entities
             RecalculateTotals();
         }
 
-        /// <summary>
-        /// Soft deletes the invoice and all of its associated line items.
-        /// </summary>
         public void SoftDelete()
         {
             DeletedFlag = 0;
@@ -274,9 +180,6 @@ namespace MyBackend.Domain.Entities
             }
         }
 
-        /// <summary>
-        /// Converts decimal currency amount into standard Indian currency words (Rupees and Paise).
-        /// </summary>
         public static string ConvertAmountToWords(decimal amount)
         {
             if (amount <= 0) return "Rupees Zero Only";

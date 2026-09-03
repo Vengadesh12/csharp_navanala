@@ -7,9 +7,6 @@ using System.Threading.Tasks;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// User account directory and profile management endpoints (Legacy route support).
-    /// </summary>
     [ApiController]
     [Route("get")]
     [Tags("Users")]
@@ -24,14 +21,6 @@ namespace MyBackend.Api.Controllers
             _userService = userService;
         }
 
-        /// <summary>
-        /// Retrieve all users (Legacy route).
-        /// </summary>
-        /// <remarks>
-        /// Legacy endpoint returning all registered users in the workspace. Recommended standard route is <c>GET /api/users</c>.
-        /// </remarks>
-        /// <response code="200">List of users retrieved successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet]
         [ProducesResponseType(typeof(List<UserDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]

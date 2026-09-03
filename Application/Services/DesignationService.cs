@@ -10,9 +10,6 @@ using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// Implements Designation catalog management and querying using business object domain methods.
-    /// </summary>
     public class DesignationService : IDesignationService
     {
         private readonly IUnitOfWork _unitOfWork;

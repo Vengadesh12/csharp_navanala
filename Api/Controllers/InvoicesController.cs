@@ -9,9 +9,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Commercial invoice and billing management endpoints for MyBackend Technologies.
-    /// </summary>
     [ApiController]
     [Route("api/invoices")]
     [Tags("Invoices")]
@@ -30,9 +27,6 @@ namespace MyBackend.Api.Controllers
             _authService = authService;
         }
 
-        /// <summary>
-        /// Retrieves all invoices with optional search, status, and date range filters.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedInvoiceResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -52,9 +46,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Retrieves invoice KPI summary metrics (total invoiced, paid, pending, GST collected).
-        /// </summary>
         [HttpGet("summary")]
         [ProducesResponseType(typeof(InvoiceSummaryDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -74,9 +65,6 @@ namespace MyBackend.Api.Controllers
             return Ok(summary);
         }
 
-        /// <summary>
-        /// Retrieves a single invoice with all product line items by ID.
-        /// </summary>
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -101,10 +89,6 @@ namespace MyBackend.Api.Controllers
             return Ok(invoice);
         }
 
-        /// <summary>
-        /// Creates a new customer invoice with product line items, automatic GST calculation, and amount in words.
-        /// Only users with all permissions (Super Admin / invoices.manage) can edit the company GSTIN.
-        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -142,9 +126,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Updates an existing customer invoice.
-        /// </summary>
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -180,9 +161,6 @@ namespace MyBackend.Api.Controllers
             return Ok(updated);
         }
 
-        /// <summary>
-        /// Deletes / soft-deletes an invoice.
-        /// </summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

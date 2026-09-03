@@ -5,9 +5,6 @@ using System.Text.Json;
 
 namespace MyBackend.Configuration
 {
-    /// <summary>
-    /// Email communication settings model.
-    /// </summary>
     public class EmailSettings
     {
         public string SmtpServer { get; set; } = string.Empty;
@@ -19,11 +16,6 @@ namespace MyBackend.Configuration
         public int TimeoutSeconds { get; set; } = 30;
     }
 
-    /// <summary>
-    /// Centralized application configuration containing PostgreSQL database connection parameters,
-    /// Gmail SMTP credentials, JWT authorization secrets, and numeric security settings.
-    /// Secrets are loaded dynamically from environment variables, config.json, or appsettings.json.
-    /// </summary>
     public static class Config
     {
         // =========================================================================
@@ -86,9 +78,6 @@ namespace MyBackend.Configuration
         // Helper Methods & Parsers
         // =========================================================================
 
-        /// <summary>
-        /// Synchronizes and overlays configuration values from IConfiguration / environment variables / config.json / appsettings.json.
-        /// </summary>
         public static void Load(IConfiguration configuration)
         {
             // First load from config.json if available
@@ -368,9 +357,6 @@ namespace MyBackend.Configuration
         }
     }
 
-    /// <summary>
-    /// Alias for Config class providing backward-compatible and strongly typed access to application configuration properties.
-    /// </summary>
     public static class AppConfig
     {
         public static string DbHost => Config.DbHost;

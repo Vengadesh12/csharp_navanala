@@ -2,9 +2,6 @@ using System;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Calendar scheduled audits, access reviews, training, and meetings business object.
-    /// </summary>
     public class ScheduleEvent
     {
         public int Id { get; set; }
@@ -25,9 +22,6 @@ namespace MyBackend.Domain.Entities
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Factory method to create a new Schedule Event.
-        /// </summary>
         public static ScheduleEvent Create(
             string title,
             string? description,
@@ -64,9 +58,6 @@ namespace MyBackend.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Updates the scheduled event information.
-        /// </summary>
         public void UpdateDetails(
             string title,
             string? description,
@@ -97,9 +88,6 @@ namespace MyBackend.Domain.Entities
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Reschedules the date, time, and location of the event.
-        /// </summary>
         public void Reschedule(string newEventDate, string newStartTime, string newEndTime, string? newLocation = null)
         {
             if (!string.IsNullOrWhiteSpace(newEventDate)) EventDate = newEventDate.Trim();
@@ -109,18 +97,12 @@ namespace MyBackend.Domain.Entities
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Soft deletes the schedule event.
-        /// </summary>
         public void SoftDelete()
         {
             DeletedFlag = 0;
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Restores the schedule event.
-        /// </summary>
         public void Restore()
         {
             DeletedFlag = 1;

@@ -3,9 +3,6 @@ using System.Collections.Generic;
 
 namespace MyBackend.Application.DTO;
 
-/// <summary>
-/// Data transfer object for permission access request details.
-/// </summary>
 public class AccessRequestDto
 {
     public int Id { get; set; }
@@ -29,9 +26,6 @@ public class AccessRequestDto
     public int DeletedFlag { get; set; } = 1;
 }
 
-/// <summary>
-/// Payload submitted by an employee to request access for a permission.
-/// </summary>
 public class CreateAccessRequestDto
 {
     public string PermissionKey { get; set; } = string.Empty;
@@ -39,17 +33,11 @@ public class CreateAccessRequestDto
     public string Priority { get; set; } = "Medium";
 }
 
-/// <summary>
-/// Payload submitted by Super Admin / Manager to approve or reject a request.
-/// </summary>
 public class ReviewAccessRequestDto
 {
     public string? Comments { get; set; }
 }
 
-/// <summary>
-/// Represents a system permission with status indicator if granted to current user.
-/// </summary>
 public class AvailablePermissionDto
 {
     public int Id { get; set; }
@@ -61,9 +49,6 @@ public class AvailablePermissionDto
     public bool HasPendingRequest { get; set; }
 }
 
-/// <summary>
-/// Overall summary KPI counts for permission access requests.
-/// </summary>
 public class AccessRequestSummaryDto
 {
     public int TotalRequests { get; set; }
@@ -73,9 +58,6 @@ public class AccessRequestSummaryDto
     public int MyPendingRequests { get; set; }
 }
 
-/// <summary>
-/// Query filters for retrieving access requests.
-/// </summary>
 public class AccessRequestQueryParameters
 {
     public string? Status { get; set; }
@@ -87,9 +69,6 @@ public class AccessRequestQueryParameters
     public bool OnlyMyRequests { get; set; } = false;
 }
 
-/// <summary>
-/// Paginated response container for access requests.
-/// </summary>
 public class PagedAccessRequestResponse
 {
     public List<AccessRequestDto> Items { get; set; } = [];

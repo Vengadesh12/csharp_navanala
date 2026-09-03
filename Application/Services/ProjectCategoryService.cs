@@ -10,9 +10,6 @@ using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// Implements project category management and queries.
-    /// </summary>
     public class ProjectCategoryService : IProjectCategoryService
     {
         private readonly IApplicationDbContext _context;

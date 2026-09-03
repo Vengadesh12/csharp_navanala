@@ -23,9 +23,6 @@ namespace MyBackend.Api.Controllers
             _settingService = settingService;
         }
 
-        /// <summary>
-        /// Retrieve all workspace settings and parameters.
-        /// </summary>
         [HttpGet]
         [AllowAnonymous]
         [ProducesResponseType(typeof(SettingsOverviewResponse), StatusCodes.Status200OK)]
@@ -35,9 +32,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Retrieve all configuration categories registered in database.
-        /// </summary>
         [HttpGet("categories")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(List<SettingCategoryDto>), StatusCodes.Status200OK)]
@@ -47,9 +41,6 @@ namespace MyBackend.Api.Controllers
             return Ok(categories);
         }
 
-        /// <summary>
-        /// Create and persist a new configuration category.
-        /// </summary>
         [HttpPost("categories")]
         [ProducesResponseType(typeof(ApiResponse<SettingCategoryDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -66,9 +57,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Update an existing configuration category.
-        /// </summary>
         [HttpPut("categories/{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<SettingCategoryDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -89,9 +77,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Delete / soft-delete a configuration category.
-        /// </summary>
         [HttpDelete("categories/{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -113,9 +98,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Update multiple workspace configuration settings in bulk.
-        /// </summary>
         [HttpPost("bulk")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> UpdateSettingsBulk([FromBody] UpdateSettingsBulkRequest request)
@@ -130,9 +112,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Create or register a custom system configuration key.
-        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<SystemSettingDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -149,9 +128,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Update an existing system configuration setting.
-        /// </summary>
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<SystemSettingDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -172,9 +148,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Delete a configuration setting from the database.
-        /// </summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

@@ -5,9 +5,6 @@ using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Implements specialized User entity queries, raw SQL queries, and RBAC permission checks.
-    /// </summary>
     public class UserRepository : Repository<User>, IUserRepository
     {
         public UserRepository(AppDbContext context) : base(context)

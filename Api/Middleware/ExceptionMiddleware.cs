@@ -11,9 +11,6 @@ using MyBackend.Application.Common.Exceptions;
 
 namespace MyBackend.Api.Middleware
 {
-    /// <summary>
-    /// Global middleware for handling exceptions and mapping them to standardized JSON error responses.
-    /// </summary>
     public class ExceptionMiddleware
     {
         private readonly RequestDelegate _next;

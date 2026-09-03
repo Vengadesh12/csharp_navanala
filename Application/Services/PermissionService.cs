@@ -4,9 +4,6 @@ using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// Implements RBAC permission catalog retrieval and role-permission matrix assignments using repositories.
-    /// </summary>
     public class PermissionService : IPermissionService
     {
         private readonly IUnitOfWork _unitOfWork;

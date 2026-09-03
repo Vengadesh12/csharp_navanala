@@ -5,9 +5,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// In-memory thread-safe OTP manager with rate limiting and automatic expiration.
-    /// </summary>
     public class OtpService : IOtpService
     {
         private class OtpRecord

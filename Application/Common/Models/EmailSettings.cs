@@ -1,8 +1,5 @@
 namespace MyBackend.Application.Common.Models
 {
-    /// <summary>
-    /// Configuration model for SMTP email delivery.
-    /// </summary>
     public class EmailSettings
     {
         public string SmtpServer { get; set; } = "smtp.gmail.com";

@@ -3,9 +3,6 @@ using System.Collections.Generic;
 
 namespace MyBackend.Application.DTO;
 
-/// <summary>
-/// Item representing an individual user login/logout activity record with calculated metadata.
-/// </summary>
 public class UserSessionItemDto
 {
     public int Id { get; set; }
@@ -24,9 +21,6 @@ public class UserSessionItemDto
     public string Status { get; set; } = "Active";
 }
 
-/// <summary>
-/// Summary response containing KPI metric cards and active users for the User Activity page.
-/// </summary>
 public class UserActivitySummaryDto
 {
     public int ActiveUsersCount { get; set; }
@@ -37,9 +31,6 @@ public class UserActivitySummaryDto
     public List<UserSessionItemDto> RecentActivities { get; set; } = [];
 }
 
-/// <summary>
-/// Query parameters for filtering and paginating user activity sessions.
-/// </summary>
 public class UserActivityQueryParameters
 {
     public string? Search { get; set; }
@@ -48,9 +39,6 @@ public class UserActivityQueryParameters
     public int PageSize { get; set; } = 20;
 }
 
-/// <summary>
-/// Paginated response containing list of session items and metadata.
-/// </summary>
 public class PagedUserActivityResponse
 {
     public List<UserSessionItemDto> Items { get; set; } = [];

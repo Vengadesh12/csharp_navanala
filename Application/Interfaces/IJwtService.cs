@@ -4,9 +4,6 @@ using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Interfaces
 {
-    /// <summary>
-    /// Service contract for generating and validating JSON Web Tokens (JWT).
-    /// </summary>
     public interface IJwtService
     {
         string GenerateToken(User user, string? roleName = null, IEnumerable<string>? permissions = null, int? sessionId = null);

@@ -3,10 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Join business object mapping directly granted permissions to a specific user.
-    /// Used when access requests are approved by Super Admins without modifying role/department templates.
-    /// </summary>
     [Table("userpermissions")]
     public class UserPermission
     {

@@ -7,9 +7,6 @@ using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Implements RBAC permission catalog queries and atomic role-permission updates.
-    /// </summary>
     public class PermissionRepository : Repository<Permission>, IPermissionRepository
     {
         public PermissionRepository(AppDbContext context) : base(context)

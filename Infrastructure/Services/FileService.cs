@@ -6,9 +6,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Infrastructure.Services
 {
-    /// <summary>
-    /// Implements disk-based file persistence and upload management for user profiles.
-    /// </summary>
     public class FileService : IFileService
     {
         private readonly string _uploadsBasePath;

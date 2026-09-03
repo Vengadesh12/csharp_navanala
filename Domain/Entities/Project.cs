@@ -2,9 +2,6 @@ using System;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Workspace RBAC rollout, DevOps, and Governance initiative project business object.
-    /// </summary>
     public class Project
     {
         public int Id { get; set; }
@@ -22,9 +19,6 @@ namespace MyBackend.Domain.Entities
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Factory method to create a new Project.
-        /// </summary>
         public static Project Create(
             string name,
             string? description,
@@ -55,9 +49,6 @@ namespace MyBackend.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Updates the project parameters.
-        /// </summary>
         public void UpdateDetails(
             string name,
             string? description,
@@ -82,9 +73,6 @@ namespace MyBackend.Domain.Entities
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Updates the completion progress and optionally adjusts status.
-        /// </summary>
         public void UpdateProgress(int percentage, string? status = null)
         {
             ProgressPercentage = Math.Clamp(percentage, 0, 100);
@@ -93,18 +81,12 @@ namespace MyBackend.Domain.Entities
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Soft deletes the project.
-        /// </summary>
         public void SoftDelete()
         {
             DeletedFlag = 0;
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Restores a soft deleted project.
-        /// </summary>
         public void Restore()
         {
             DeletedFlag = 1;

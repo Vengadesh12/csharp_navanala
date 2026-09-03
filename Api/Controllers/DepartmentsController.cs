@@ -5,9 +5,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Workspace department management and designation hierarchy mapping endpoints.
-    /// </summary>
     [ApiController]
     [Route("api/departments")]
     [Tags("Departments")]
@@ -22,11 +19,6 @@ namespace MyBackend.Api.Controllers
             _departmentService = departmentService;
         }
 
-        /// <summary>
-        /// Retrieves complete department overview with hierarchy tree statistics and unassigned designations.
-        /// </summary>
-        /// <response code="200">Department overview and tree hierarchy returned.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet("overview")]
         [ProducesResponseType(typeof(DepartmentOverviewResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -36,11 +28,6 @@ namespace MyBackend.Api.Controllers
             return Ok(overview);
         }
 
-        /// <summary>
-        /// Retrieves all active departments with mapped designations.
-        /// </summary>
-        /// <response code="200">List of active departments returned.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet]
         [ProducesResponseType(typeof(List<DepartmentDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -50,12 +37,6 @@ namespace MyBackend.Api.Controllers
             return Ok(departments);
         }
 
-        /// <summary>
-        /// Retrieves a specific department by ID.
-        /// </summary>
-        /// <param name="id">Department ID.</param>
-        /// <response code="200">Department details returned.</response>
-        /// <response code="404">Department not found.</response>
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(DepartmentDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -69,12 +50,6 @@ namespace MyBackend.Api.Controllers
             return Ok(department);
         }
 
-        /// <summary>
-        /// Creates a new department and optionally associates designations.
-        /// </summary>
-        /// <param name="request">Department creation payload.</param>
-        /// <response code="201">Department created successfully.</response>
-        /// <response code="400">Invalid payload or department name already exists.</response>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<DepartmentDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -108,14 +83,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Updates an existing department and its designation mappings.
-        /// </summary>
-        /// <param name="id">Department ID.</param>
-        /// <param name="request">Updated department payload.</param>
-        /// <response code="200">Department updated successfully.</response>
-        /// <response code="400">Invalid payload.</response>
-        /// <response code="404">Department not found.</response>
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<DepartmentDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -152,12 +119,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Deletes / soft-deletes a department.
-        /// </summary>
-        /// <param name="id">Department ID.</param>
-        /// <response code="200">Department deleted successfully.</response>
-        /// <response code="404">Department not found.</response>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -178,13 +139,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Maps or assigns specific designations to this department.
-        /// </summary>
-        /// <param name="id">Department ID.</param>
-        /// <param name="request">Designation IDs to map.</param>
-        /// <response code="200">Designations mapped successfully.</response>
-        /// <response code="404">Department not found.</response>
         [HttpPost("{id:int}/map-designations")]
         [ProducesResponseType(typeof(ApiResponse<DepartmentDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

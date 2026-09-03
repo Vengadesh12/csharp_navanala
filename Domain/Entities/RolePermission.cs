@@ -1,8 +1,5 @@
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Join business object mapping assigned permissions to roles.
-    /// </summary>
     public class RolePermission
     {
         public int Id { get; set; }

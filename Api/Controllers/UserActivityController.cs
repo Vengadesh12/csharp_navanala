@@ -6,9 +6,6 @@ using System.Security.Claims;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Live user activity monitoring, active online sessions, and login/logout audit trail.
-    /// </summary>
     [ApiController]
     [Route("api/user-activity")]
     [Tags("UserActivity")]
@@ -25,12 +22,6 @@ namespace MyBackend.Api.Controllers
             _userService = userService;
         }
 
-        /// <summary>
-        /// Retrieves high-level dashboard metrics, live active user sessions, and recent logins.
-        /// </summary>
-        /// <response code="200">User activity metrics and active sessions returned.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks 'user_activity.view' permission.</response>
         [HttpGet("summary")]
         [ProducesResponseType(typeof(UserActivitySummaryDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -46,12 +37,6 @@ namespace MyBackend.Api.Controllers
             return Ok(summary);
         }
 
-        /// <summary>
-        /// Retrieves paginated list of user login/logout activity sessions with optional search and status filter.
-        /// </summary>
-        /// <response code="200">Paginated list of activity records returned.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks 'user_activity.view' permission.</response>
         [HttpGet]
         [ProducesResponseType(typeof(PagedUserActivityResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -67,12 +52,6 @@ namespace MyBackend.Api.Controllers
             return Ok(activities);
         }
 
-        /// <summary>
-        /// Retrieves list of currently logged in / active users.
-        /// </summary>
-        /// <response code="200">List of currently active sessions returned.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks 'user_activity.view' permission.</response>
         [HttpGet("active")]
         [ProducesResponseType(typeof(List<UserSessionItemDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -88,14 +67,6 @@ namespace MyBackend.Api.Controllers
             return Ok(activeUsers);
         }
 
-        /// <summary>
-        /// Force terminate an active session by session ID.
-        /// </summary>
-        /// <param name="sessionId">The ID of the session to terminate.</param>
-        /// <response code="200">Session terminated successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks manage permission.</response>
-        /// <response code="404">Session not found.</response>
         [HttpPost("terminate/{sessionId:int}")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -128,13 +99,6 @@ namespace MyBackend.Api.Controllers
             return Ok(new MessageResponse { Success = true, Message = "Session terminated successfully." });
         }
 
-        /// <summary>
-        /// Force logout a user from all their active sessions.
-        /// </summary>
-        /// <param name="userId">The target user ID to log out.</param>
-        /// <response code="200">User sessions terminated.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks manage permission.</response>
         [HttpPost("force-logout/{userId:int}")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]

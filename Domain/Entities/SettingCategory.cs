@@ -2,9 +2,6 @@ using System;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Represents a configuration category business object under Settings.
-    /// </summary>
     public class SettingCategory
     {
         public int Id { get; set; }
@@ -18,9 +15,6 @@ namespace MyBackend.Domain.Entities
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Factory method to create a new Setting Category.
-        /// </summary>
         public static SettingCategory Create(
             string name,
             string? description,
@@ -43,9 +37,6 @@ namespace MyBackend.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Updates the category details.
-        /// </summary>
         public void UpdateDetails(string name, string? description, string? icon)
         {
             if (string.IsNullOrWhiteSpace(name))
@@ -57,18 +48,12 @@ namespace MyBackend.Domain.Entities
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Soft deletes the setting category.
-        /// </summary>
         public void SoftDelete()
         {
             DeletedFlag = 0;
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Restores the setting category.
-        /// </summary>
         public void Restore()
         {
             DeletedFlag = 1;

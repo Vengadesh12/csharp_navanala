@@ -16,9 +16,6 @@ using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// Implements user authentication, 2FA validation, OTP recovery, login/logout session recording with IP tracking, and real-time password evaluation using repositories.
-    /// </summary>
     public class AuthService : IAuthService
     {
         private readonly IUnitOfWork _unitOfWork;

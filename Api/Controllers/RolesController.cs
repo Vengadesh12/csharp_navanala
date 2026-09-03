@@ -5,9 +5,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Role management endpoints for creating, editing, viewing, and deleting workspace roles.
-    /// </summary>
     [ApiController]
     [Route("api/roles")]
     [Tags("Roles")]
@@ -22,11 +19,6 @@ namespace MyBackend.Api.Controllers
             _roleService = roleService;
         }
 
-        /// <summary>
-        /// Retrieve all active workspace roles.
-        /// </summary>
-        /// <response code="200">List of roles retrieved successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet]
         [ProducesResponseType(typeof(List<RoleDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -36,13 +28,6 @@ namespace MyBackend.Api.Controllers
             return Ok(roles);
         }
 
-        /// <summary>
-        /// Retrieve detailed information for a single role by ID.
-        /// </summary>
-        /// <param name="id">The unique integer identifier of the role.</param>
-        /// <response code="200">Role retrieved successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="404">Role not found or is deactivated.</response>
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -57,13 +42,6 @@ namespace MyBackend.Api.Controllers
             return Ok(role);
         }
 
-        /// <summary>
-        /// Create a new workspace role.
-        /// </summary>
-        /// <param name="request">Payload containing the name and description of the role.</param>
-        /// <response code="201">Role created successfully; returns the created role entity.</response>
-        /// <response code="400">Role name is required.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -84,15 +62,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Update an existing role's title and description.
-        /// </summary>
-        /// <param name="id">The unique integer identifier of the role to update.</param>
-        /// <param name="request">Updated role details.</param>
-        /// <response code="200">Role updated successfully.</response>
-        /// <response code="400">Invalid payload provided.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="404">Role not found.</response>
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -119,14 +88,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Soft-delete (deactivate) a workspace role.
-        /// </summary>
-        /// <param name="id">The unique integer identifier of the role to deactivate.</param>
-        /// <response code="200">Role deleted successfully.</response>
-        /// <response code="400">Cannot delete Super Admin protected role.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="404">Role not found.</response>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -154,13 +115,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Restore a previously soft-deleted role.
-        /// </summary>
-        /// <param name="id">The unique integer identifier of the role to restore.</param>
-        /// <response code="200">Role restored successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="404">Role not found.</response>
         [HttpPost("{id:int}/restore")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]

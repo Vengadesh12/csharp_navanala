@@ -262,9 +262,6 @@ namespace MyBackend.Application.Services
             return $"{prefix}{nextSeq:D4}";
         }
 
-        /// <summary>
-        /// Converts decimal amounts into standard Indian currency words (Rupees and Paise, Lakhs and Crores).
-        /// </summary>
         public static string ConvertAmountToWords(decimal amount)
         {
             if (amount <= 0) return "Rupees Zero Only";

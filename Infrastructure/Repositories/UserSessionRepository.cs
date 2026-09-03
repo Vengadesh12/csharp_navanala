@@ -5,9 +5,6 @@ using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Implements user login and logout audit sessions storage and retrieval with timestamps and IP addresses.
-    /// </summary>
     public class UserSessionRepository : Repository<UserSession>, IUserSessionRepository
     {
         public UserSessionRepository(AppDbContext context) : base(context)

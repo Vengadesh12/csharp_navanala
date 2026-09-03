@@ -23,9 +23,6 @@ namespace MyBackend.Api.Controllers
             _reportService = reportService;
         }
 
-        /// <summary>
-        /// Retrieve all compliance and security reports.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(ReportsOverviewResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetReports([FromQuery] string? category, [FromQuery] string? search)
@@ -34,9 +31,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Retrieve all unique report categories.
-        /// </summary>
         [HttpGet("categories")]
         [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetCategories()
@@ -45,9 +39,6 @@ namespace MyBackend.Api.Controllers
             return Ok(categories);
         }
 
-        /// <summary>
-        /// Download / Export report data.
-        /// </summary>
         [HttpGet("{id:int}/download")]
         public async Task<IActionResult> DownloadReport(int id)
         {
@@ -61,9 +52,6 @@ namespace MyBackend.Api.Controllers
             return File(result.FileBytes, result.ContentType, result.FileName);
         }
 
-        /// <summary>
-        /// Generate / Create a new compliance report in the database.
-        /// </summary>
         [HttpPost]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(ApiResponse<ReportDto>), StatusCodes.Status201Created)]
@@ -81,9 +69,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Update an existing report's parameters or status.
-        /// </summary>
         [HttpPut("{id:int}")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(ApiResponse<ReportDto>), StatusCodes.Status200OK)]
@@ -104,9 +89,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Delete / soft-delete a report.
-        /// </summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

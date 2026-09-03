@@ -6,9 +6,6 @@ using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Interfaces
 {
-    /// <summary>
-    /// Coordinates operations across repositories and manages atomic transactions.
-    /// </summary>
     public interface IUnitOfWork : IDisposable, IAsyncDisposable
     {
         IUserRepository Users { get; }

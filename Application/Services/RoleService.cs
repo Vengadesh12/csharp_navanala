@@ -9,9 +9,6 @@ using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// Implements role creation, updates, querying, and soft deletion using repositories and business object domain methods.
-    /// </summary>
     public class RoleService : IRoleService
     {
         private readonly IUnitOfWork _unitOfWork;

@@ -6,9 +6,6 @@ using System.Security.Claims;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// User account provisioning, profile retrieval, updates, soft deletion, and restoration.
-    /// </summary>
     [ApiController]
     [Route("api/users")]
     [Tags("Users")]
@@ -23,11 +20,6 @@ namespace MyBackend.Api.Controllers
             _userService = userService;
         }
 
-        /// <summary>
-        /// Retrieve all users in the system formatted as UserDto.
-        /// </summary>
-        /// <response code="200">List of user accounts retrieved successfully.</response>
-        /// <response code="401">Unauthorized: Missing or invalid authentication token.</response>
         [HttpGet]
         [ProducesResponseType(typeof(List<UserDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -37,12 +29,6 @@ namespace MyBackend.Api.Controllers
             return Ok(users);
         }
 
-        /// <summary>
-        /// Retrieve detailed profile information for a single user by ID.
-        /// </summary>
-        /// <param name="id">The unique integer identifier of the user.</param>
-        /// <response code="200">User profile found and returned.</response>
-        /// <response code="404">No user exists with the specified ID.</response>
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -56,14 +42,6 @@ namespace MyBackend.Api.Controllers
             return Ok(user);
         }
 
-        /// <summary>
-        /// Provision and register a new user account and dispatch welcome credentials email via Gmail.
-        /// </summary>
-        /// <param name="request">New user registration payload.</param>
-        /// <response code="201">User created successfully; returns UserDto.</response>
-        /// <response code="400">Missing required fields.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks user creation permissions.</response>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -98,16 +76,6 @@ namespace MyBackend.Api.Controllers
                 });
         }
 
-        /// <summary>
-        /// Update an existing user's profile and credentials.
-        /// </summary>
-        /// <param name="id">The unique integer identifier of the user to update.</param>
-        /// <param name="request">Updated user payload.</param>
-        /// <response code="200">User updated successfully.</response>
-        /// <response code="400">Invalid payload provided.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks edit permissions.</response>
-        /// <response code="404">User not found.</response>
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -135,14 +103,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Soft-delete (deactivate) a user account.
-        /// </summary>
-        /// <param name="id">The unique integer identifier of the user to deactivate.</param>
-        /// <response code="200">User deactivated successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks delete permissions.</response>
-        /// <response code="404">User not found.</response>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -170,14 +130,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Restore a previously deactivated user account.
-        /// </summary>
-        /// <param name="id">The unique integer identifier of the user to restore.</param>
-        /// <response code="200">User account restored successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
-        /// <response code="403">Forbidden: Caller lacks restoration permissions.</response>
-        /// <response code="404">User not found.</response>
         [HttpPost("{id:int}/restore")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]

@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Business object representing user login and logout audit sessions with state transitions.
-    /// </summary>
     [Table("user_sessions")]
     public class UserSession
     {
@@ -25,9 +22,6 @@ namespace MyBackend.Domain.Entities
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Factory method to create and start a new User Session.
-        /// </summary>
         public static UserSession Start(
             int userId,
             string email,
@@ -54,9 +48,6 @@ namespace MyBackend.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Ends and terminates the user session.
-        /// </summary>
         public void EndSession(DateTime? logoutTime = null)
         {
             var now = logoutTime ?? DateTime.UtcNow;
@@ -65,9 +56,6 @@ namespace MyBackend.Domain.Entities
             UpdatedAt = now;
         }
 
-        /// <summary>
-        /// Soft deletes the session record.
-        /// </summary>
         public void SoftDelete()
         {
             DeletedFlag = 0;

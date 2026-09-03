@@ -6,9 +6,6 @@ using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Implements the Unit of Work pattern, coordinating repositories and database transaction lifecycles.
-    /// </summary>
     public class UnitOfWork : IUnitOfWork
     {
         private readonly AppDbContext _context;

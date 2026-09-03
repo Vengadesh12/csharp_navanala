@@ -4,9 +4,6 @@ using MyBackend.Application.DTO;
 
 namespace MyBackend.Application.Interfaces
 {
-    /// <summary>
-    /// Service contract for managing project categories in PostgreSQL.
-    /// </summary>
     public interface IProjectCategoryService
     {
         Task<List<ProjectCategoryDto>> GetAllCategoriesAsync();

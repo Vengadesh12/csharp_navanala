@@ -3,9 +3,6 @@ using System.Collections.Generic;
 
 namespace MyBackend.Application.DTO;
 
-/// <summary>
-/// Data transfer object representing a single invoice item / product.
-/// </summary>
 public class InvoiceItemDto
 {
     public int Id { get; set; }
@@ -20,9 +17,6 @@ public class InvoiceItemDto
     public int OrderIndex { get; set; }
 }
 
-/// <summary>
-/// Data transfer object representing an Invoice.
-/// </summary>
 public class InvoiceDto
 {
     public int Id { get; set; }
@@ -52,9 +46,6 @@ public class InvoiceDto
     public List<InvoiceItemDto> Items { get; set; } = new();
 }
 
-/// <summary>
-/// Payload to create a line item in an invoice.
-/// </summary>
 public class CreateInvoiceItemRequest
 {
     public string ProductName { get; set; } = string.Empty;
@@ -64,9 +55,6 @@ public class CreateInvoiceItemRequest
     public decimal TaxRate { get; set; } = 18.00m;
 }
 
-/// <summary>
-/// Request payload to create a new invoice.
-/// </summary>
 public class CreateInvoiceRequest
 {
     public string? InvoiceNumber { get; set; }
@@ -86,9 +74,6 @@ public class CreateInvoiceRequest
     public List<CreateInvoiceItemRequest> Items { get; set; } = new();
 }
 
-/// <summary>
-/// Request payload to update an existing invoice.
-/// </summary>
 public class UpdateInvoiceRequest
 {
     public string? InvoiceNumber { get; set; }
@@ -108,9 +93,6 @@ public class UpdateInvoiceRequest
     public List<CreateInvoiceItemRequest> Items { get; set; } = new();
 }
 
-/// <summary>
-/// Filter parameters for querying invoices.
-/// </summary>
 public class InvoiceQueryParameters
 {
     public string? Search { get; set; }
@@ -121,9 +103,6 @@ public class InvoiceQueryParameters
     public int PageSize { get; set; } = 50;
 }
 
-/// <summary>
-/// Paginated response envelope for invoices.
-/// </summary>
 public class PagedInvoiceResponse
 {
     public bool Success { get; set; } = true;
@@ -133,9 +112,6 @@ public class PagedInvoiceResponse
     public List<InvoiceDto> Data { get; set; } = new();
 }
 
-/// <summary>
-/// Executive summary metrics for Invoices module.
-/// </summary>
 public class InvoiceSummaryDto
 {
     public int TotalInvoices { get; set; }

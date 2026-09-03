@@ -2,9 +2,6 @@ using System;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// System permission business object defining a specific platform capability.
-    /// </summary>
     public class Permission
     {
         public int Id { get; set; }
@@ -17,9 +14,6 @@ namespace MyBackend.Domain.Entities
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Factory method to create a new Permission.
-        /// </summary>
         public static Permission Create(string permissionKey, string name, string? description)
         {
             if (string.IsNullOrWhiteSpace(permissionKey))
@@ -39,9 +33,6 @@ namespace MyBackend.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Updates the permission display name and description.
-        /// </summary>
         public void UpdateDetails(string name, string? description)
         {
             if (string.IsNullOrWhiteSpace(name))
@@ -52,18 +43,12 @@ namespace MyBackend.Domain.Entities
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Soft deletes the permission.
-        /// </summary>
         public void SoftDelete()
         {
             DeletedFlag = 0;
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Restores a soft-deleted permission.
-        /// </summary>
         public void Restore()
         {
             DeletedFlag = 1;

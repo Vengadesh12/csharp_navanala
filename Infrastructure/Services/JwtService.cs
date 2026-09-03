@@ -12,9 +12,6 @@ using MyBackend.Domain.Entities;
 
 namespace MyBackend.Infrastructure.Services
 {
-    /// <summary>
-    /// Implements JWT token generation, reading, and validation using configured signing credentials.
-    /// </summary>
     public class JwtService : IJwtService
     {
         private readonly IConfiguration _configuration;

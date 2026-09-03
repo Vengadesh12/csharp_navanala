@@ -5,9 +5,6 @@ using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Implements specialized Department queries and lookup dictionaries.
-    /// </summary>
     public class DepartmentRepository : Repository<Department>, IDepartmentRepository
     {
         public DepartmentRepository(AppDbContext context) : base(context)

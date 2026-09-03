@@ -22,9 +22,6 @@ namespace MyBackend.Api.Controllers
             _projectService = projectService;
         }
 
-        /// <summary>
-        /// Retrieve all RBAC and deployment projects with summary metrics.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(ProjectsOverviewResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetProjects([FromQuery] string? category, [FromQuery] string? status, [FromQuery] string? search)
@@ -33,9 +30,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Create a new project initiative in the database.
-        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -47,14 +41,11 @@ namespace MyBackend.Api.Controllers
             return CreatedAtAction(nameof(GetProjects), new { id = project.Id }, new ApiResponse<ProjectDto>
             {
                 Success = true,
-                Message = "Project created and stored in database successfully!",
+                Message = "Project created and saved successfully!",
                 Data = project
             });
         }
 
-        /// <summary>
-        /// Update an existing project's status, progress, or parameters.
-        /// </summary>
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -74,9 +65,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Delete / soft-delete a project.
-        /// </summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

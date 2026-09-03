@@ -8,10 +8,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Middleware
 {
-    /// <summary>
-    /// Validates that authenticated incoming requests correspond to an active session in the database.
-    /// Rejects requests from terminated/force-logged-out sessions with 401 Unauthorized.
-    /// </summary>
     public class ActiveSessionValidationMiddleware
     {
         private readonly RequestDelegate _next;

@@ -10,9 +10,6 @@ using EmailSettings = MyBackend.Application.Common.Models.EmailSettings;
 
 namespace MyBackend.Infrastructure.Services
 {
-    /// <summary>
-    /// Implementation of IEmailService using Gmail SMTP.
-    /// </summary>
     public class GmailEmailService : IEmailService
     {
         private readonly EmailSettings _settings;

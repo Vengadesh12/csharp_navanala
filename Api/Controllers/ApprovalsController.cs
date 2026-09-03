@@ -9,9 +9,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Employee approval requests and manager approval/rejection decision endpoints.
-    /// </summary>
     [ApiController]
     [Route("api/approvals")]
     [Tags("Approvals")]
@@ -33,9 +30,6 @@ namespace MyBackend.Api.Controllers
             _departmentService = departmentService;
         }
 
-        /// <summary>
-        /// Retrieves approval requests with optional status, category, priority, and search filters.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedApprovalResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -48,9 +42,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Retrieves approval summary metrics (total, pending, approved, rejected, my requests).
-        /// </summary>
         [HttpGet("summary")]
         [ProducesResponseType(typeof(ApprovalSummaryDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -63,9 +54,6 @@ namespace MyBackend.Api.Controllers
             return Ok(summary);
         }
 
-        /// <summary>
-        /// Retrieves single approval request details by ID.
-        /// </summary>
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<ApprovalRequestDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -95,9 +83,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Raises a new employee approval request for hardware, software, or products.
-        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<ApprovalRequestDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -129,9 +114,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Processes Manager / Super Admin decision (Approve or Reject) with optional remarks.
-        /// </summary>
         [HttpPut("{id:int}/action")]
         [ProducesResponseType(typeof(ApiResponse<ApprovalRequestDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -170,9 +152,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Cancels / deletes an approval request.
-        /// </summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

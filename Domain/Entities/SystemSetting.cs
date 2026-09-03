@@ -2,9 +2,6 @@ using System;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// System and workspace configuration setting key-value business object.
-    /// </summary>
     public class SystemSetting
     {
         public int Id { get; set; }
@@ -19,9 +16,6 @@ namespace MyBackend.Domain.Entities
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Factory method to create a new System Setting.
-        /// </summary>
         public static SystemSetting Create(
             string settingKey,
             string settingValue,
@@ -47,9 +41,6 @@ namespace MyBackend.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Updates the configuration value and metadata.
-        /// </summary>
         public void UpdateValue(
             string settingValue,
             string updatedBy,

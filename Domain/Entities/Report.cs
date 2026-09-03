@@ -2,9 +2,6 @@ using System;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Compliance, access, and security reports business object.
-    /// </summary>
     public class Report
     {
         public int Id { get; set; }
@@ -23,9 +20,6 @@ namespace MyBackend.Domain.Entities
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Factory method to create a new Report.
-        /// </summary>
         public static Report Create(
             string title,
             string? description,
@@ -58,9 +52,6 @@ namespace MyBackend.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Updates the report parameters.
-        /// </summary>
         public void UpdateDetails(
             string title,
             string? description,
@@ -93,18 +84,12 @@ namespace MyBackend.Domain.Entities
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Soft deletes the report.
-        /// </summary>
         public void SoftDelete()
         {
             DeletedFlag = 0;
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Restores a soft-deleted report.
-        /// </summary>
         public void Restore()
         {
             DeletedFlag = 1;

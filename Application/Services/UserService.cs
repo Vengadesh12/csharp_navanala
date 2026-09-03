@@ -13,9 +13,6 @@ using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// Implements user account provisioning, profile retrieval, updates, soft deletion, and permission verification using repositories and business objects.
-    /// </summary>
     public class UserService : IUserService
     {
         private readonly IUnitOfWork _unitOfWork;

@@ -11,9 +11,6 @@ using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// Implements Department catalog management, hierarchical aggregation, and designation mapping.
-    /// </summary>
     public class DepartmentService : IDepartmentService
     {
         private readonly IUnitOfWork _unitOfWork;

@@ -80,7 +80,7 @@ namespace MyBackend.Application.Services
                 ActiveRollouts = activeRollouts,
                 OnTrackCount = onTrackCount,
                 PendingReviewsCount = pendingReviews,
-                Projects = rawProjects.ToDtoList()
+                Projects = rawProjects.ToDtoList(),
             };
         }
 

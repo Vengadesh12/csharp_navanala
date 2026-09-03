@@ -5,9 +5,6 @@ using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Implements specialized Role entity operations and queries.
-    /// </summary>
     public class RoleRepository : Repository<Role>, IRoleRepository
     {
         public RoleRepository(AppDbContext context) : base(context)

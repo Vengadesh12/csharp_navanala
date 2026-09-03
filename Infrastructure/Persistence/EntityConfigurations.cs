@@ -9,9 +9,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
     // 4. Fluent API Entity Type Configurations (IEntityTypeConfiguration<T>)
     // =========================================================================
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for User entity.
-    /// </summary>
     public class UserConfiguration : IEntityTypeConfiguration<User>
     {
         public void Configure(EntityTypeBuilder<User> builder)
@@ -78,9 +75,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for Role entity.
-    /// </summary>
     public class RoleConfiguration : IEntityTypeConfiguration<Role>
     {
         public void Configure(EntityTypeBuilder<Role> builder)
@@ -113,9 +107,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for Department entity.
-    /// </summary>
     public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
     {
         public void Configure(EntityTypeBuilder<Department> builder)
@@ -148,9 +139,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for Designation entity.
-    /// </summary>
     public class DesignationConfiguration : IEntityTypeConfiguration<Designation>
     {
         public void Configure(EntityTypeBuilder<Designation> builder)
@@ -191,9 +179,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for Permission entity.
-    /// </summary>
     public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
     {
         public void Configure(EntityTypeBuilder<Permission> builder)
@@ -231,9 +216,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for RolePermission entity.
-    /// </summary>
     public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermission>
     {
         public void Configure(EntityTypeBuilder<RolePermission> builder)
@@ -261,9 +243,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for DepartmentPermission entity.
-    /// </summary>
     public class DepartmentPermissionConfiguration : IEntityTypeConfiguration<DepartmentPermission>
     {
         public void Configure(EntityTypeBuilder<DepartmentPermission> builder)
@@ -291,9 +270,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for UserSession entity.
-    /// </summary>
     public class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>
     {
         public void Configure(EntityTypeBuilder<UserSession> builder)
@@ -352,9 +328,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for Menu entity.
-    /// </summary>
     public class MenuConfiguration : IEntityTypeConfiguration<Menu>
     {
         public void Configure(EntityTypeBuilder<Menu> builder)
@@ -412,9 +385,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for AuditLog entity.
-    /// </summary>
     public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
     {
         public void Configure(EntityTypeBuilder<AuditLog> builder)
@@ -464,9 +434,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for Report entity.
-    /// </summary>
     public class ReportConfiguration : IEntityTypeConfiguration<Report>
     {
         public void Configure(EntityTypeBuilder<Report> builder)
@@ -527,9 +494,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for ReportCategory entity.
-    /// </summary>
     public class ReportCategoryConfiguration : IEntityTypeConfiguration<ReportCategory>
     {
         public void Configure(EntityTypeBuilder<ReportCategory> builder)
@@ -562,9 +526,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for Project entity.
-    /// </summary>
     public class ProjectConfiguration : IEntityTypeConfiguration<Project>
     {
         public void Configure(EntityTypeBuilder<Project> builder)
@@ -619,9 +580,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for ProjectCategory entity.
-    /// </summary>
     public class ProjectCategoryConfiguration : IEntityTypeConfiguration<ProjectCategory>
     {
         public void Configure(EntityTypeBuilder<ProjectCategory> builder)
@@ -654,9 +612,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for ScheduleEvent entity.
-    /// </summary>
     public class ScheduleEventConfiguration : IEntityTypeConfiguration<ScheduleEvent>
     {
         public void Configure(EntityTypeBuilder<ScheduleEvent> builder)
@@ -723,9 +678,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for SystemSetting entity.
-    /// </summary>
     public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting>
     {
         public void Configure(EntityTypeBuilder<SystemSetting> builder)
@@ -769,9 +721,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for SettingCategory entity.
-    /// </summary>
     public class SettingCategoryConfiguration : IEntityTypeConfiguration<SettingCategory>
     {
         public void Configure(EntityTypeBuilder<SettingCategory> builder)
@@ -812,9 +761,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for EventType entity.
-    /// </summary>
     public class EventTypeConfiguration : IEntityTypeConfiguration<EventType>
     {
         public void Configure(EntityTypeBuilder<EventType> builder)
@@ -859,9 +805,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for ApprovalRequest entity.
-    /// </summary>
     public class ApprovalRequestConfiguration : IEntityTypeConfiguration<ApprovalRequest>
     {
         public void Configure(EntityTypeBuilder<ApprovalRequest> builder)
@@ -945,9 +888,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for Purchase entity.
-    /// </summary>
     public class PurchaseConfiguration : IEntityTypeConfiguration<Purchase>
     {
         public void Configure(EntityTypeBuilder<Purchase> builder)
@@ -1051,9 +991,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for Invoice entity.
-    /// </summary>
     public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
     {
         public void Configure(EntityTypeBuilder<Invoice> builder)
@@ -1165,9 +1102,6 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    /// <summary>
-    /// Fluent API Entity Type Configuration for InvoiceItem entity.
-    /// </summary>
     public class InvoiceItemConfiguration : IEntityTypeConfiguration<InvoiceItem>
     {
         public void Configure(EntityTypeBuilder<InvoiceItem> builder)

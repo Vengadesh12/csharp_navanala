@@ -9,10 +9,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Vendor procurement and quotation management for approved products.
-    /// Access restricted strictly to Managers, HR Department members, and Super Admins.
-    /// </summary>
     [ApiController]
     [Route("api/purchases")]
     [Tags("Purchases")]
@@ -34,9 +30,6 @@ namespace MyBackend.Api.Controllers
             _designationService = designationService;
         }
 
-        /// <summary>
-        /// Retrieves all purchases / vendor quotations with optional search, status, and category filters.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedPurchaseResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -57,9 +50,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Retrieves all approved products available for vendor quotation.
-        /// </summary>
         [HttpGet("approved-products")]
         [ProducesResponseType(typeof(ApiResponse<ApprovedProductDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -80,9 +70,6 @@ namespace MyBackend.Api.Controllers
             return Ok(items);
         }
 
-        /// <summary>
-        /// Retrieves executive procurement KPI summary metrics.
-        /// </summary>
         [HttpGet("summary")]
         [ProducesResponseType(typeof(PurchaseSummaryDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -103,9 +90,6 @@ namespace MyBackend.Api.Controllers
             return Ok(summary);
         }
 
-        /// <summary>
-        /// Retrieves single purchase details by ID.
-        /// </summary>
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<PurchaseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -135,9 +119,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Creates a new vendor quotation for an approved product.
-        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<PurchaseDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -174,9 +155,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Updates vendor details, quotation amount, or delivery status.
-        /// </summary>
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<PurchaseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -211,9 +189,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Soft-deletes a purchase record.
-        /// </summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

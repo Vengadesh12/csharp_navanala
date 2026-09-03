@@ -5,9 +5,6 @@ using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Generic EF Core repository implementation for domain entities.
-    /// </summary>
     public class Repository<T> : IRepository<T> where T : class
     {
         protected readonly AppDbContext _context;

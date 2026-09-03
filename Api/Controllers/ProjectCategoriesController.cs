@@ -6,9 +6,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Workspace project categories management and lookup endpoints.
-    /// </summary>
     [ApiController]
     [Route("api/project-categories")]
     [Tags("Project Categories")]
@@ -23,11 +20,6 @@ namespace MyBackend.Api.Controllers
             _projectCategoryService = projectCategoryService;
         }
 
-        /// <summary>
-        /// Retrieves all active project categories from the database.
-        /// </summary>
-        /// <response code="200">List of project categories returned.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet]
         [ProducesResponseType(typeof(List<ProjectCategoryDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -37,12 +29,6 @@ namespace MyBackend.Api.Controllers
             return Ok(categories);
         }
 
-        /// <summary>
-        /// Retrieves a specific project category by ID.
-        /// </summary>
-        /// <param name="id">Category ID.</param>
-        /// <response code="200">Category details returned.</response>
-        /// <response code="404">Category not found.</response>
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(ProjectCategoryDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -56,13 +42,6 @@ namespace MyBackend.Api.Controllers
             return Ok(category);
         }
 
-        /// <summary>
-        /// Creates and stores a new project category in the database.
-        /// </summary>
-        /// <param name="request">New project category payload.</param>
-        /// <response code="201">Project category created successfully.</response>
-        /// <response code="400">Invalid payload or category name already exists.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<ProjectCategoryDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -97,12 +76,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Deletes / soft-deletes a project category.
-        /// </summary>
-        /// <param name="id">Category ID.</param>
-        /// <response code="200">Category deleted successfully.</response>
-        /// <response code="404">Category not found.</response>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

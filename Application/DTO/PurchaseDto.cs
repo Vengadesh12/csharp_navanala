@@ -3,9 +3,6 @@ using System.Collections.Generic;
 
 namespace MyBackend.Application.DTO;
 
-/// <summary>
-/// Data transfer object representing a vendor purchase order / quotation.
-/// </summary>
 public class PurchaseDto
 {
     public int Id { get; set; }
@@ -33,14 +30,8 @@ public class PurchaseDto
     public DateTime? UpdatedAt { get; set; }
 }
 
-/// <summary>
-/// Request payload to record a new vendor quotation for an approved product.
-/// </summary>
 public class CreatePurchaseRequest
 {
-    /// <summary>
-    /// ID of the approved approval request (must be Status == 'Approved').
-    /// </summary>
     public int ApprovalRequestId { get; set; }
 
     public string VendorName { get; set; } = string.Empty;
@@ -55,9 +46,6 @@ public class CreatePurchaseRequest
     public string? Status { get; set; } = "Quotation Received";
 }
 
-/// <summary>
-/// Request payload to update vendor details or quotation status.
-/// </summary>
 public class UpdatePurchaseRequest
 {
     public string VendorName { get; set; } = string.Empty;
@@ -72,9 +60,6 @@ public class UpdatePurchaseRequest
     public string Status { get; set; } = "Quotation Received";
 }
 
-/// <summary>
-/// DTO representing an approved approval request available for vendor procurement.
-/// </summary>
 public class ApprovedProductDto
 {
     public int Id { get; set; }
@@ -94,9 +79,6 @@ public class ApprovedProductDto
     public int? ExistingPurchaseId { get; set; }
 }
 
-/// <summary>
-/// Executive summary metrics for the Purchases / Vendor Procurement module.
-/// </summary>
 public class PurchaseSummaryDto
 {
     public int TotalPurchases { get; set; }
@@ -109,9 +91,6 @@ public class PurchaseSummaryDto
     public int ApprovedItemsPendingQuotation { get; set; }
 }
 
-/// <summary>
-/// Query filter parameters for retrieving purchases.
-/// </summary>
 public class PurchaseQueryParameters
 {
     public string? Status { get; set; }
@@ -121,9 +100,6 @@ public class PurchaseQueryParameters
     public int PageSize { get; set; } = 50;
 }
 
-/// <summary>
-/// Paginated response container for purchases.
-/// </summary>
 public class PagedPurchaseResponse
 {
     public List<PurchaseDto> Data { get; set; } = [];

@@ -4,9 +4,6 @@ using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Interfaces
 {
-    /// <summary>
-    /// Database context abstraction for the application layer.
-    /// </summary>
     public interface IApplicationDbContext
     {
         DbSet<User> Users { get; }

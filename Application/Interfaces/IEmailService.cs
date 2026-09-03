@@ -1,8 +1,5 @@
 namespace MyBackend.Application.Interfaces
 {
-    /// <summary>
-    /// Service contract for sending transactional emails (credentials, OTP codes, alerts).
-    /// </summary>
     public interface IEmailService
     {
         Task SendEmailAsync(string toEmail, string subject, string htmlBody);

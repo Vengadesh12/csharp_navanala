@@ -10,9 +10,6 @@ using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
-    /// <summary>
-    /// Implements aggregate workspace metrics calculation, chart generation, and activity reporting using repositories.
-    /// </summary>
     public class DashboardService : IDashboardService
     {
         private readonly IUnitOfWork _unitOfWork;

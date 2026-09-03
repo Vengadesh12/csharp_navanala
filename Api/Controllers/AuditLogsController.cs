@@ -22,9 +22,6 @@ namespace MyBackend.Api.Controllers
             _auditLogService = auditLogService;
         }
 
-        /// <summary>
-        /// Retrieve all system audit logs and summary metrics from database.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(AuditLogOverviewResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAuditLogs([FromQuery] string? module, [FromQuery] string? search)
@@ -33,9 +30,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Record a new audit log / security event manually or programmatically.
-        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<AuditLogDto>), StatusCodes.Status201Created)]
         public async Task<IActionResult> CreateAuditLog([FromBody] CreateAuditLogRequest request)
@@ -53,9 +47,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Delete / remove an audit log entry.
-        /// </summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

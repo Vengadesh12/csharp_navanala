@@ -2,9 +2,6 @@ using MyBackend.Application.DTO;
 
 namespace MyBackend.Application.Interfaces
 {
-    /// <summary>
-    /// Service contract for managing report categories in PostgreSQL.
-    /// </summary>
     public interface IReportCategoryService
     {
         Task<List<ReportCategoryDto>> GetAllCategoriesAsync();

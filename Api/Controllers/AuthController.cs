@@ -11,9 +11,6 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
-    /// <summary>
-    /// Authentication, 2FA validation, user session tracking (login/logout with IP address and timestamps), and password evaluation endpoints.
-    /// </summary>
     [ApiController]
     [Route("api/auth")]
     [Tags("Authentication")]
@@ -27,10 +24,6 @@ namespace MyBackend.Api.Controllers
             _authService = authService;
         }
 
-        /// <summary>
-        /// Retrieve the current system maintenance mode status.
-        /// </summary>
-        /// <response code="200">Returns maintenance mode boolean flag and notification message.</response>
         [HttpGet("maintenance-status")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(MaintenanceStatusResponse), StatusCodes.Status200OK)]
@@ -40,13 +33,6 @@ namespace MyBackend.Api.Controllers
             return Ok(status);
         }
 
-        /// <summary>
-        /// Authenticate user credentials, record login session with client IP address &amp; timestamp in database, and generate JWT access token.
-        /// </summary>
-        /// <param name="request">User login credentials containing email and password.</param>
-        /// <response code="200">Authentication successful (or 2FA required); returns user profile, permissions, dynamic menus, and JWT token.</response>
-        /// <response code="400">Email or password was not provided.</response>
-        /// <response code="401">Invalid credentials or account is deactivated.</response>
         [HttpPost("login")]
         [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -76,13 +62,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Authenticate user via Google OAuth 2.0 Identity Services credential, track session in database, and generate JWT access token.
-        /// </summary>
-        /// <param name="request">Google OAuth payload containing ID Token, email, name, and profile image.</param>
-        /// <response code="200">Google authentication successful; returns user profile, permissions, dynamic menus, and JWT token.</response>
-        /// <response code="400">Email was not provided or token payload is invalid.</response>
-        /// <response code="401">User account is deactivated.</response>
         [HttpPost("google-login")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
@@ -117,13 +96,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Verify Two-Factor Authentication (2FA) OTP code, record active session with IP address in database, and generate JWT token upon validation.
-        /// </summary>
-        /// <param name="request">Payload containing user email and 6-digit 2FA OTP.</param>
-        /// <response code="200">2FA OTP verified; returns authenticated session data and JWT token.</response>
-        /// <response code="400">Invalid or expired 2FA code.</response>
-        /// <response code="404">User account not found.</response>
         [HttpPost("login-2fa-verify")]
         [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -153,10 +125,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Record user logout time, date, and IP address in the database and deactivate active session.
-        /// </summary>
-        /// <response code="200">Logout session recorded and session terminated successfully.</response>
         [HttpPost("logout")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
@@ -179,11 +147,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Retrieve the session history (login times, logout times, dates, and IP addresses) for the current user.
-        /// </summary>
-        /// <response code="200">List of user sessions returned successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet("sessions")]
         [Authorize]
         [ProducesResponseType(typeof(List<UserSessionDto>), StatusCodes.Status200OK)]
@@ -199,11 +162,6 @@ namespace MyBackend.Api.Controllers
             return Ok(sessions);
         }
 
-        /// <summary>
-        /// Retrieve all recent workspace user sessions across the system (Requires Super Admin or permissions.manage).
-        /// </summary>
-        /// <response code="200">List of workspace user sessions returned successfully.</response>
-        /// <response code="401">Unauthorized: Authentication token is required.</response>
         [HttpGet("sessions/all")]
         [Authorize]
         [ProducesResponseType(typeof(List<UserSessionDto>), StatusCodes.Status200OK)]
@@ -214,13 +172,6 @@ namespace MyBackend.Api.Controllers
             return Ok(sessions);
         }
 
-        /// <summary>
-        /// Resend 2FA login verification code to the user's registered email.
-        /// </summary>
-        /// <param name="request">Payload containing registered user email.</param>
-        /// <response code="200">New 2FA code dispatched via email.</response>
-        /// <response code="400">Email payload is invalid.</response>
-        /// <response code="404">User account not found.</response>
         [HttpPost("resend-2fa-otp")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -250,13 +201,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Initiate password reset by dispatching a 6-digit verification OTP to the user's registered email.
-        /// </summary>
-        /// <param name="request">Payload containing the registered email address.</param>
-        /// <response code="200">OTP generated and dispatched via email successfully.</response>
-        /// <response code="400">Invalid email payload.</response>
-        /// <response code="404">No active user account found with this email.</response>
         [HttpPost("forgot-password")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -286,12 +230,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Validate the OTP entered by the user before password update.
-        /// </summary>
-        /// <param name="request">Email and 6-digit OTP code.</param>
-        /// <response code="200">OTP is valid and ready for password reset.</response>
-        /// <response code="400">Invalid or expired OTP code.</response>
         [HttpPost("verify-otp")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -308,13 +246,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Reset user password using verified OTP with strong password validation.
-        /// </summary>
-        /// <param name="request">Email, OTP, and new password payload.</param>
-        /// <response code="200">Password reset successfully.</response>
-        /// <response code="400">OTP invalid, passwords mismatch, or password does not satisfy strong security requirements.</response>
-        /// <response code="404">User not found.</response>
         [HttpPost("reset-password")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -340,11 +271,6 @@ namespace MyBackend.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Evaluate password strength and complexity rules in real-time.
-        /// </summary>
-        /// <param name="request">Payload containing the candidate password string.</param>
-        /// <response code="200">Password evaluation completed with criteria statuses and strength score.</response>
         [HttpPost("validate-password")]
         [HttpPost("evaluate-password")]
         [AllowAnonymous]
@@ -355,11 +281,6 @@ namespace MyBackend.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Retrieve the permission keys for the currently authenticated user.
-        /// </summary>
-        /// <response code="200">Returns list of granted permission keys.</response>
-        /// <response code="401">Unauthorized: Valid JWT Bearer token missing or user deactivated.</response>
         [HttpGet("permissions")]
         [Authorize]
         [ProducesResponseType(typeof(CurrentUserPermissionsResponse), StatusCodes.Status200OK)]

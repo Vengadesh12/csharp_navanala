@@ -2,9 +2,6 @@ using System;
 
 namespace MyBackend.Domain.Entities
 {
-    /// <summary>
-    /// Represents a calendar event type / schedule category business object.
-    /// </summary>
     public class EventType
     {
         public int Id { get; set; }
@@ -19,9 +16,6 @@ namespace MyBackend.Domain.Entities
 
         #region Business Object Domain Methods
 
-        /// <summary>
-        /// Factory method to create a new Event Type.
-        /// </summary>
         public static EventType Create(
             string name,
             string? description,
@@ -46,9 +40,6 @@ namespace MyBackend.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Updates the description, color, and icon of the event type.
-        /// </summary>
         public void UpdateDetails(string? description, string? color, string? icon)
         {
             Description = description?.Trim() ?? string.Empty;
@@ -57,18 +48,12 @@ namespace MyBackend.Domain.Entities
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Soft deletes the event type.
-        /// </summary>
         public void SoftDelete()
         {
             DeletedFlag = 0;
             UpdatedAt = DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Restores the event type.
-        /// </summary>
         public void Restore()
         {
             DeletedFlag = 1;

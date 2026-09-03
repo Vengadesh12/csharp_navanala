@@ -20,9 +20,6 @@ namespace MyBackend.Api.Controllers
             _profileService = profileService;
         }
 
-        /// <summary>
-        /// Retrieve the profile of the currently logged-in user.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -38,9 +35,6 @@ namespace MyBackend.Api.Controllers
             return Ok(profile);
         }
 
-        /// <summary>
-        /// Update profile details for the currently logged-in user.
-        /// </summary>
         [HttpPut]
         [ProducesResponseType(typeof(ApiResponse<UserProfileResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -62,9 +56,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Change account password for the currently logged-in user.
-        /// </summary>
         [HttpPut("change-password")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -108,9 +99,6 @@ namespace MyBackend.Api.Controllers
             });
         }
 
-        /// <summary>
-        /// Remove profile picture for the currently logged-in user and revert to default.
-        /// </summary>
         [HttpDelete("remove-image")]
         [ProducesResponseType(typeof(ApiResponse<UserProfileResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]

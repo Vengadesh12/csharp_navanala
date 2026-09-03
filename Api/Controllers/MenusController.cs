@@ -23,9 +23,6 @@ namespace MyBackend.Api.Controllers
             _menuService = menuService;
         }
 
-        /// <summary>
-        /// Retrieves the list of accessible menus for the current authenticated user based on JWT token and role permissions.
-        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(List<MenuItemDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -40,9 +37,6 @@ namespace MyBackend.Api.Controllers
             return Ok(menus);
         }
 
-        /// <summary>
-        /// Retrieves all configured menus in the system (for administrative purposes).
-        /// </summary>
         [HttpGet("all")]
         [ProducesResponseType(typeof(List<MenuItemDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllMenus()

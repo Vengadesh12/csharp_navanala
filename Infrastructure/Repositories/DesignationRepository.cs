@@ -5,9 +5,6 @@ using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Implements specialized Designation queries and lookup dictionaries.
-    /// </summary>
     public class DesignationRepository : Repository<Designation>, IDesignationRepository
     {
         public DesignationRepository(AppDbContext context) : base(context)
