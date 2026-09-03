@@ -16,46 +16,86 @@ namespace MyBackend.Application.Services
     public class UserService : IUserService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IApplicationDbContext _context;
         private readonly IEmailService _emailService;
         private readonly ILogger<UserService> _logger;
         private readonly PasswordHasher<User> _passwordHasher = new();
 
         public UserService(
             IUnitOfWork unitOfWork,
+            IApplicationDbContext context,
             IEmailService emailService,
             ILogger<UserService> logger)
         {
             _unitOfWork = unitOfWork;
+            _context = context;
             _emailService = emailService;
             _logger = logger;
         }
 
         public async Task<List<UserDto>> GetAllUsersAsync()
         {
-            var users = await _unitOfWork.Users.GetAllUsersAsync();
-            var rolesDict = await _unitOfWork.Roles.GetRoleNameDictionaryAsync();
-            var designationsDict = await _unitOfWork.Designations.GetDesignationNameDictionaryAsync();
+            var users = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    ORDER BY "Id"
+                """)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var rolesDict = await _context.Roles
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    FROM roles
+                    WHERE "DeletedFlag" = 1
+                """)
+                .AsNoTracking()
+                .ToDictionaryAsync(r => r.Id, r => r.Name);
+
+            var designationsDict = await _context.Designations
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Description", "DepartmentId", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    FROM designations
+                    WHERE "DeletedFlag" = 1
+                """)
+                .AsNoTracking()
+                .ToDictionaryAsync(d => d.Id, d => d.Name);
 
             return users.ToDtoList(rolesDict, designationsDict);
         }
 
         public async Task<UserDto?> GetUserByIdAsync(int id)
         {
-            var user = await _unitOfWork.Users.GetUserByIdAsync(id);
+            var user = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0}
+                """, id)
+                .AsNoTracking()
+                .SingleOrDefaultAsync();
+
             if (user is null) return null;
 
             string? roleName = null;
             if (user.RoleId.HasValue)
             {
-                var role = await _unitOfWork.Roles.GetByIdAsync(user.RoleId.Value);
-                roleName = role?.Name;
+                roleName = await _context.Database.SqlQueryRaw<string>("""
+                    SELECT "Name" AS "Value"
+                    FROM roles
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, user.RoleId.Value).FirstOrDefaultAsync();
             }
 
             string? designationName = null;
             if (user.DesignationId.HasValue)
             {
-                var designation = await _unitOfWork.Designations.GetByIdAsync(user.DesignationId.Value);
-                designationName = designation?.Name;
+                designationName = await _context.Database.SqlQueryRaw<string>("""
+                    SELECT "Name" AS "Value"
+                    FROM designations
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, user.DesignationId.Value).FirstOrDefaultAsync();
             }
 
             return user.ToDto(roleName, designationName);
@@ -104,15 +144,21 @@ namespace MyBackend.Application.Services
             string? roleName = null;
             if (user.RoleId.HasValue)
             {
-                var role = await _unitOfWork.Roles.GetByIdAsync(user.RoleId.Value);
-                roleName = role?.Name;
+                roleName = await _context.Database.SqlQueryRaw<string>("""
+                    SELECT "Name" AS "Value"
+                    FROM roles
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, user.RoleId.Value).FirstOrDefaultAsync();
             }
 
             string? designationName = null;
             if (user.DesignationId.HasValue)
             {
-                var designation = await _unitOfWork.Designations.GetByIdAsync(user.DesignationId.Value);
-                designationName = designation?.Name;
+                designationName = await _context.Database.SqlQueryRaw<string>("""
+                    SELECT "Name" AS "Value"
+                    FROM designations
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, user.DesignationId.Value).FirstOrDefaultAsync();
             }
 
             return user.ToDto(roleName, designationName);
@@ -120,7 +166,14 @@ namespace MyBackend.Application.Services
 
         public async Task<UserDto?> UpdateUserAsync(int id, UpdateUserRequest request)
         {
-            var user = await _unitOfWork.Users.GetByIdAsync(id);
+            var user = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0}
+                """, id)
+                .FirstOrDefaultAsync();
+
             if (user is null) return null;
 
             // Use Business Object update method
@@ -152,15 +205,21 @@ namespace MyBackend.Application.Services
             string? roleName = null;
             if (user.RoleId.HasValue)
             {
-                var role = await _unitOfWork.Roles.GetByIdAsync(user.RoleId.Value);
-                roleName = role?.Name;
+                roleName = await _context.Database.SqlQueryRaw<string>("""
+                    SELECT "Name" AS "Value"
+                    FROM roles
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, user.RoleId.Value).FirstOrDefaultAsync();
             }
 
             string? designationName = null;
             if (user.DesignationId.HasValue)
             {
-                var designation = await _unitOfWork.Designations.GetByIdAsync(user.DesignationId.Value);
-                designationName = designation?.Name;
+                designationName = await _context.Database.SqlQueryRaw<string>("""
+                    SELECT "Name" AS "Value"
+                    FROM designations
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, user.DesignationId.Value).FirstOrDefaultAsync();
             }
 
             return user.ToDto(roleName, designationName);

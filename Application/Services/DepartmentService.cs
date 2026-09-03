@@ -24,9 +24,35 @@ namespace MyBackend.Application.Services
 
         public async Task<DepartmentOverviewResponse> GetDepartmentsOverviewAsync()
         {
-            var departments = await _unitOfWork.Departments.GetActiveDepartmentsWithDesignationsAsync();
-            var allDesignations = await _unitOfWork.Designations.GetActiveDesignationsAsync();
-            var allUsers = await _unitOfWork.Users.GetAllUsersAsync();
+            var departments = await _context.Departments
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    FROM departments
+                    WHERE "DeletedFlag" = 1
+                    ORDER BY "Name"
+                """)
+                .Include(d => d.Designations.Where(des => des.DeletedFlag == 1))
+                .AsNoTracking()
+                .ToListAsync();
+
+            var allDesignations = await _context.Designations
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Description", "DepartmentId", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    FROM designations
+                    WHERE "DeletedFlag" = 1
+                    ORDER BY "Name"
+                """)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var allUsers = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "DeletedFlag" = 1
+                """)
+                .AsNoTracking()
+                .ToListAsync();
 
             // Calculate user count per designation
             var userCountByDesignation = allUsers
@@ -68,10 +94,26 @@ namespace MyBackend.Application.Services
 
         public async Task<DepartmentDto?> GetDepartmentByIdAsync(int id)
         {
-            var department = await _unitOfWork.Departments.GetActiveDepartmentByIdAsync(id);
+            var department = await _context.Departments
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    FROM departments
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, id)
+                .Include(d => d.Designations.Where(des => des.DeletedFlag == 1))
+                .FirstOrDefaultAsync();
+
             if (department is null) return null;
 
-            var allUsers = await _unitOfWork.Users.GetAllUsersAsync();
+            var allUsers = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "DeletedFlag" = 1
+                """)
+                .AsNoTracking()
+                .ToListAsync();
+
             var mappedDes = department.Designations.Where(des => des.DeletedFlag == 1).ToList();
             var desIds = mappedDes.Select(des => des.Id).ToHashSet();
             var userCount = allUsers.Count(u => u.DesignationId.HasValue && desIds.Contains(u.DesignationId.Value) && u.DeletedFlag == 1);
@@ -82,7 +124,13 @@ namespace MyBackend.Application.Services
         public async Task<DepartmentDto> CreateDepartmentAsync(CreateDepartmentRequest request)
         {
             var trimmedName = request.Name.Trim();
-            if (await _unitOfWork.Departments.DepartmentExistsByNameAsync(trimmedName))
+            var exists = await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM departments
+                WHERE "DeletedFlag" = 1 AND LOWER("Name") = LOWER({0})
+            """, trimmedName).SingleOrDefaultAsync() > 0;
+
+            if (exists)
             {
                 throw new InvalidOperationException($"A department named '{trimmedName}' already exists.");
             }
@@ -96,7 +144,12 @@ namespace MyBackend.Application.Services
             if (request.DesignationIds != null && request.DesignationIds.Count > 0)
             {
                 var designations = await _context.Designations
-                    .Where(d => request.DesignationIds.Contains(d.Id) && d.DeletedFlag == 1)
+                    .FromSqlRaw("""
+                        SELECT "Id", "Name", "Description", "DepartmentId", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                        FROM designations
+                        WHERE "DeletedFlag" = 1
+                    """)
+                    .Where(d => request.DesignationIds.Contains(d.Id))
                     .ToListAsync();
 
                 foreach (var des in designations)
@@ -112,11 +165,24 @@ namespace MyBackend.Application.Services
 
         public async Task<DepartmentDto?> UpdateDepartmentAsync(int id, UpdateDepartmentRequest request)
         {
-            var department = await _unitOfWork.Departments.GetByIdAsync(id);
+            var department = await _context.Departments
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    FROM departments
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, id)
+                .FirstOrDefaultAsync();
+
             if (department is null || department.DeletedFlag == 0) return null;
 
             var trimmedName = request.Name.Trim();
-            if (await _unitOfWork.Departments.DepartmentExistsByNameAsync(trimmedName, id))
+            var exists = await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM departments
+                WHERE "DeletedFlag" = 1 AND "Id" != {0} AND LOWER("Name") = LOWER({1})
+            """, id, trimmedName).SingleOrDefaultAsync() > 0;
+
+            if (exists)
             {
                 throw new InvalidOperationException($"A department named '{trimmedName}' already exists.");
             }
@@ -129,7 +195,11 @@ namespace MyBackend.Application.Services
             {
                 // Clear existing designations belonging to this department that are not in the new list
                 var existingDesignations = await _context.Designations
-                    .Where(d => d.DepartmentId == id && d.DeletedFlag == 1)
+                    .FromSqlRaw("""
+                        SELECT "Id", "Name", "Description", "DepartmentId", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                        FROM designations
+                        WHERE "DepartmentId" = {0} AND "DeletedFlag" = 1
+                    """, id)
                     .ToListAsync();
 
                 foreach (var des in existingDesignations)
@@ -142,7 +212,12 @@ namespace MyBackend.Application.Services
 
                 // Assign new designations to this department
                 var newDesignations = await _context.Designations
-                    .Where(d => request.DesignationIds.Contains(d.Id) && d.DeletedFlag == 1)
+                    .FromSqlRaw("""
+                        SELECT "Id", "Name", "Description", "DepartmentId", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                        FROM designations
+                        WHERE "DeletedFlag" = 1
+                    """)
+                    .Where(d => request.DesignationIds.Contains(d.Id))
                     .ToListAsync();
 
                 foreach (var des in newDesignations)
@@ -157,7 +232,14 @@ namespace MyBackend.Application.Services
 
         public async Task<bool> DeleteDepartmentAsync(int id)
         {
-            var department = await _unitOfWork.Departments.GetByIdAsync(id);
+            var department = await _context.Departments
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    FROM departments
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, id)
+                .FirstOrDefaultAsync();
+
             if (department is null || department.DeletedFlag == 0) return false;
 
             department.SoftDelete();
@@ -165,7 +247,11 @@ namespace MyBackend.Application.Services
 
             // Unassign all designations under this department
             var assignedDesignations = await _context.Designations
-                .Where(d => d.DepartmentId == id)
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Description", "DepartmentId", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    FROM designations
+                    WHERE "DepartmentId" = {0}
+                """, id)
                 .ToListAsync();
 
             foreach (var des in assignedDesignations)
@@ -179,13 +265,25 @@ namespace MyBackend.Application.Services
 
         public async Task<DepartmentDto?> MapDesignationsToDepartmentAsync(int departmentId, MapDepartmentDesignationsRequest request)
         {
-            var department = await _unitOfWork.Departments.GetActiveDepartmentByIdAsync(departmentId);
+            var department = await _context.Departments
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    FROM departments
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, departmentId)
+                .FirstOrDefaultAsync();
+
             if (department is null) return null;
 
             if (request.DesignationIds != null && request.DesignationIds.Count > 0)
             {
                 var designations = await _context.Designations
-                    .Where(d => request.DesignationIds.Contains(d.Id) && d.DeletedFlag == 1)
+                    .FromSqlRaw("""
+                        SELECT "Id", "Name", "Description", "DepartmentId", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                        FROM designations
+                        WHERE "DeletedFlag" = 1
+                    """)
+                    .Where(d => request.DesignationIds.Contains(d.Id))
                     .ToListAsync();
 
                 foreach (var des in designations)

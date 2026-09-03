@@ -29,8 +29,13 @@ namespace MyBackend.Application.Services
         public async Task<UserProfileResponse> GetProfileAsync(int userId)
         {
             var user = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, userId)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == userId && u.DeletedFlag == 1);
+                .FirstOrDefaultAsync();
 
             if (user == null)
             {
@@ -40,10 +45,11 @@ namespace MyBackend.Application.Services
             string roleName = "Member";
             if (user.RoleId.HasValue)
             {
-                roleName = await _context.Roles
-                    .Where(r => r.Id == user.RoleId && r.DeletedFlag == 1)
-                    .Select(r => r.Name)
-                    .FirstOrDefaultAsync() ?? "Member";
+                roleName = await _context.Database.SqlQueryRaw<string>("""
+                    SELECT "Name" AS "Value"
+                    FROM roles
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, user.RoleId.Value).FirstOrDefaultAsync() ?? "Member";
             }
 
             var roleId = user.RoleId ?? 0;
@@ -52,12 +58,12 @@ namespace MyBackend.Application.Services
             List<string> permissions;
             if (roleId == 2)
             {
-                permissions = await _context.Permissions
-                    .AsNoTracking()
-                    .Where(p => p.DeletedFlag == 1)
-                    .OrderBy(p => p.Id)
-                    .Select(p => p.PermissionKey)
-                    .ToListAsync();
+                permissions = await _context.Database.SqlQueryRaw<string>("""
+                    SELECT "PermissionKey" AS "Value"
+                    FROM permissions
+                    WHERE "DeletedFlag" = 1
+                    ORDER BY "Id"
+                """).ToListAsync();
             }
             else
             {
@@ -101,7 +107,14 @@ namespace MyBackend.Application.Services
 
         public async Task<UserProfileResponse> UpdateProfileAsync(int userId, UpdateProfileRequest request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && u.DeletedFlag == 1);
+            var user = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, userId)
+                .FirstOrDefaultAsync();
+
             if (user == null)
             {
                 throw new NotFoundException("User profile not found.");
@@ -145,7 +158,13 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException("New password and confirm password do not match.");
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && u.DeletedFlag == 1);
+            var user = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, userId)
+                .FirstOrDefaultAsync();
             if (user == null)
             {
                 throw new NotFoundException("User profile not found.");
@@ -202,7 +221,13 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException("Image file size cannot exceed 5MB.");
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && u.DeletedFlag == 1);
+            var user = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, userId)
+                .FirstOrDefaultAsync();
             if (user == null)
             {
                 throw new NotFoundException("User profile not found.");
@@ -226,7 +251,13 @@ namespace MyBackend.Application.Services
 
         public async Task<UserProfileResponse> RemoveProfileImageAsync(int userId)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && u.DeletedFlag == 1);
+            var user = await _context.Users
+                .FromSqlRaw("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """, userId)
+                .FirstOrDefaultAsync();
             if (user == null)
             {
                 throw new NotFoundException("User profile not found.");

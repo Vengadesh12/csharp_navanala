@@ -22,8 +22,13 @@ namespace MyBackend.Application.Services
         public async Task<List<ReportCategoryDto>> GetAllCategoriesAsync()
         {
             return await _context.ReportCategories
-                .Where(c => c.DeletedFlag == 1)
-                .OrderBy(c => c.Name)
+                .FromSqlRaw("""
+                    SELECT id, name, description, deleted_flag, created_at, updated_at
+                    FROM report_categories
+                    WHERE deleted_flag = 1
+                    ORDER BY name ASC
+                """)
+                .AsNoTracking()
                 .Select(c => new ReportCategoryDto
                 {
                     Id = c.Id,
@@ -32,14 +37,17 @@ namespace MyBackend.Application.Services
                     DeletedFlag = c.DeletedFlag,
                     CreatedAt = c.CreatedAt
                 })
-                .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<ReportCategoryDto?> GetCategoryByIdAsync(int id)
         {
             var category = await _context.ReportCategories
-                .Where(c => c.Id == id && c.DeletedFlag == 1)
+                .FromSqlRaw("""
+                    SELECT id, name, description, deleted_flag, created_at, updated_at
+                    FROM report_categories
+                    WHERE id = {0} AND deleted_flag = 1
+                """, id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
@@ -63,8 +71,11 @@ namespace MyBackend.Application.Services
             }
 
             var trimmedName = request.Name.Trim();
-            var exists = await _context.ReportCategories
-                .AnyAsync(c => c.DeletedFlag == 1 && c.Name.ToLower() == trimmedName.ToLower());
+            var exists = await _context.Database.SqlQueryRaw<int>("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM report_categories
+                WHERE deleted_flag = 1 AND LOWER(name) = LOWER({0})
+            """, trimmedName).SingleOrDefaultAsync() > 0;
 
             if (exists)
             {
@@ -89,7 +100,12 @@ namespace MyBackend.Application.Services
         public async Task<bool> DeleteCategoryAsync(int id)
         {
             var category = await _context.ReportCategories
-                .FirstOrDefaultAsync(c => c.Id == id && c.DeletedFlag == 1);
+                .FromSqlRaw("""
+                    SELECT id, name, description, deleted_flag, created_at, updated_at
+                    FROM report_categories
+                    WHERE id = {0} AND deleted_flag = 1
+                """, id)
+                .FirstOrDefaultAsync();
 
             if (category is null) return false;
 
