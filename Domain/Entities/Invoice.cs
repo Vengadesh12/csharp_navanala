@@ -47,7 +47,7 @@ namespace MyBackend.Domain.Entities
         public string? CustomerGstin { get; set; }
 
         /// <summary>
-        /// NavaNala Technologies Company GST identification number.
+        /// MyBackend Technologies Company GST identification number.
         /// Can only be modified by Super Admins / users with full management permissions.
         /// </summary>
         public string CompanyGstin { get; set; } = "36AAAAA0000A1Z5";

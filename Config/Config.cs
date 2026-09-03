@@ -1,69 +1,46 @@
 using Microsoft.Extensions.Configuration;
-using MyBackend.Application.Common.Models;
 using System;
+using System.IO;
+using System.Text.Json;
 
 namespace MyBackend.Configuration
 {
     /// <summary>
+    /// Email communication settings model.
+    /// </summary>
+    public class EmailSettings
+    {
+        public string SmtpServer { get; set; } = string.Empty;
+        public int Port { get; set; } = 587;
+        public string SenderName { get; set; } = string.Empty;
+        public string SenderEmail { get; set; } = string.Empty;
+        public string AppPassword { get; set; } = string.Empty;
+        public bool EnableSsl { get; set; } = true;
+        public int TimeoutSeconds { get; set; } = 30;
+    }
+
+    /// <summary>
     /// Centralized application configuration containing PostgreSQL database connection parameters,
     /// Gmail SMTP credentials, JWT authorization secrets, and numeric security settings.
+    /// Secrets are loaded dynamically from environment variables, config.json, or appsettings.json.
     /// </summary>
     public static class Config
     {
         // =========================================================================
         // 1. Database Connection Configuration & Integer Parameters
         // =========================================================================
-        /// <summary>
-        /// PostgreSQL database host address.
-        /// </summary>
         public static string DbHost { get; set; } = "localhost";
-
-        /// <summary>
-        /// PostgreSQL database port integer (default: 5432).
-        /// </summary>
         public static int DbPort { get; set; } = 5432;
-
-        /// <summary>
-        /// PostgreSQL database name.
-        /// </summary>
         public static string DbName { get; set; } = "postgres";
-
-        /// <summary>
-        /// PostgreSQL database username.
-        /// </summary>
         public static string DbUser { get; set; } = "postgres";
-
-        /// <summary>
-        /// PostgreSQL database password.
-        /// </summary>
-        public static string DbPassword { get; set; } = "Test";
-
-        /// <summary>
-        /// Database command timeout in seconds (integer).
-        /// </summary>
+        public static string DbPassword { get; set; } = string.Empty;
         public static int DbTimeout { get; set; } = 30;
-
-        /// <summary>
-        /// Maximum connection pool size integer (default: 100).
-        /// </summary>
         public static int DbMaxPoolSize { get; set; } = 100;
-
-        /// <summary>
-        /// Minimum connection pool size integer (default: 0).
-        /// </summary>
         public static int DbMinPoolSize { get; set; } = 0;
-
-        /// <summary>
-        /// Connection lifetime in seconds integer (default: 300).
-        /// </summary>
         public static int DbConnectionLifeTime { get; set; } = 300;
 
         private static string? _customDbConnectionString = null;
 
-        /// <summary>
-        /// PostgreSQL database connection string. Automatically constructed from connection parameters
-        /// or loaded from environment variables / connection string configuration.
-        /// </summary>
         public static string DbConnectionString
         {
             get
@@ -84,87 +61,25 @@ namespace MyBackend.Configuration
         // =========================================================================
         // 2. Gmail / SMTP Configuration & Integer Parameters
         // =========================================================================
-        /// <summary>
-        /// SMTP host server address (e.g. smtp.gmail.com).
-        /// </summary>
         public static string SmtpServer { get; set; } = "smtp.gmail.com";
-
-        /// <summary>
-        /// SMTP port number integer (587 for TLS / STARTTLS, 465 for SSL).
-        /// </summary>
         public static int SmtpPort { get; set; } = 587;
-
-        /// <summary>
-        /// Display sender name in recipient emails.
-        /// </summary>
         public static string SenderName { get; set; } = "Workspace Administration";
-
-        /// <summary>
-        /// Sender's registered Gmail address.
-        /// </summary>
-        public static string SenderEmail { get; set; } = "venkikc333@gmail.com";
-
-        /// <summary>
-        /// 16-character Google App Password for Gmail SMTP authentication.
-        /// </summary>
-        public static string GmailPassword { get; set; } = "dznudcfzffnyeqjl";
-
-        /// <summary>
-        /// Whether SSL/TLS is enabled for SMTP communication.
-        /// </summary>
+        public static string SenderEmail { get; set; } = string.Empty;
+        public static string GmailPassword { get; set; } = string.Empty;
         public static bool EnableSsl { get; set; } = true;
-
-        /// <summary>
-        /// SMTP client operation timeout in seconds (integer).
-        /// </summary>
         public static int SmtpTimeoutSeconds { get; set; } = 30;
 
         // =========================================================================
         // 3. JWT Security & Session Lifetime Configuration (Integers)
         // =========================================================================
-        /// <summary>
-        /// Secret key for HMAC SHA-256 JWT signing.
-        /// </summary>
-        public static string JwtKey { get; set; } = "change-this-development-key-to-a-long-random-secret-1234567890";
-
-        /// <summary>
-        /// JWT Token Issuer identifier.
-        /// </summary>
+        public static string JwtKey { get; set; } = string.Empty;
         public static string JwtIssuer { get; set; } = "Userspace";
-
-        /// <summary>
-        /// JWT Token Audience identifier.
-        /// </summary>
         public static string JwtAudience { get; set; } = "Userspace.Web";
-
-        /// <summary>
-        /// JWT Token expiration window in minutes integer (default: 120 minutes).
-        /// </summary>
         public static int JwtExpiresMinutes { get; set; } = 120;
-
-        /// <summary>
-        /// Refresh token expiration window in days integer (default: 7 days).
-        /// </summary>
         public static int RefreshTokenExpiresDays { get; set; } = 7;
-
-        /// <summary>
-        /// One-time Password (OTP) verification window in minutes integer (default: 10 minutes).
-        /// </summary>
         public static int OtpExpiresMinutes { get; set; } = 10;
-
-        /// <summary>
-        /// Active user session inactivity timeout in minutes integer (default: 1440 minutes / 24 hours).
-        /// </summary>
         public static int SessionTimeoutMinutes { get; set; } = 1440;
-
-        /// <summary>
-        /// Maximum allowed consecutive failed login attempts integer before temporary lockout (default: 5).
-        /// </summary>
         public static int MaxFailedAccessAttempts { get; set; } = 5;
-
-        /// <summary>
-        /// Lockout duration in minutes integer after exceeding maximum failed login attempts (default: 15 minutes).
-        /// </summary>
         public static int LockoutTimeMinutes { get; set; } = 15;
 
         // =========================================================================
@@ -172,11 +87,13 @@ namespace MyBackend.Configuration
         // =========================================================================
 
         /// <summary>
-        /// Synchronizes and overlays configuration values from IConfiguration / environment variables / appsettings.json.
+        /// Synchronizes and overlays configuration values from IConfiguration / environment variables / config.json / appsettings.json.
         /// </summary>
-        /// <param name="configuration">The application configuration root.</param>
         public static void Load(IConfiguration configuration)
         {
+            // First load from config.json if available
+            TryLoadFromFile();
+
             if (configuration == null) return;
 
             // Database Connection string and integer parameters
@@ -279,6 +196,77 @@ namespace MyBackend.Configuration
                 LockoutTimeMinutes = lockout;
         }
 
+        private static void TryLoadFromFile()
+        {
+            try
+            {
+                var candidatePaths = new[]
+                {
+                    Path.Combine(Directory.GetCurrentDirectory(), "Config", "config.json"),
+                    Path.Combine(Directory.GetCurrentDirectory(), "config.json"),
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "config.json"),
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "Config", "config.json")
+                };
+
+                foreach (var path in candidatePaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        var json = File.ReadAllText(path);
+                        using var doc = JsonDocument.Parse(json);
+                        var root = doc.RootElement;
+
+                        if (root.TryGetProperty("Database", out var db))
+                        {
+                            if (db.TryGetProperty("Host", out var p)) DbHost = p.GetString() ?? DbHost;
+                            if (db.TryGetProperty("Port", out var pPort) && pPort.TryGetInt32(out var pt)) DbPort = pt;
+                            if (db.TryGetProperty("Name", out var pName)) DbName = pName.GetString() ?? DbName;
+                            if (db.TryGetProperty("Username", out var pUser)) DbUser = pUser.GetString() ?? DbUser;
+                            if (db.TryGetProperty("Password", out var pPwd)) DbPassword = pPwd.GetString() ?? DbPassword;
+                            if (db.TryGetProperty("Timeout", out var pTimeout) && pTimeout.TryGetInt32(out var to)) DbTimeout = to;
+                            if (db.TryGetProperty("MaxPoolSize", out var pMax) && pMax.TryGetInt32(out var max)) DbMaxPoolSize = max;
+                            if (db.TryGetProperty("MinPoolSize", out var pMin) && pMin.TryGetInt32(out var min)) DbMinPoolSize = min;
+                            if (db.TryGetProperty("ConnectionLifetime", out var pLt) && pLt.TryGetInt32(out var lt)) DbConnectionLifeTime = lt;
+                        }
+
+                        if (root.TryGetProperty("EmailSettings", out var email))
+                        {
+                            if (email.TryGetProperty("SmtpServer", out var s)) SmtpServer = s.GetString() ?? SmtpServer;
+                            if (email.TryGetProperty("Port", out var ep) && ep.TryGetInt32(out var ePort)) SmtpPort = ePort;
+                            if (email.TryGetProperty("SenderName", out var sn)) SenderName = sn.GetString() ?? SenderName;
+                            if (email.TryGetProperty("SenderEmail", out var se)) SenderEmail = se.GetString() ?? SenderEmail;
+                            if (email.TryGetProperty("AppPassword", out var ap)) GmailPassword = ap.GetString() ?? GmailPassword;
+                            if (email.TryGetProperty("EnableSsl", out var ssl)) EnableSsl = ssl.GetBoolean();
+                            if (email.TryGetProperty("TimeoutSeconds", out var ts) && ts.TryGetInt32(out var sec)) SmtpTimeoutSeconds = sec;
+                        }
+
+                        if (root.TryGetProperty("Jwt", out var jwt))
+                        {
+                            if (jwt.TryGetProperty("Key", out var k)) JwtKey = k.GetString() ?? JwtKey;
+                            if (jwt.TryGetProperty("Issuer", out var iss)) JwtIssuer = iss.GetString() ?? JwtIssuer;
+                            if (jwt.TryGetProperty("Audience", out var aud)) JwtAudience = aud.GetString() ?? JwtAudience;
+                            if (jwt.TryGetProperty("ExpiresMinutes", out var em) && em.TryGetInt32(out var min)) JwtExpiresMinutes = min;
+                            if (jwt.TryGetProperty("RefreshTokenExpiresDays", out var red) && red.TryGetInt32(out var days)) RefreshTokenExpiresDays = days;
+                        }
+
+                        if (root.TryGetProperty("Security", out var secObj))
+                        {
+                            if (secObj.TryGetProperty("OtpExpiresMinutes", out var o) && o.TryGetInt32(out var otp)) OtpExpiresMinutes = otp;
+                            if (secObj.TryGetProperty("SessionTimeoutMinutes", out var st) && st.TryGetInt32(out var stm)) SessionTimeoutMinutes = stm;
+                            if (secObj.TryGetProperty("MaxFailedAccessAttempts", out var mf) && mf.TryGetInt32(out var mfa)) MaxFailedAccessAttempts = mfa;
+                            if (secObj.TryGetProperty("LockoutTimeMinutes", out var lt) && lt.TryGetInt32(out var ltm)) LockoutTimeMinutes = ltm;
+                        }
+
+                        break;
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback gracefully without crashing
+            }
+        }
+
         private static void ParseConnectionStringToProperties(string? connectionString)
         {
             if (string.IsNullOrWhiteSpace(connectionString)) return;
@@ -330,7 +318,7 @@ namespace MyBackend.Configuration
             }
             catch
             {
-                // Fallback gracefully without throwing
+                // Fallback gracefully
             }
         }
 
@@ -365,9 +353,6 @@ namespace MyBackend.Configuration
             return connectionString;
         }
 
-        /// <summary>
-        /// Returns an EmailSettings instance populated with the current Gmail configuration values.
-        /// </summary>
         public static EmailSettings ToEmailSettings()
         {
             return new EmailSettings
@@ -377,7 +362,8 @@ namespace MyBackend.Configuration
                 SenderName = SenderName,
                 SenderEmail = SenderEmail,
                 AppPassword = GmailPassword,
-                EnableSsl = EnableSsl
+                EnableSsl = EnableSsl,
+                TimeoutSeconds = SmtpTimeoutSeconds
             };
         }
     }
@@ -419,5 +405,4 @@ namespace MyBackend.Configuration
         public static void Load(IConfiguration configuration) => Config.Load(configuration);
         public static EmailSettings ToEmailSettings() => Config.ToEmailSettings();
     }
-
 }

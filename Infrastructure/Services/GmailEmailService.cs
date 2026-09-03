@@ -4,9 +4,9 @@ using System.Net.Mail;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MyBackend.Application.Common.Models;
 using MyBackend.Application.Interfaces;
 using MyBackend.Configuration;
+using EmailSettings = MyBackend.Application.Common.Models.EmailSettings;
 
 namespace MyBackend.Infrastructure.Services
 {

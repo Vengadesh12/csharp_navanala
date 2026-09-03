@@ -1,17 +1,13 @@
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using MyBackend.Api.Extensions;
-using MyBackend.Api.Middlewares;
-using MyBackend.Application.Common.Models;
-using MyBackend.Application.Interfaces;
-using MyBackend.Application.Services;
+using MyBackend.Api.Middleware;
+using MyBackend.Application;
 using MyBackend.Configuration;
-using MyBackend.Domain.Interfaces;
+using MyBackend.Infrastructure;
 using MyBackend.Infrastructure.Persistence;
-using MyBackend.Infrastructure.Repositories;
-using MyBackend.Infrastructure.Services;
 
 // ==============================================================================
-// Clean Architecture Composition Root (Program.cs)
+// Clean Architecture Composition Root (MyBackend.Api/Program.cs)
 // ==============================================================================
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,70 +22,19 @@ if (!string.IsNullOrWhiteSpace(port))
 }
 
 // ------------------------------------------------------------------------------
-// 1. Centralized Application Configuration
+// 1. Centralized Application Configuration (config.json, appsettings, env vars)
 // ------------------------------------------------------------------------------
+builder.Configuration.AddJsonFile("Config/config.json", optional: true, reloadOnChange: true);
 Config.Load(builder.Configuration);
 
 // ------------------------------------------------------------------------------
-// 2. Infrastructure Layer Registration (Persistence, Email, Repositories, UnitOfWork)
+// 2. Clean Architecture Layer Dependency Registrations
 // ------------------------------------------------------------------------------
-// PostgreSQL DbContext & Interface
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(Config.DbConnectionString)
-);
-builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
-
-// Email Communication Settings & Service
-builder.Services.Configure<EmailSettings>(options =>
-{
-    var settings = Config.ToEmailSettings();
-    options.SmtpServer = settings.SmtpServer;
-    options.Port = settings.Port;
-    options.SenderName = settings.SenderName;
-    options.SenderEmail = settings.SenderEmail;
-    options.AppPassword = settings.AppPassword;
-    options.EnableSsl = settings.EnableSsl;
-});
-builder.Services.AddScoped<IEmailService, GmailEmailService>();
-
-// Domain Repository Interfaces & Implementations
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IRoleRepository, RoleRepository>();
-builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
-builder.Services.AddScoped<IDesignationRepository, DesignationRepository>();
-builder.Services.AddScoped<IPermissionRepository, PermissionRepository>();
-builder.Services.AddScoped<IUserSessionRepository, UserSessionRepository>();
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // ------------------------------------------------------------------------------
-// 3. Application Layer Registration (Domain Business Services & Interfaces)
-// ------------------------------------------------------------------------------
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IRoleService, RoleService>();
-builder.Services.AddScoped<IDepartmentService, DepartmentService>();
-builder.Services.AddScoped<IDesignationService, DesignationService>();
-builder.Services.AddScoped<IPermissionService, PermissionService>();
-builder.Services.AddScoped<IDashboardService, DashboardService>();
-builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-builder.Services.AddScoped<IMenuService, MenuService>();
-builder.Services.AddScoped<IProfileService, ProfileService>();
-builder.Services.AddScoped<IProjectService, ProjectService>();
-builder.Services.AddScoped<IProjectCategoryService, ProjectCategoryService>();
-builder.Services.AddScoped<IReportService, ReportService>();
-builder.Services.AddScoped<IReportCategoryService, ReportCategoryService>();
-builder.Services.AddScoped<IScheduleService, ScheduleService>();
-builder.Services.AddScoped<ISettingService, SettingService>();
-builder.Services.AddScoped<IUserActivityService, UserActivityService>();
-builder.Services.AddScoped<IApprovalService, ApprovalService>();
-builder.Services.AddScoped<IAccessRequestService, AccessRequestService>();
-builder.Services.AddScoped<IPurchaseService, PurchaseService>();
-builder.Services.AddScoped<IInvoiceService, InvoiceService>();
-builder.Services.AddSingleton<IOtpService, OtpService>();
-
-// ------------------------------------------------------------------------------
-// 4. API Presentation Layer Registration (Controllers, Swagger OpenAPI, JWT Auth, CORS)
+// 3. API Presentation Services (Controllers, Swagger, JWT Auth, CORS)
 // ------------------------------------------------------------------------------
 builder.Services.AddControllers();
 builder.Services.AddApiSwagger();
@@ -112,10 +57,10 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// 5. Global Exception Handling Middleware
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+// 4. Centralized Exception Handling Middleware
+app.UseMiddleware<ExceptionMiddleware>();
 
-// 6. OpenAPI / Swagger Documentation UI
+// 5. OpenAPI / Swagger Documentation UI
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
@@ -129,11 +74,12 @@ app.UseSwaggerUI(options =>
     options.EnablePersistAuthorization();
 });
 
-// 7. Security & Routing Middlewares
+// 6. Security & Static Files
 app.UseCors("ReactPolicy");
 
-// Static File Hosting for User Uploads (Profile pictures, etc.)
-var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+// Ensure upload & report directories exist
+var currentDir = Directory.GetCurrentDirectory();
+var uploadsDirectory = Path.Combine(currentDir, "uploads");
 if (!Directory.Exists(uploadsDirectory))
 {
     Directory.CreateDirectory(uploadsDirectory);
@@ -145,8 +91,7 @@ if (!Directory.Exists(profilesDirectory))
     Directory.CreateDirectory(profilesDirectory);
 }
 
-// Dedicated Folder for Saved Report Documents (< 5 MB)
-var reportDirectory = Path.Combine(Directory.GetCurrentDirectory(), "report");
+var reportDirectory = Path.Combine(currentDir, "report");
 if (!Directory.Exists(reportDirectory))
 {
     Directory.CreateDirectory(reportDirectory);
@@ -154,7 +99,7 @@ if (!Directory.Exists(reportDirectory))
 
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDirectory),
+    FileProvider = new PhysicalFileProvider(uploadsDirectory),
     RequestPath = "/uploads"
 });
 
@@ -162,7 +107,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<ActiveSessionValidationMiddleware>();
 
-// 8. Endpoints & Controllers
+// 7. Endpoints & Controllers
 app.MapGet("/", () =>
 {
     return Results.Ok(new
@@ -173,7 +118,7 @@ app.MapGet("/", () =>
 });
 app.MapControllers();
 
-// 9. Database Auto-Migration & Schema Seed Initialization
+// 8. Database Auto-Migration & Schema Seed Initialization
 await DatabaseInitializer.InitializeAsync(app.Services, app.Logger);
 
 app.Run();

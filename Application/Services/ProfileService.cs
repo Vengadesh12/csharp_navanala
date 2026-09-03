@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Common.Validators;
-using MyBackend.Application.Contracts;
+using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Entities;
 
@@ -17,11 +17,13 @@ namespace MyBackend.Application.Services
     public class ProfileService : IProfileService
     {
         private readonly IApplicationDbContext _context;
+        private readonly IFileService _fileService;
         private readonly PasswordHasher<User> _passwordHasher = new();
 
-        public ProfileService(IApplicationDbContext context)
+        public ProfileService(IApplicationDbContext context, IFileService fileService)
         {
             _context = context;
+            _fileService = fileService;
         }
 
         public async Task<UserProfileResponse> GetProfileAsync(int userId)
@@ -206,41 +208,16 @@ namespace MyBackend.Application.Services
                 throw new NotFoundException("User profile not found.");
             }
 
-            // Ensure destination uploads/profiles directory exists
-            var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "profiles");
-            if (!Directory.Exists(uploadsDirectory))
-            {
-                Directory.CreateDirectory(uploadsDirectory);
-            }
-
             // Remove old uploaded file if exists
             if (!string.IsNullOrWhiteSpace(user.ProfileImage))
             {
-                try
-                {
-                    var oldFileName = Path.GetFileName(user.ProfileImage);
-                    var oldFilePath = Path.Combine(uploadsDirectory, oldFileName);
-                    if (File.Exists(oldFilePath))
-                    {
-                        File.Delete(oldFilePath);
-                    }
-                }
-                catch
-                {
-                    // Fallback gracefully on disk deletion errors
-                }
+                await _fileService.DeleteFileAsync(user.ProfileImage);
             }
 
-            // Generate unique, collision-resistant filename
-            var uniqueFileName = $"user_{userId}_{Guid.NewGuid():N}{extension}";
-            var destinationFilePath = Path.Combine(uploadsDirectory, uniqueFileName);
+            // Save new profile image via IFileService
+            await using var stream = file.OpenReadStream();
+            var relativePath = await _fileService.SaveProfileImageAsync(stream, file.FileName, userId);
 
-            using (var stream = new FileStream(destinationFilePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
-
-            var relativePath = $"/uploads/profiles/{uniqueFileName}";
             user.UpdateProfileImage(relativePath);
             await _context.SaveChangesAsync();
 
@@ -257,21 +234,7 @@ namespace MyBackend.Application.Services
 
             if (!string.IsNullOrWhiteSpace(user.ProfileImage))
             {
-                try
-                {
-                    var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "profiles");
-                    var oldFileName = Path.GetFileName(user.ProfileImage);
-                    var oldFilePath = Path.Combine(uploadsDirectory, oldFileName);
-                    if (File.Exists(oldFilePath))
-                    {
-                        File.Delete(oldFilePath);
-                    }
-                }
-                catch
-                {
-                    // Fallback gracefully
-                }
-
+                await _fileService.DeleteFileAsync(user.ProfileImage);
                 user.UpdateProfileImage(null);
                 await _context.SaveChangesAsync();
             }

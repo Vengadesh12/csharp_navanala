@@ -5,10 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.Exceptions;
-using MyBackend.Application.Contracts;
+using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
@@ -18,9 +18,9 @@ namespace MyBackend.Application.Services
     public class ReportService : IReportService
     {
         private readonly IApplicationDbContext _context;
-        private readonly IWebHostEnvironment? _environment;
+        private readonly IHostEnvironment? _environment;
 
-        public ReportService(IApplicationDbContext context, IWebHostEnvironment? environment = null)
+        public ReportService(IApplicationDbContext context, IHostEnvironment? environment = null)
         {
             _context = context;
             _environment = environment;

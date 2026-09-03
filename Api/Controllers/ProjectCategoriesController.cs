@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Common.Exceptions;
-using MyBackend.Application.Contracts;
+using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers

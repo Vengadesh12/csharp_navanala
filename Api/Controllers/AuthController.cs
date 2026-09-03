@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using MyBackend.Application.Contracts;
+using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers

@@ -1,0 +1,35 @@
+{
+  "Database": {
+    "Host": "localhost",
+    "Port": 5432,
+    "Name": "postgres",
+    "Username": "postgres",
+    "Password": "YOUR_DATABASE_PASSWORD",
+    "Timeout": 30,
+    "MaxPoolSize": 100,
+    "MinPoolSize": 0,
+    "ConnectionLifetime": 300
+  },
+  "EmailSettings": {
+    "SmtpServer": "smtp.gmail.com",
+    "Port": 587,
+    "SenderName": "Workspace Administration",
+    "SenderEmail": "your-email@gmail.com",
+    "AppPassword": "your-16-char-app-password",
+    "EnableSsl": true,
+    "TimeoutSeconds": 30
+  },
+  "Jwt": {
+    "Key": "your-long-random-secret-key-at-least-32-characters",
+    "Issuer": "Userspace",
+    "Audience": "Userspace.Web",
+    "ExpiresMinutes": 120,
+    "RefreshTokenExpiresDays": 7
+  },
+  "Security": {
+    "OtpExpiresMinutes": 10,
+    "SessionTimeoutMinutes": 1440,
+    "MaxFailedAccessAttempts": 5,
+    "LockoutTimeMinutes": 15
+  }
+}

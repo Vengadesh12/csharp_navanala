@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MyBackend.Domain.Entities;
 
 namespace MyBackend.Infrastructure.Persistence
@@ -48,7 +50,9 @@ namespace MyBackend.Infrastructure.Persistence
 
                     ALTER TABLE IF EXISTS user_sessions 
                         ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+                        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        ALTER COLUMN session_token TYPE text,
+                        ALTER COLUMN user_agent TYPE text;
 
                     ALTER TABLE IF EXISTS menus 
                         ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -611,7 +615,7 @@ namespace MyBackend.Infrastructure.Persistence
                     new()
                     {
                         SettingKey = "app_name",
-                        SettingValue = "NavaNala Technologies",
+                        SettingValue = "MyBackend Technologies",
                         Category = "General",
                         Description = "Application name displayed across the system.",
                         DataType = "string",

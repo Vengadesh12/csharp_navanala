@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Contracts;
+using MyBackend.Application.DTO;
+using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Entities;
 using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;

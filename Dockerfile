@@ -2,11 +2,17 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy project file and restore dependencies
+# Copy solution and project files for layer caching
+COPY ["backend.sln", "./"]
+COPY ["Domain/Domain.csproj", "Domain/"]
+COPY ["Application/Application.csproj", "Application/"]
+COPY ["Infrastructure/Infrastructure.csproj", "Infrastructure/"]
 COPY ["backend.csproj", "./"]
-RUN dotnet restore "backend.csproj"
+COPY ["tests/UnitTests/UnitTests.csproj", "tests/UnitTests/"]
 
-# Copy all source files and publish
+RUN dotnet restore "backend.sln"
+
+# Copy remaining source code and publish backend
 COPY . .
 RUN dotnet publish "backend.csproj" -c Release -o /app/publish /p:UseAppHost=false
 

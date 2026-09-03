@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore.Storage;
+using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Entities;
 using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;
@@ -53,10 +54,10 @@ namespace MyBackend.Infrastructure.Repositories
             return await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<IDbContextTransaction> BeginTransactionAsync()
+        public async Task<IDbTransaction> BeginTransactionAsync()
         {
             _currentTransaction = await _context.Database.BeginTransactionAsync();
-            return _currentTransaction;
+            return new DbTransactionWrapper(_currentTransaction);
         }
 
         public async Task CommitTransactionAsync()
@@ -93,5 +94,16 @@ namespace MyBackend.Infrastructure.Repositories
             }
             await _context.DisposeAsync();
         }
+    }
+
+    public class DbTransactionWrapper : IDbTransaction
+    {
+        private readonly IDbContextTransaction _transaction;
+        public DbTransactionWrapper(IDbContextTransaction transaction) => _transaction = transaction;
+
+        public Task CommitAsync(CancellationToken cancellationToken = default) => _transaction.CommitAsync(cancellationToken);
+        public Task RollbackAsync(CancellationToken cancellationToken = default) => _transaction.RollbackAsync(cancellationToken);
+        public void Dispose() => _transaction.Dispose();
+        public ValueTask DisposeAsync() => _transaction.DisposeAsync();
     }
 }

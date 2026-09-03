@@ -27,6 +27,7 @@ namespace MyBackend.Application
             services.AddScoped<ISettingService, SettingService>();
             services.AddScoped<IUserActivityService, UserActivityService>();
             services.AddScoped<IApprovalService, ApprovalService>();
+            services.AddScoped<IAccessRequestService, AccessRequestService>();
             services.AddScoped<IPurchaseService, PurchaseService>();
             services.AddScoped<IInvoiceService, InvoiceService>();
 
@@ -34,6 +35,11 @@ namespace MyBackend.Application
             services.AddSingleton<IOtpService, OtpService>();
 
             return services;
+        }
+
+        public static IServiceCollection AddApplication(this IServiceCollection services)
+        {
+            return services.AddApplicationServices();
         }
     }
 }

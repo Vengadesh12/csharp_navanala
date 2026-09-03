@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
@@ -8,12 +7,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
 using MyBackend.Application.Common.Validators;
-using MyBackend.Application.Contracts;
+using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Configuration;
 using MyBackend.Domain.Entities;
 using MyBackend.Domain.Interfaces;
 
@@ -28,6 +25,7 @@ namespace MyBackend.Application.Services
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
         private readonly IOtpService _otpService;
+        private readonly IJwtService _jwtService;
         private readonly ILogger<AuthService> _logger;
         private readonly PasswordHasher<User> _passwordHasher = new();
 
@@ -36,12 +34,14 @@ namespace MyBackend.Application.Services
             IConfiguration configuration,
             IEmailService emailService,
             IOtpService otpService,
+            IJwtService jwtService,
             ILogger<AuthService> logger)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
             _emailService = emailService;
             _otpService = otpService;
+            _jwtService = jwtService;
             _logger = logger;
         }
 
@@ -277,31 +277,23 @@ namespace MyBackend.Application.Services
             {
                 try
                 {
-                    var handler = new JwtSecurityTokenHandler();
-                    if (handler.CanReadToken(request.IdToken))
+                    var (tokenEmail, tokenName, tokenPicture) = _jwtService.ReadTokenPayload(request.IdToken);
+                    if (!string.IsNullOrWhiteSpace(tokenEmail))
                     {
-                        var jwt = handler.ReadJwtToken(request.IdToken);
-                        var tokenEmail = jwt.Claims.FirstOrDefault(c => c.Type == "email" || c.Type == ClaimTypes.Email)?.Value;
-                        var tokenName = jwt.Claims.FirstOrDefault(c => c.Type == "name" || c.Type == ClaimTypes.Name)?.Value;
-                        var tokenPicture = jwt.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
-
-                        if (!string.IsNullOrWhiteSpace(tokenEmail))
-                        {
-                            request.Email = tokenEmail;
-                        }
-                        if (!string.IsNullOrWhiteSpace(tokenName) && string.IsNullOrWhiteSpace(request.Name))
-                        {
-                            request.Name = tokenName;
-                        }
-                        if (!string.IsNullOrWhiteSpace(tokenPicture) && string.IsNullOrWhiteSpace(request.ProfileImage))
-                        {
-                            request.ProfileImage = tokenPicture;
-                        }
+                        request.Email = tokenEmail;
+                    }
+                    if (!string.IsNullOrWhiteSpace(tokenName) && string.IsNullOrWhiteSpace(request.Name))
+                    {
+                        request.Name = tokenName;
+                    }
+                    if (!string.IsNullOrWhiteSpace(tokenPicture) && string.IsNullOrWhiteSpace(request.ProfileImage))
+                    {
+                        request.ProfileImage = tokenPicture;
                     }
                 }
                 catch
                 {
-                    // Fall back to request payload fields
+                    // Fallback gracefully if token parsing encounters malformed data
                 }
             }
 
@@ -612,27 +604,7 @@ namespace MyBackend.Application.Services
             {
             }
 
-            var claims = new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Role, user.RoleId?.ToString() ?? string.Empty)
-            };
-
-            var jwtKey = !string.IsNullOrWhiteSpace(_configuration["Jwt:Key"]) ? _configuration["Jwt:Key"]! : Config.JwtKey;
-            var jwtIssuer = !string.IsNullOrWhiteSpace(_configuration["Jwt:Issuer"]) ? _configuration["Jwt:Issuer"]! : Config.JwtIssuer;
-            var jwtAudience = !string.IsNullOrWhiteSpace(_configuration["Jwt:Audience"]) ? _configuration["Jwt:Audience"]! : Config.JwtAudience;
-            var jwtExpires = _configuration.GetValue<int>("Jwt:ExpiresMinutes", Config.JwtExpiresMinutes);
-
-            var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-            var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
-            var token = new JwtSecurityToken(
-                issuer: jwtIssuer,
-                audience: jwtAudience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(jwtExpires),
-                signingCredentials: credentials);
+            var tokenString = _jwtService.GenerateToken(user, roleName, permissions);
 
             return new AuthUserData
             {
@@ -646,7 +618,7 @@ namespace MyBackend.Application.Services
                 DesignationName = designationName,
                 Permissions = permissions,
                 Menus = menus.ToDtoList(),
-                Token = new JwtSecurityTokenHandler().WriteToken(token),
+                Token = tokenString,
                 IsFirstLogin = user.IsFirstLogin
             };
         }

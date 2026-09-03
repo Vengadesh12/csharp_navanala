@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Http;
-using MyBackend.Application.Contracts;
+using MyBackend.Application.DTO;
 
 namespace MyBackend.Application.Interfaces
 {

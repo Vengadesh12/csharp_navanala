@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using MyBackend.Application.Contracts;
+using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;

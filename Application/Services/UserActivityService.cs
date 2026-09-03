@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Application.Contracts;
+using MyBackend.Application.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
@@ -34,9 +34,11 @@ namespace MyBackend.Application.Services
             var activeDtos = activeSessions.ToItemDtoList(roleMap);
             var recentDtos = recentSessions.ToItemDtoList(roleMap);
 
+            var activeCount = Math.Max(stats.ActiveCount, activeDtos.Count);
+
             return new UserActivitySummaryDto
             {
-                ActiveUsersCount = stats.ActiveCount,
+                ActiveUsersCount = activeCount,
                 TotalLoginsToday = stats.TodayLogins,
                 TotalLogoutsToday = stats.TodayLogouts,
                 TotalSessionsRecorded = stats.TotalSessions,

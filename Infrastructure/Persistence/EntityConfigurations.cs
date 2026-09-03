@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MyBackend.Domain.Entities;
 using System;
@@ -323,7 +323,7 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.UserAgent)
                 .HasColumnName("user_agent")
-                .HasMaxLength(500);
+                .HasColumnType("text");
 
             builder.Property(x => x.LoginTime)
                 .HasColumnName("login_time")
@@ -334,7 +334,7 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.SessionToken)
                 .HasColumnName("session_token")
-                .HasMaxLength(255);
+                .HasColumnType("text");
 
             builder.Property(x => x.IsActive)
                 .HasColumnName("is_active")

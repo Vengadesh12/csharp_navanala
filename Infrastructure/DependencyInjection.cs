@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MyBackend.Application.Common.Models;
 using MyBackend.Application.Interfaces;
 using MyBackend.Configuration;
+using EmailSettings = MyBackend.Application.Common.Models.EmailSettings;
 using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;
 using MyBackend.Infrastructure.Repositories;
@@ -45,8 +45,15 @@ namespace MyBackend.Infrastructure
             services.AddScoped<IPermissionRepository, PermissionRepository>();
             services.AddScoped<IUserSessionRepository, UserSessionRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IJwtService, JwtService>();
+            services.AddScoped<IFileService, FileService>();
 
             return services;
+        }
+
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+        {
+            return services.AddInfrastructureServices(configuration);
         }
     }
 }

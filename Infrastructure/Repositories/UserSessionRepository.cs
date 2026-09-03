@@ -40,11 +40,33 @@ namespace MyBackend.Infrastructure.Repositories
             var now = DateTime.UtcNow;
             var clientIp = string.IsNullOrWhiteSpace(ipAddress) ? "127.0.0.1" : ipAddress.Trim();
 
-            // Find all active sessions for this user (or matching email) where LogoutTime is null or IsActive is true
-            var activeSessions = await _context.UserSessions
-                .Where(s => (userId > 0 && s.UserId == userId || (!string.IsNullOrWhiteSpace(email) && s.Email.ToLower() == email.ToLower()))
-                            && (s.LogoutTime == null || s.IsActive))
-                .ToListAsync();
+            // 1. If specific session token is provided, prioritize terminating that exact session
+            List<UserSession> activeSessions = new();
+            if (!string.IsNullOrWhiteSpace(sessionToken))
+            {
+                activeSessions = await _context.UserSessions
+                    .Where(s => s.DeletedFlag == 1 && s.SessionToken == sessionToken && (s.LogoutTime == null || s.IsActive))
+                    .ToListAsync();
+            }
+
+            // 2. If no session was found by token, look up active sessions by userId or email
+            if (activeSessions.Count == 0)
+            {
+                var query = _context.UserSessions
+                    .Where(s => s.DeletedFlag == 1 && (s.LogoutTime == null || s.IsActive));
+
+                if (userId > 0)
+                {
+                    query = query.Where(s => s.UserId == userId);
+                }
+                else if (!string.IsNullOrWhiteSpace(email))
+                {
+                    var normalizedEmail = email.Trim().ToLower();
+                    query = query.Where(s => s.Email.ToLower() == normalizedEmail);
+                }
+
+                activeSessions = await query.ToListAsync();
+            }
 
             if (activeSessions.Count > 0)
             {
@@ -114,10 +136,13 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        private const int DefaultSessionExpiryMinutes = 120;
+
         public async Task<List<UserSession>> GetActiveSessionsAsync()
         {
+            var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
             return await _context.UserSessions
-                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null)
+                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff)
                 .OrderByDescending(s => s.LoginTime)
                 .AsNoTracking()
                 .ToListAsync();
@@ -194,9 +219,10 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<(int ActiveCount, int TodayLogins, int TodayLogouts, int TotalSessions)> GetActivityStatsAsync()
         {
             var todayUtc = DateTime.UtcNow.Date;
+            var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
 
             var activeCount = await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null);
+                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff);
 
             var todayLogins = await _context.UserSessions
                 .CountAsync(s => s.DeletedFlag == 1 && s.LoginTime >= todayUtc);

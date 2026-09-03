@@ -5,3 +5,5 @@ upload/
 *.user
 *.suo
 appsettings.Development.json
+Config/config.json
+config.json
