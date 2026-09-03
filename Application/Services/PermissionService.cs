@@ -1,4 +1,4 @@
-using MyBackend.Application.DTO;
+using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Interfaces;
 

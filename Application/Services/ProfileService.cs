@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Common.Validators;
-using MyBackend.Application.DTO;
+using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Entities;
 

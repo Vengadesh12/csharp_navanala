@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
-using MyBackend.Application.DTO;
+using MyBackend.Application.Common.DTO;
 using MyBackend.Domain.Entities;
 
 namespace MyBackend.Application.Mappings

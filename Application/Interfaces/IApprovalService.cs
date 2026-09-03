@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using MyBackend.Application.DTO;
+using MyBackend.Application.Common.DTO;
 
 namespace MyBackend.Application.Interfaces
 {
