@@ -42,7 +42,7 @@ namespace MyBackend.Api.Controllers
             return CreatedAtAction(nameof(GetSchedules), new { id = schedule.Id }, new ApiResponse<ScheduleEventDto>
             {
                 Success = true,
-                Message = "Event scheduled and saved in database successfully!",
+                Message = "Event scheduled and saved successfully!",
                 Data = schedule
             });
         }
