@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories

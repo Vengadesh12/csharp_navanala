@@ -3,8 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MyBackend.Application.Interfaces;
 using MyBackend.Configuration;
-using EmailSettings = MyBackend.Application.Common.Models.EmailSettings;
-using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;
 using MyBackend.Infrastructure.Repositories;
 using MyBackend.Infrastructure.Services;
@@ -30,6 +28,7 @@ namespace MyBackend.Infrastructure
                 options.SenderEmail = settings.SenderEmail;
                 options.AppPassword = settings.AppPassword;
                 options.EnableSsl = settings.EnableSsl;
+                options.TimeoutSeconds = settings.TimeoutSeconds;
             });
 
             services.AddScoped<IEmailService, GmailEmailService>();

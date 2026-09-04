@@ -11,7 +11,6 @@ using MyBackend.Application.Interfaces;
 using MyBackend.Application.Services;
 using MyBackend.Domain.Entities;
 using MyBackend.Domain.Entities.Model;
-using MyBackend.Domain.Interfaces;
 using Xunit;
 
 namespace MyBackend.UnitTests.Application

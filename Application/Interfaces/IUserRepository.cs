@@ -1,6 +1,6 @@
 using MyBackend.Domain.Entities;
 
-namespace MyBackend.Domain.Interfaces
+namespace MyBackend.Application.Interfaces
 {
     public interface IUserRepository : IRepository<User>
     {

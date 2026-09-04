@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Interfaces
 {

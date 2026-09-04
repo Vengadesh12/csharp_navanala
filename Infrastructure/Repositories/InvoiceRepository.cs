@@ -4,9 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Application.Common.Helpers;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -157,7 +155,7 @@ namespace MyBackend.Infrastructure.Repositories
             if (termsAndConditions != null) invoice.TermsAndConditions = termsAndConditions.Trim();
             invoice.UpdatedAt = DateTime.UtcNow;
 
-            InvoiceCalculationHelper.RecalculateTotals(invoice);
+            invoice.RecalculateTotals();
 
             await _context.SaveChangesAsync();
             return invoice;

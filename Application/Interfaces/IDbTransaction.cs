@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace MyBackend.Domain.Interfaces
+namespace MyBackend.Application.Interfaces
 {
     public interface IDbTransaction : IDisposable, IAsyncDisposable
     {

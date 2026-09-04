@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Application.Common.Helpers;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Services
 {
@@ -129,7 +127,7 @@ namespace MyBackend.Application.Services
                 Items = lineItems
             };
 
-            InvoiceCalculationHelper.RecalculateTotals(invoice);
+            invoice.RecalculateTotals();
 
             await _invoiceRepository.AddInvoiceAsync(invoice);
 

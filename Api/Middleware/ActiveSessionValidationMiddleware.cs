@@ -3,7 +3,6 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Api.Middleware
 {

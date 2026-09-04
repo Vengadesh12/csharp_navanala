@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories

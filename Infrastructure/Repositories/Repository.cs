@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Interfaces;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories

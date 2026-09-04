@@ -2,7 +2,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MyBackend.Domain.Entities;
-using MyBackend.Domain.Interfaces;
 
 namespace MyBackend.Application.Interfaces
 {

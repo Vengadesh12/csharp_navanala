@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using MyBackend.Domain.Entities;
 
-namespace MyBackend.Domain.Interfaces
+namespace MyBackend.Application.Interfaces
 {
     public interface IDashboardRepository
     {

@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MyBackend.Application.Interfaces;
 using MyBackend.Configuration;
-using EmailSettings = MyBackend.Application.Common.Models.EmailSettings;
 
 namespace MyBackend.Infrastructure.Services
 {
