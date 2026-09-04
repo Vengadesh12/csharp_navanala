@@ -18,13 +18,34 @@ namespace MyBackend.Application.Services
 {
     public class AuthService : IAuthService
     {
+        private readonly IUserRepository _userRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
         private readonly IOtpService _otpService;
         private readonly IJwtService _jwtService;
+        private readonly IPasswordHasher<User> _passwordHasher;
         private readonly ILogger<AuthService> _logger;
-        private readonly PasswordHasher<User> _passwordHasher = new();
+
+        public AuthService(
+            IUserRepository userRepository,
+            IUnitOfWork unitOfWork,
+            IConfiguration configuration,
+            IEmailService emailService,
+            IOtpService otpService,
+            IJwtService jwtService,
+            IPasswordHasher<User> passwordHasher,
+            ILogger<AuthService> logger)
+        {
+            _userRepository = userRepository;
+            _unitOfWork = unitOfWork;
+            _configuration = configuration;
+            _emailService = emailService;
+            _otpService = otpService;
+            _jwtService = jwtService;
+            _passwordHasher = passwordHasher;
+            _logger = logger;
+        }
 
         public AuthService(
             IUnitOfWork unitOfWork,
@@ -33,13 +54,8 @@ namespace MyBackend.Application.Services
             IOtpService otpService,
             IJwtService jwtService,
             ILogger<AuthService> logger)
+            : this(unitOfWork.Users, unitOfWork, configuration, emailService, otpService, jwtService, new PasswordHasher<User>(), logger)
         {
-            _unitOfWork = unitOfWork;
-            _configuration = configuration;
-            _emailService = emailService;
-            _otpService = otpService;
-            _jwtService = jwtService;
-            _logger = logger;
         }
 
         public async Task<LoginResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
@@ -49,7 +65,7 @@ namespace MyBackend.Application.Services
                 throw new ArgumentException("Email and password are required.");
             }
 
-            var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+            var user = await _userRepository.GetByEmailAsync(request.Email);
 
             if (user is null)
             {
@@ -63,81 +79,28 @@ namespace MyBackend.Application.Services
 
             await EnsureMaintenanceAccessAllowedAsync(user);
 
-            bool passwordMatches = false;
-
             if (string.IsNullOrWhiteSpace(user.PasswordHash))
             {
-                var initialHash = _passwordHasher.HashPassword(user, request.Password);
-                await _unitOfWork.Users.UpdatePasswordHashAsync(user.Id, initialHash);
-                passwordMatches = true;
+                throw new UnauthorizedAccessException("Invalid email or password.");
             }
-            else
+
+            var verifyResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+            if (verifyResult == PasswordVerificationResult.Failed)
+            {
+                throw new UnauthorizedAccessException("Invalid email or password.");
+            }
+
+            if (verifyResult == PasswordVerificationResult.SuccessRehashNeeded)
             {
                 try
                 {
-                    var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
-                    if (result != PasswordVerificationResult.Failed)
-                    {
-                        passwordMatches = true;
-                    }
+                    var updatedHash = _passwordHasher.HashPassword(user, request.Password);
+                    await _userRepository.UpdatePasswordHashAsync(user.Id, updatedHash);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Fallback
+                    _logger.LogWarning(ex, "Failed to re-hash password on login for user {Email}", user.Email);
                 }
-
-                if (!passwordMatches && (string.Equals(user.PasswordHash, request.Password, StringComparison.Ordinal) ||
-                    string.Equals(user.PasswordHash?.Trim(), request.Password?.Trim(), StringComparison.OrdinalIgnoreCase)))
-                {
-                    passwordMatches = true;
-                    try
-                    {
-                        var newHash = _passwordHasher.HashPassword(user, request.Password!);
-                        await _unitOfWork.Users.UpdatePasswordHashAsync(user.Id, newHash);
-                    }
-                    catch
-                    {
-                    }
-                }
-
-                // Flexible casing fallback for standard seed / demo accounts
-                if (!passwordMatches)
-                {
-                    var normalizedEmail = user.Email.ToLowerInvariant();
-                    var isDemoMatch = normalizedEmail switch
-                    {
-                        "admin@example.com" or "vengadesh@example.com" or "vengadesh.kc@gmail.com" =>
-                            string.Equals(request.Password?.Trim(), "admin@123", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(request.Password?.Trim(), "admin123", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(request.Password?.Trim(), "admin", StringComparison.OrdinalIgnoreCase),
-                        "manager@example.com" or "manager@gmail.com" =>
-                            string.Equals(request.Password?.Trim(), "manager@123", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(request.Password?.Trim(), "manager123", StringComparison.OrdinalIgnoreCase),
-                        "user@example.com" or "test@gmail.com" or "arun@example.com" or "kaviya@example.com" or "divya@example.com" =>
-                            string.Equals(request.Password?.Trim(), "user@123", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(request.Password?.Trim(), "user123", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(request.Password?.Trim(), "test@1234", StringComparison.OrdinalIgnoreCase),
-                        _ => false
-                    };
-
-                    if (isDemoMatch)
-                    {
-                        passwordMatches = true;
-                        try
-                        {
-                            var newHash = _passwordHasher.HashPassword(user, request.Password!);
-                            await _unitOfWork.Users.UpdatePasswordHashAsync(user.Id, newHash);
-                        }
-                        catch
-                        {
-                        }
-                    }
-                }
-            }
-
-            if (!passwordMatches)
-            {
-                throw new UnauthorizedAccessException("Invalid email or password.");
             }
 
             // Check if Two-Factor Authentication is active
@@ -185,19 +148,14 @@ namespace MyBackend.Application.Services
                 );
 
                 // Write Audit Log
-                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
-                {
-                    Action = "User Login",
-                    Module = "Auth",
-                    PerformedBy = user.Name,
-                    Details = $"User logged in successfully from IP {clientIp}",
-                    IpAddress = clientIp,
-                    Status = "Success",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    DeletedFlag = 1
-                });
-                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.AuditLogs.CreateAuditLogAsync(
+                    action: "User Login",
+                    module: "Auth",
+                    performedBy: user.Name,
+                    details: $"User logged in successfully from IP {clientIp}",
+                    ipAddress: clientIp,
+                    status: "Success"
+                );
             }
             catch (Exception ex)
             {
@@ -215,7 +173,7 @@ namespace MyBackend.Application.Services
 
         public async Task<LoginResponse> Verify2FaLoginAsync(Verify2FaLoginRequest request, string? ipAddress = null, string? userAgent = null)
         {
-            var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+            var user = await _userRepository.GetByEmailAsync(request.Email);
 
             if (user is null || user.DeletedFlag == 0)
             {
@@ -245,19 +203,14 @@ namespace MyBackend.Application.Services
                 );
 
                 // Write Audit Log
-                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
-                {
-                    Action = "2FA Login Verification",
-                    Module = "Auth",
-                    PerformedBy = user.Name,
-                    Details = $"User 2FA verified and signed in from IP {clientIp}",
-                    IpAddress = clientIp,
-                    Status = "Success",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    DeletedFlag = 1
-                });
-                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.AuditLogs.CreateAuditLogAsync(
+                    action: "2FA Login Verification",
+                    module: "Auth",
+                    performedBy: user.Name,
+                    details: $"User 2FA verified and signed in from IP {clientIp}",
+                    ipAddress: clientIp,
+                    status: "Success"
+                );
             }
             catch (Exception ex)
             {
@@ -304,7 +257,7 @@ namespace MyBackend.Application.Services
                 throw new ArgumentException("A valid Google email address is required.");
             }
 
-            var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+            var user = await _userRepository.GetByEmailAsync(request.Email);
             if (user == null)
             {
                 throw new UnauthorizedAccessException($"No registered workspace account found for '{request.Email}'. Please contact your administrator to create your account or submit an access request.");
@@ -339,19 +292,14 @@ namespace MyBackend.Application.Services
                 );
 
                 // Write Audit Log
-                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
-                {
-                    Action = "Google OAuth Login",
-                    Module = "Auth",
-                    PerformedBy = user.Name,
-                    Details = $"User signed in via Google OAuth from IP {clientIp}",
-                    IpAddress = clientIp,
-                    Status = "Success",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    DeletedFlag = 1
-                });
-                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.AuditLogs.CreateAuditLogAsync(
+                    action: "Google OAuth Login",
+                    module: "Auth",
+                    performedBy: user.Name,
+                    details: $"User signed in via Google OAuth from IP {clientIp}",
+                    ipAddress: clientIp,
+                    status: "Success"
+                );
             }
             catch (Exception ex)
             {
@@ -374,11 +322,11 @@ namespace MyBackend.Application.Services
             User? user = null;
             if (userId > 0)
             {
-                user = await _unitOfWork.Users.GetUserByIdAsync(userId);
+                user = await _userRepository.GetUserByIdAsync(userId);
             }
             if (user == null && !string.IsNullOrWhiteSpace(email))
             {
-                user = await _unitOfWork.Users.GetByEmailAsync(email);
+                user = await _userRepository.GetByEmailAsync(email);
             }
 
             // Record logout time and deactivate session in user_sessions table
@@ -387,19 +335,14 @@ namespace MyBackend.Application.Services
             // Record audit log for logout
             try
             {
-                await _unitOfWork.Repository<AuditLog>().AddAsync(new AuditLog
-                {
-                    Action = "User Logout",
-                    Module = "Auth",
-                    PerformedBy = user?.Name ?? $"User ID: {userId}",
-                    Details = $"User logged out at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC from IP {clientIp}",
-                    IpAddress = clientIp,
-                    Status = "Success",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    DeletedFlag = 1
-                });
-                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.AuditLogs.CreateAuditLogAsync(
+                    action: "User Logout",
+                    module: "Auth",
+                    performedBy: user?.Name ?? $"User ID: {userId}",
+                    details: $"User logged out at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC from IP {clientIp}",
+                    ipAddress: clientIp,
+                    status: "Success"
+                );
             }
             catch (Exception ex)
             {
@@ -415,7 +358,7 @@ namespace MyBackend.Application.Services
 
         public async Task<MessageResponse> Resend2FaOtpAsync(Resend2FaOtpRequest request)
         {
-            var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+            var user = await _userRepository.GetByEmailAsync(request.Email);
 
             if (user is null || user.DeletedFlag == 0)
             {
@@ -434,7 +377,7 @@ namespace MyBackend.Application.Services
 
         public async Task<MessageResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
         {
-            var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+            var user = await _userRepository.GetByEmailAsync(request.Email);
 
             if (user is null || user.DeletedFlag == 0)
             {
@@ -484,7 +427,7 @@ namespace MyBackend.Application.Services
                 throw new InvalidOperationException(otpError ?? "Invalid or expired OTP code.");
             }
 
-            var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+            var user = await _userRepository.GetByEmailAsync(request.Email);
 
             if (user is null || user.DeletedFlag == 0)
             {
@@ -492,7 +435,7 @@ namespace MyBackend.Application.Services
             }
 
             var newHash = _passwordHasher.HashPassword(user, request.NewPassword);
-            await _unitOfWork.Users.UpdatePasswordHashAsync(user.Id, newHash);
+            await _userRepository.UpdatePasswordHashAsync(user.Id, newHash);
 
             try
             {
@@ -537,14 +480,14 @@ namespace MyBackend.Application.Services
 
         public async Task<CurrentUserPermissionsResponse> GetUserPermissionsAsync(int userId)
         {
-            var user = await _unitOfWork.Users.GetUserByIdAsync(userId);
+            var user = await _userRepository.GetUserByIdAsync(userId);
 
             if (user is null || user.DeletedFlag == 0)
             {
                 throw new UnauthorizedAccessException("User not found or deactivated.");
             }
 
-            var permissions = await _unitOfWork.Users.GetUserPermissionKeysAsync(userId);
+            var permissions = await _userRepository.GetUserPermissionKeysAsync(userId);
             return new CurrentUserPermissionsResponse { Permissions = permissions };
         }
 
@@ -582,7 +525,7 @@ namespace MyBackend.Application.Services
                 }
             }
 
-            var permissions = await _unitOfWork.Users.GetUserPermissionKeysAsync(user.Id);
+            var permissions = await _userRepository.GetUserPermissionKeysAsync(user.Id);
 
             List<Menu> menus = [];
             try
