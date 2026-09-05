@@ -150,14 +150,17 @@ namespace MyBackend.Infrastructure.Repositories
             }
         }
 
-        public async Task<int> CreateCategoryAsync(string name, string description, string icon, string createdBy)
+        public Task<int> CreateCategoryAsync(string name, string description, string icon, string createdBy)
         {
             var now = DateTime.UtcNow;
-            return await _context.Database.SqlQueryRaw<int>("""
+            var id = _context.Database.SqlQueryRaw<int>("""
                 INSERT INTO setting_categories (name, description, icon, created_at, updated_at, created_by, deleted_flag)
                 VALUES ({0}, {1}, {2}, {3}, {3}, {4}, 1)
                 RETURNING id AS "Value"
-            """, name, description, icon, now, createdBy).SingleAsync();
+            """, name, description, icon, now, createdBy)
+            .AsEnumerable()
+            .Single();
+            return Task.FromResult(id);
         }
 
         public async Task<SettingCategory?> GetCategoryByIdAsync(int id)
@@ -240,14 +243,17 @@ namespace MyBackend.Infrastructure.Repositories
             return count > 0;
         }
 
-        public async Task<int> CreateSettingAsync(string key, string value, string category, string description, string dataType, string createdBy)
+        public Task<int> CreateSettingAsync(string key, string value, string category, string description, string dataType, string createdBy)
         {
             var now = DateTime.UtcNow;
-            return await _context.Database.SqlQueryRaw<int>("""
+            var id = _context.Database.SqlQueryRaw<int>("""
                 INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by)
                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {5}, {6})
                 RETURNING id AS "Value"
-            """, key, value, category, description, dataType, now, createdBy).SingleAsync();
+            """, key, value, category, description, dataType, now, createdBy)
+            .AsEnumerable()
+            .Single();
+            return Task.FromResult(id);
         }
 
         public async Task<SystemSetting?> GetSettingByIdAsync(int id)

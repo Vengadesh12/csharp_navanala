@@ -26,6 +26,78 @@ namespace MyBackend.Infrastructure.Repositories
                 .SingleOrDefaultAsync();
         }
 
+        public async Task<UserLoginDetails?> GetLoginUserDetailsByEmailAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return null;
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+
+            return await _context.Database.SqlQueryRaw<UserLoginDetails>("""
+                SELECT 
+                    u."Id",
+                    u."Name",
+                    u."Email",
+                    u."Password" AS "PasswordHash",
+                    u."RoleId",
+                    r."Name" AS "RoleName",
+                    u."DesignationId",
+                    des."Name" AS "DesignationName",
+                    dept."Name" AS "DepartmentName",
+                    COALESCE(u."Phone", '') AS "Phone",
+                    COALESCE(u."Age", 0) AS "Age",
+                    COALESCE(u."Address", '') AS "Address",
+                    u."ProfileImage",
+                    COALESCE(u."DeletedFlag", 1) AS "DeletedFlag",
+                    COALESCE(u."IsFirstLogin", false) AS "IsFirstLogin",
+                    u."CreatedAt",
+                    u."UpdatedAt",
+                    COALESCE((
+                        SELECT STRING_AGG(DISTINCT p."PermissionKey", ',')
+                        FROM permissions p
+                        WHERE p."DeletedFlag" = 1
+                          AND (
+                              u."RoleId" = 2
+                              OR (u."RoleId" IS NOT NULL AND p."Id" IN (SELECT rp."PermissionId" FROM rolepermissions rp WHERE rp."RoleId" = u."RoleId"))
+                              OR (u."DesignationId" IS NOT NULL AND p."Id" IN (
+                                  SELECT dp."PermissionId" FROM departmentpermissions dp 
+                                  INNER JOIN designations d ON d."DepartmentId" = dp."DepartmentId" AND d."DeletedFlag" = 1 
+                                  WHERE d."Id" = u."DesignationId"
+                              ))
+                              OR p."Id" IN (SELECT up."PermissionId" FROM userpermissions up WHERE up."UserId" = u."Id")
+                          )
+                    ), '') AS "PermissionsCsv",
+                    COALESCE((
+                        SELECT STRING_AGG(DISTINCT m.label, ',')
+                        FROM menus m
+                        WHERE m.deletedflag = 1
+                          AND (
+                              u."RoleId" = 2
+                              OR m.permissionkey IS NULL 
+                              OR m.permissionkey = ''
+                              OR m.permissionkey IN (
+                                  SELECT p."PermissionKey" FROM permissions p
+                                  WHERE p."DeletedFlag" = 1
+                                    AND (
+                                        (u."RoleId" IS NOT NULL AND p."Id" IN (SELECT rp."PermissionId" FROM rolepermissions rp WHERE rp."RoleId" = u."RoleId"))
+                                        OR (u."DesignationId" IS NOT NULL AND p."Id" IN (
+                                            SELECT dp."PermissionId" FROM departmentpermissions dp 
+                                            INNER JOIN designations d ON d."DepartmentId" = dp."DepartmentId" AND d."DeletedFlag" = 1 
+                                            WHERE d."Id" = u."DesignationId"
+                                        ))
+                                        OR p."Id" IN (SELECT up."PermissionId" FROM userpermissions up WHERE up."UserId" = u."Id")
+                                    )
+                              )
+                          )
+                    ), '') AS "MenuNamesCsv"
+                FROM users u
+                LEFT JOIN roles r ON r."Id" = u."RoleId" AND r."DeletedFlag" = 1
+                LEFT JOIN designations des ON des."Id" = u."DesignationId" AND des."DeletedFlag" = 1
+                LEFT JOIN departments dept ON dept."Id" = des."DepartmentId" AND dept."DeletedFlag" = 1
+                WHERE LOWER(u."Email") = {0}
+                LIMIT 1
+                """, normalizedEmail)
+                .SingleOrDefaultAsync();
+        }
+
         public async Task<List<User>> GetAllUsersAsync()
         {
             return await _context.Users
@@ -105,29 +177,34 @@ namespace MyBackend.Infrastructure.Repositories
             return permissionKeys.Any(k => permissions.Contains(k, StringComparer.OrdinalIgnoreCase));
         }
 
-        public async Task<List<string>> GetUserPermissionKeysAsync(int userId)
+        public async Task<List<string>> GetUserPermissionKeysAsync(int userId, int? roleId = null, int? designationId = null)
         {
-            var userRecord = await _context.Users
-                .AsNoTracking()
-                .Where(u => u.Id == userId && u.DeletedFlag == 1)
-                .Select(u => new { u.RoleId, u.DesignationId })
-                .FirstOrDefaultAsync();
+            var rId = roleId ?? 0;
+            var dId = designationId ?? 0;
 
-            if (userRecord is null) return [];
-
-            // Super Admin role ID = 2 has all active permissions
-            if (userRecord.RoleId == 2)
+            if (rId == 0 && dId == 0 && userId > 0)
             {
-                return await _context.Permissions
+                var userRecord = await _context.Users
                     .AsNoTracking()
-                    .Where(p => p.DeletedFlag == 1)
-                    .OrderBy(p => p.Id)
-                    .Select(p => p.PermissionKey)
-                    .ToListAsync();
+                    .Where(u => u.Id == userId && u.DeletedFlag == 1)
+                    .Select(u => new { u.RoleId, u.DesignationId })
+                    .FirstOrDefaultAsync();
+
+                if (userRecord is null) return [];
+                rId = userRecord.RoleId ?? 0;
+                dId = userRecord.DesignationId ?? 0;
             }
 
-            var roleId = userRecord.RoleId ?? 0;
-            var designationId = userRecord.DesignationId ?? 0;
+            // Super Admin role ID = 2 has all active permissions
+            if (rId == 2)
+            {
+                return await _context.Database.SqlQueryRaw<string>("""
+                    SELECT DISTINCT p."PermissionKey" AS "Value"
+                    FROM permissions p
+                    WHERE p."DeletedFlag" = 1
+                    ORDER BY "Value" ASC
+                """).ToListAsync();
+            }
 
             return await _context.Database.SqlQueryRaw<string>("""
                 SELECT DISTINCT p."PermissionKey" AS "Value"
@@ -154,7 +231,7 @@ namespace MyBackend.Infrastructure.Repositories
                       ))
                   )
                 ORDER BY "Value"
-                """, roleId, designationId, userId).ToListAsync();
+                """, rId, dId, userId).ToListAsync();
         }
 
         public async Task<bool> UpdatePasswordHashAsync(int userId, string newPasswordHash)

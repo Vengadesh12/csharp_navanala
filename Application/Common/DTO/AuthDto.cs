@@ -69,7 +69,15 @@ public sealed class AuthUserData
 
     public List<MenuItemDto> Menus { get; set; } = [];
 
+    public List<string> MenuNames { get; set; } = [];
+
     public string Token { get; set; } = string.Empty;
+
+    public string? Phone { get; set; }
+
+    public int? Age { get; set; }
+
+    public string? Address { get; set; }
 
     public bool IsFirstLogin { get; set; }
 }

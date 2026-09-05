@@ -163,7 +163,8 @@ namespace MyBackend.Infrastructure.Persistence
                     ("invoices.create", "Add Invoice", "Create and generate customer invoices with products and calculations."),
                     ("invoices.edit", "Edit Invoice", "Modify existing invoice records and line items."),
                     ("invoices.delete", "Delete Invoice", "Remove or cancel customer invoice records."),
-                    ("invoices.manage", "Manage Invoices & GST", "Full administrative authority over invoices, tax settings, and GST number configuration.")
+                    ("invoices.manage", "Manage Invoices & GST", "Full administrative authority over invoices, tax settings, and GST number configuration."),
+                    ("settings.maintenance", "Maintenance Mode", "Configure and toggle system-wide maintenance mode access.")
                 };
 
                 foreach (var perm in standardPermissions)
@@ -391,7 +392,8 @@ namespace MyBackend.Infrastructure.Persistence
                     new() { MenuKey = "reports.view", Label = "Reports", Icon = "▤", Route = "/reports", GroupName = "Operations & Audit", Description = "Insights & exports", OrderIndex = 12, PermissionKey = "reports.view", DeletedFlag = 1 },
                     new() { MenuKey = "projects.view", Label = "Projects", Icon = "◇", Route = "/projects", GroupName = "Operations & Audit", Description = "Project initiatives", OrderIndex = 13, PermissionKey = "projects.view", DeletedFlag = 1 },
                     new() { MenuKey = "calendar.view", Label = "Schedule", Icon = "□", Route = "/calendar", GroupName = "Operations & Audit", Description = "Team rhythm & reviews", OrderIndex = 14, PermissionKey = "calendar.view", DeletedFlag = 1 },
-                    new() { MenuKey = "settings.view", Label = "Settings", Icon = "⚙", Route = "/settings", GroupName = "Preferences", Description = "Workspace configuration", OrderIndex = 15, PermissionKey = "settings.view", DeletedFlag = 1 }
+                    new() { MenuKey = "settings.view", Label = "Settings", Icon = "⚙", Route = "/settings", GroupName = "Preferences", Description = "Workspace configuration", OrderIndex = 15, PermissionKey = "settings.view", DeletedFlag = 1 },
+                    new() { MenuKey = "settings.maintenance", Label = "Maintenance Mode", Icon = "🛠", Route = "/settings", GroupName = "Preferences", Description = "Workspace maintenance mode & access restrictions", OrderIndex = 16, PermissionKey = "settings.maintenance", DeletedFlag = 1 }
                 };
 
                 foreach (var menu in defaultMenus)

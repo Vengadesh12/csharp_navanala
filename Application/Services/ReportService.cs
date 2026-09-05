@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using MyBackend.Application.Common.Exceptions;
@@ -36,10 +37,10 @@ namespace MyBackend.Application.Services
             return dir;
         }
 
-        public async Task<ReportsOverviewResponse> GetReportsAsync(string? category, string? search)
+        public async Task<ReportsOverviewResponse> GetReportsAsync(string? category, string? search, CancellationToken cancellationToken = default)
         {
             var (rawReports, totalReports, readyReports, totalUsers, usersWithRole, categories) =
-                await _reportRepository.GetReportsOverviewDataAsync(category, search);
+                await _reportRepository.GetReportsOverviewDataAsync(category, search, cancellationToken);
 
             var coveragePercentage = totalUsers > 0 ? Math.Round((double)usersWithRole / totalUsers * 100) : 100;
 
@@ -62,14 +63,14 @@ namespace MyBackend.Application.Services
             };
         }
 
-        public async Task<List<string>> GetCategoriesAsync()
+        public async Task<List<string>> GetCategoriesAsync(CancellationToken cancellationToken = default)
         {
-            return await _reportRepository.GetCategoryNamesAsync();
+            return await _reportRepository.GetCategoryNamesAsync(cancellationToken);
         }
 
-        public async Task<ReportDownloadResult?> GetReportDownloadAsync(int id)
+        public async Task<ReportDownloadResult?> GetReportDownloadAsync(int id, CancellationToken cancellationToken = default)
         {
-            var report = await _reportRepository.GetReportByIdAsync(id);
+            var report = await _reportRepository.GetReportByIdAsync(id, cancellationToken);
             if (report == null) return null;
 
             if (!string.IsNullOrWhiteSpace(report.FileName))
@@ -78,7 +79,7 @@ namespace MyBackend.Application.Services
                 var filePath = Path.Combine(reportDir, report.FileName);
                 if (File.Exists(filePath))
                 {
-                    var fileBytes = await File.ReadAllBytesAsync(filePath);
+                    var fileBytes = await File.ReadAllBytesAsync(filePath, cancellationToken);
                     var ext = Path.GetExtension(report.FileName).ToLowerInvariant();
                     var contentType = ext switch
                     {
@@ -178,8 +179,10 @@ namespace MyBackend.Application.Services
             }
         }
 
-        public async Task<ReportDto> CreateReportAsync(CreateReportRequest request, string creatorName)
+        public async Task<ReportDto> CreateReportAsync(CreateReportRequest request, string creatorName, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (string.IsNullOrWhiteSpace(request.Title))
             {
                 throw new BadRequestException("Report title is required.");
@@ -190,180 +193,247 @@ namespace MyBackend.Application.Services
             var format = string.IsNullOrWhiteSpace(request.Format) ? "PDF" : request.Format.Trim();
 
             string? storedFileName = null;
+            string? destinationPath = null;
             string fileSize = "1.5 MB";
 
-            if (request.File != null && request.File.Length > 0)
+            try
             {
-                if (request.File.Length > 5 * 1024 * 1024)
+                if (request.File != null && request.File.Length > 0)
                 {
-                    throw new BadRequestException("Report file size cannot exceed 5 MB.");
-                }
-
-                var reportDir = GetReportDirectory();
-                var originalFileName = Path.GetFileName(request.File.FileName);
-                var extension = Path.GetExtension(originalFileName);
-                var rawName = Path.GetFileNameWithoutExtension(originalFileName);
-                var cleanName = string.Concat(rawName.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '-'));
-                if (string.IsNullOrWhiteSpace(cleanName)) cleanName = "report";
-
-                fileSize = request.File.Length >= 1024 * 1024
-                    ? $"{(request.File.Length / (1024.0 * 1024.0)):F1} MB"
-                    : $"{(request.File.Length / 1024.0):F0} KB";
-
-                if (string.IsNullOrWhiteSpace(request.Format) || request.Format == "PDF")
-                {
-                    var extClean = extension.TrimStart('.').ToLowerInvariant();
-                    format = extClean switch
+                    if (request.File.Length > 15 * 1024 * 1024)
                     {
-                        "pdf" => "PDF",
-                        "csv" => "CSV",
-                        "xlsx" or "xls" => "Excel",
-                        "json" => "JSON",
-                        "docx" or "doc" => "Word",
-                        "txt" => "TXT",
-                        _ => string.IsNullOrWhiteSpace(extClean) ? format : extClean.ToUpperInvariant()
-                    };
-                }
+                        throw new BadRequestException("Report file size cannot exceed 15 MB.");
+                    }
 
-                var uniqueFileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Guid.NewGuid().ToString("N")[..6]}_{cleanName}{extension}";
-                var destinationPath = Path.Combine(reportDir, uniqueFileName);
+                    var reportDir = GetReportDirectory();
+                    var originalFileName = Path.GetFileName(request.File.FileName);
+                    var extension = Path.GetExtension(originalFileName);
+                    var rawName = Path.GetFileNameWithoutExtension(originalFileName);
+                    var cleanName = string.Concat(rawName.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '-'));
+                    if (string.IsNullOrWhiteSpace(cleanName)) cleanName = "report";
 
-                using (var stream = new FileStream(destinationPath, FileMode.Create))
-                {
-                    await request.File.CopyToAsync(stream);
-                }
+                    fileSize = request.File.Length >= 1024 * 1024
+                        ? $"{(request.File.Length / (1024.0 * 1024.0)):F1} MB"
+                        : $"{(request.File.Length / 1024.0):F0} KB";
 
-                storedFileName = uniqueFileName;
-            }
-
-            int? categoryId = request.CategoryId;
-            string categoryName = request.Category?.Trim() ?? string.Empty;
-
-            if (categoryId.HasValue && categoryId.Value > 0)
-            {
-                var catEntity = await _reportRepository.GetCategoryByIdAsync(categoryId.Value);
-                if (catEntity != null)
-                {
-                    categoryName = catEntity.Name;
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(categoryName))
-            {
-                var catEntity = await _reportRepository.GetCategoryByNameAsync(categoryName);
-                if (catEntity != null)
-                {
-                    categoryId = catEntity.Id;
-                    categoryName = catEntity.Name;
-                }
-                else
-                {
-                    var newCat = new ReportCategory
+                    if (string.IsNullOrWhiteSpace(request.Format) || request.Format == "PDF")
                     {
-                        Name = categoryName.Trim(),
-                        Description = $"{categoryName} reports",
-                        DeletedFlag = 1,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    var addedCat = await _reportRepository.AddCategoryAsync(newCat);
-                    categoryId = addedCat.Id;
+                        var extClean = extension.TrimStart('.').ToLowerInvariant();
+                        format = extClean switch
+                        {
+                            "pdf" => "PDF",
+                            "csv" => "CSV",
+                            "xlsx" or "xls" => "Excel",
+                            "json" => "JSON",
+                            "docx" or "doc" => "Word",
+                            "txt" => "TXT",
+                            _ => string.IsNullOrWhiteSpace(extClean) ? format : extClean.ToUpperInvariant()
+                        };
+                    }
+
+                    var uniqueFileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Guid.NewGuid().ToString("N")[..6]}_{cleanName}{extension}";
+                    destinationPath = Path.Combine(reportDir, uniqueFileName);
+
+                    await using (var stream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+                    {
+                        await request.File.CopyToAsync(stream, cancellationToken);
+                    }
+
+                    cancellationToken.ThrowIfCancellationRequested();
+                    storedFileName = uniqueFileName;
                 }
-            }
 
-            if (string.IsNullOrWhiteSpace(categoryName))
+                cancellationToken.ThrowIfCancellationRequested();
+
+                int? categoryId = request.CategoryId;
+                string categoryName = request.Category?.Trim() ?? string.Empty;
+
+                if (categoryId.HasValue && categoryId.Value > 0)
+                {
+                    var catEntity = await _reportRepository.GetCategoryByIdAsync(categoryId.Value, cancellationToken);
+                    if (catEntity != null)
+                    {
+                        categoryName = catEntity.Name;
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(categoryName))
+                {
+                    var catEntity = await _reportRepository.GetCategoryByNameAsync(categoryName, cancellationToken);
+                    if (catEntity != null)
+                    {
+                        categoryId = catEntity.Id;
+                        categoryName = catEntity.Name;
+                    }
+                    else
+                    {
+                        var newCat = new ReportCategory
+                        {
+                            Name = categoryName.Trim(),
+                            Description = $"{categoryName} reports",
+                            DeletedFlag = 1,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        var addedCat = await _reportRepository.AddCategoryAsync(newCat, cancellationToken);
+                        categoryId = addedCat.Id;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(categoryName))
+                {
+                    categoryName = "Compliance";
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var report = await _reportRepository.CreateReportRecordAsync(
+                    title,
+                    description,
+                    categoryId,
+                    categoryName,
+                    format,
+                    creatorName,
+                    fileSize,
+                    storedFileName,
+                    cancellationToken);
+
+                return report.ToDto();
+            }
+            catch (Exception)
             {
-                categoryName = "Compliance";
+                // If cancellation occurred or operation failed, clean up the file immediately so it is not saved on disk
+                if (!string.IsNullOrEmpty(destinationPath) && File.Exists(destinationPath))
+                {
+                    try { File.Delete(destinationPath); } catch { }
+                }
+                throw;
             }
-
-            var report = await _reportRepository.CreateReportRecordAsync(
-                title,
-                description,
-                categoryId,
-                categoryName,
-                format,
-                creatorName,
-                fileSize,
-                storedFileName);
-
-            return report.ToDto();
         }
 
-        public async Task<ReportDto?> UpdateReportAsync(int id, UpdateReportRequest request)
+        public async Task<ReportDto?> UpdateReportAsync(int id, UpdateReportRequest request, CancellationToken cancellationToken = default)
         {
-            int? categoryId = request.CategoryId;
-            string categoryName = request.Category?.Trim() ?? string.Empty;
+            cancellationToken.ThrowIfCancellationRequested();
 
-            if (categoryId.HasValue && categoryId.Value > 0)
+            var existingReport = await _reportRepository.GetReportByIdAsync(id, cancellationToken);
+            if (existingReport == null)
             {
-                var catEntity = await _reportRepository.GetCategoryByIdAsync(categoryId.Value);
-                if (catEntity != null)
-                {
-                    categoryName = catEntity.Name;
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(categoryName))
-            {
-                var catEntity = await _reportRepository.GetCategoryByNameAsync(categoryName);
-                if (catEntity != null)
-                {
-                    categoryId = catEntity.Id;
-                    categoryName = catEntity.Name;
-                }
+                return null;
             }
 
-            if (string.IsNullOrWhiteSpace(categoryName))
-            {
-                categoryName = "Compliance";
-            }
-
+            var oldFileName = existingReport.FileName;
             string? newFileName = null;
             string? newFileSize = null;
-            if (request.File != null && request.File.Length > 0)
+            string? destinationPath = null;
+            var reportDir = GetReportDirectory();
+
+            try
             {
-                if (request.File.Length > 5 * 1024 * 1024)
+                if (request.File != null && request.File.Length > 0)
                 {
-                    throw new BadRequestException("Report file size cannot exceed 5 MB.");
+                    if (request.File.Length > 15 * 1024 * 1024)
+                    {
+                        throw new BadRequestException("Report file size cannot exceed 15 MB.");
+                    }
+
+                    var originalFileName = Path.GetFileName(request.File.FileName);
+                    var extension = Path.GetExtension(originalFileName);
+                    var rawName = Path.GetFileNameWithoutExtension(originalFileName);
+                    var cleanName = string.Concat(rawName.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '-'));
+                    if (string.IsNullOrWhiteSpace(cleanName)) cleanName = "report";
+
+                    newFileSize = request.File.Length >= 1024 * 1024
+                        ? $"{(request.File.Length / (1024.0 * 1024.0)):F1} MB"
+                        : $"{(request.File.Length / 1024.0):F0} KB";
+
+                    var uniqueFileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Guid.NewGuid().ToString("N")[..6]}_{cleanName}{extension}";
+                    destinationPath = Path.Combine(reportDir, uniqueFileName);
+
+                    await using (var stream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+                    {
+                        await request.File.CopyToAsync(stream, cancellationToken);
+                    }
+
+                    cancellationToken.ThrowIfCancellationRequested();
+                    newFileName = uniqueFileName;
                 }
 
-                var reportDir = GetReportDirectory();
-                var originalFileName = Path.GetFileName(request.File.FileName);
-                var extension = Path.GetExtension(originalFileName);
-                var rawName = Path.GetFileNameWithoutExtension(originalFileName);
-                var cleanName = string.Concat(rawName.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '-'));
-                if (string.IsNullOrWhiteSpace(cleanName)) cleanName = "report";
+                cancellationToken.ThrowIfCancellationRequested();
 
-                newFileSize = request.File.Length >= 1024 * 1024
-                    ? $"{(request.File.Length / (1024.0 * 1024.0)):F1} MB"
-                    : $"{(request.File.Length / 1024.0):F0} KB";
+                int? categoryId = request.CategoryId;
+                string categoryName = request.Category?.Trim() ?? string.Empty;
 
-                var uniqueFileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Guid.NewGuid().ToString("N")[..6]}_{cleanName}{extension}";
-                var destinationPath = Path.Combine(reportDir, uniqueFileName);
-
-                using (var stream = new FileStream(destinationPath, FileMode.Create))
+                if (categoryId.HasValue && categoryId.Value > 0)
                 {
-                    await request.File.CopyToAsync(stream);
+                    var catEntity = await _reportRepository.GetCategoryByIdAsync(categoryId.Value, cancellationToken);
+                    if (catEntity != null)
+                    {
+                        categoryName = catEntity.Name;
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(categoryName))
+                {
+                    var catEntity = await _reportRepository.GetCategoryByNameAsync(categoryName, cancellationToken);
+                    if (catEntity != null)
+                    {
+                        categoryId = catEntity.Id;
+                        categoryName = catEntity.Name;
+                    }
                 }
 
-                newFileName = uniqueFileName;
+                if (string.IsNullOrWhiteSpace(categoryName))
+                {
+                    categoryName = "Compliance";
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var updated = await _reportRepository.UpdateReportRecordAsync(
+                    id,
+                    request.Title.Trim(),
+                    request.Description.Trim(),
+                    categoryId,
+                    categoryName,
+                    request.Format.Trim(),
+                    request.Status,
+                    newFileName,
+                    newFileSize,
+                    cancellationToken);
+
+                if (updated == null)
+                {
+                    if (!string.IsNullOrEmpty(destinationPath) && File.Exists(destinationPath))
+                    {
+                        try { File.Delete(destinationPath); } catch { }
+                    }
+                    return null;
+                }
+
+                // If update succeeded and a new file was saved, remove the replaced old file
+                if (!string.IsNullOrEmpty(newFileName) && !string.IsNullOrEmpty(oldFileName) && oldFileName != newFileName)
+                {
+                    var oldFilePath = Path.Combine(reportDir, oldFileName);
+                    if (File.Exists(oldFilePath))
+                    {
+                        try { File.Delete(oldFilePath); } catch { }
+                    }
+                }
+
+                return updated.ToDto();
             }
-
-            var updated = await _reportRepository.UpdateReportRecordAsync(
-                id,
-                request.Title.Trim(),
-                request.Description.Trim(),
-                categoryId,
-                categoryName,
-                request.Format.Trim(),
-                request.Status,
-                newFileName,
-                newFileSize);
-
-            return updated?.ToDto();
+            catch (Exception)
+            {
+                // If cancelled or failed, do NOT save/keep the new file
+                if (!string.IsNullOrEmpty(destinationPath) && File.Exists(destinationPath))
+                {
+                    try { File.Delete(destinationPath); } catch { }
+                }
+                throw;
+            }
         }
 
-        public async Task<bool> DeleteReportAsync(int id)
+        public async Task<bool> DeleteReportAsync(int id, CancellationToken cancellationToken = default)
         {
-            return await _reportRepository.SoftDeleteReportAsync(id);
+            return await _reportRepository.SoftDeleteReportAsync(id, cancellationToken);
         }
     }
 }

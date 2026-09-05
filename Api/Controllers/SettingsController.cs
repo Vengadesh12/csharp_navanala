@@ -17,10 +17,12 @@ namespace MyBackend.Api.Controllers
     public class SettingsController : ControllerBase
     {
         private readonly ISettingService _settingService;
+        private readonly IUserService _userService;
 
-        public SettingsController(ISettingService settingService)
+        public SettingsController(ISettingService settingService, IUserService userService)
         {
             _settingService = settingService;
+            _userService = userService;
         }
 
         [HttpGet]
@@ -100,8 +102,20 @@ namespace MyBackend.Api.Controllers
 
         [HttpPost("bulk")]
         [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> UpdateSettingsBulk([FromBody] UpdateSettingsBulkRequest request)
         {
+            if (request?.Settings != null && request.Settings.ContainsKey("maintenance_mode"))
+            {
+                if (!await HasMaintenancePermissionAsync())
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse
+                    {
+                        Message = "Access Denied. Only Super Admins, Administrators, or authorized users with the 'settings.maintenance' permission can toggle Maintenance Mode."
+                    });
+                }
+            }
+
             var callerName = User.FindFirstValue(ClaimTypes.Name) ?? "System Administrator";
             await _settingService.UpdateSettingsBulkAsync(request, callerName);
 
@@ -130,9 +144,21 @@ namespace MyBackend.Api.Controllers
 
         [HttpPut("{id:int}")]
         [ProducesResponseType(typeof(ApiResponse<SystemSettingDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateSetting(int id, [FromBody] UpdateSettingRequest request)
         {
+            if (string.Equals(request?.SettingKey, "maintenance_mode", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!await HasMaintenancePermissionAsync())
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse
+                    {
+                        Message = "Access Denied. Only Super Admins, Administrators, or authorized users with the 'settings.maintenance' permission can toggle Maintenance Mode."
+                    });
+                }
+            }
+
             var callerName = User.FindFirstValue(ClaimTypes.Name) ?? "System Administrator";
             var setting = await _settingService.UpdateSettingAsync(id, request, callerName);
             if (setting == null)
@@ -146,6 +172,17 @@ namespace MyBackend.Api.Controllers
                 Message = $"Setting '{setting.SettingKey}' updated and persisted in database!",
                 Data = setting
             });
+        }
+
+        private async Task<bool> HasMaintenancePermissionAsync()
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out var userId)) return false;
+
+            var roleClaim = User.FindFirstValue(ClaimTypes.Role)?.ToLowerInvariant() ?? "";
+            if (roleClaim.Contains("super admin") || roleClaim == "admin") return true;
+
+            return await _userService.HasPermissionAsync(userId, "settings.maintenance");
         }
 
         [HttpDelete("{id:int}")]

@@ -76,14 +76,17 @@ namespace MyBackend.Infrastructure.Repositories
             return (rawProjects, activeRollouts, onTrackCount, pendingReviews);
         }
 
-        public async Task<int> CreateProjectAsync(string name, string description, string category, string status, string priority, string leadName, int progressPercentage, string dueDate)
+        public Task<int> CreateProjectAsync(string name, string description, string category, string status, string priority, string leadName, int progressPercentage, string dueDate)
         {
             var now = DateTime.UtcNow;
-            return await _context.Database.SqlQueryRaw<int>("""
+            var id = _context.Database.SqlQueryRaw<int>("""
                 INSERT INTO projects (name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, updated_at, deleted_flag)
                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {8}, 1)
                 RETURNING id AS "Value"
-            """, name, description, category, status, priority, leadName, progressPercentage, dueDate, now).SingleAsync();
+            """, name, description, category, status, priority, leadName, progressPercentage, dueDate, now)
+            .AsEnumerable()
+            .Single();
+            return Task.FromResult(id);
         }
 
         public async Task<Project?> GetProjectByIdAsync(int id)

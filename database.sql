@@ -1494,7 +1494,8 @@ INSERT INTO public.menus (id, menukey, label, icon, route, groupname, descriptio
 INSERT INTO public.menus (id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag) VALUES (30, 'departments.view', 'Departments', 'ðŸ¢', '/departments', 'Core Access', 'Department hierarchy & designation mapping', 4, 'departments.view', 1);
 INSERT INTO public.menus (id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag) VALUES (31, 'approvals.view', 'Create Approval', 'âœ“', '/create-approval', 'Management', 'Raise and manage employee product & resource approvals', 6, 'approvals.view', 1);
 INSERT INTO public.menus (id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag) VALUES (32, 'purchases.view', 'Purchases', 'ðŸ›’', '/purchases', 'Management', 'Procure approved products and manage vendor quotations', 7, 'purchases.view', 1);
-INSERT INTO public.menus (id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag) VALUES (33, 'invoices.view', 'Invoice', 'ðŸ§¾', '/invoices', 'Management', 'Generate and manage customer invoices with GST calculations and PDF download', 8, 'invoices.view', 1);
+INSERT INTO public.menus (id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag) VALUES (33, 'invoices.view', 'Invoice', '🧾', '/invoices', 'Management', 'Generate and manage customer invoices with GST calculations and PDF download', 8, 'invoices.view', 1);
+INSERT INTO public.menus (id, menukey, label, icon, route, groupname, description, orderindex, permissionkey, deletedflag) VALUES (36, 'settings.maintenance', 'Maintenance Mode', '🛠', '/settings', 'Preferences', 'Workspace maintenance mode & access restrictions', 16, 'settings.maintenance', 1);
 
 
 --
@@ -1537,6 +1538,7 @@ INSERT INTO public.permissions ("Id", "PermissionKey", "Name", "Description", "D
 INSERT INTO public.permissions ("Id", "PermissionKey", "Name", "Description", "DeletedFlag") VALUES (59, 'invoices.edit', 'Edit Invoice', 'Modify existing invoice records and line items.', 1);
 INSERT INTO public.permissions ("Id", "PermissionKey", "Name", "Description", "DeletedFlag") VALUES (60, 'invoices.delete', 'Delete Invoice', 'Remove or cancel customer invoice records.', 1);
 INSERT INTO public.permissions ("Id", "PermissionKey", "Name", "Description", "DeletedFlag") VALUES (61, 'invoices.manage', 'Manage Invoices & GST', 'Full administrative authority over invoices, tax settings, and GST number configuration.', 1);
+INSERT INTO public.permissions ("Id", "PermissionKey", "Name", "Description", "DeletedFlag") VALUES (67, 'settings.maintenance', 'Maintenance Mode', 'Configure and toggle system-wide maintenance mode access.', 1);
 
 
 --
@@ -1680,6 +1682,7 @@ INSERT INTO public.rolepermissions ("RoleId", "PermissionId", "Id") VALUES (3, 5
 INSERT INTO public.rolepermissions ("RoleId", "PermissionId", "Id") VALUES (3, 59, 82);
 INSERT INTO public.rolepermissions ("RoleId", "PermissionId", "Id") VALUES (3, 60, 83);
 INSERT INTO public.rolepermissions ("RoleId", "PermissionId", "Id") VALUES (3, 61, 84);
+INSERT INTO public.rolepermissions ("RoleId", "PermissionId", "Id") VALUES (2, 67, 384);
 
 
 --

@@ -14,6 +14,8 @@ namespace MyBackend.Application.Mappings
                 Id = menu.Id,
                 MenuKey = menu.MenuKey,
                 Label = menu.Label,
+                Name = menu.Label,
+                MenuName = menu.Label,
                 Icon = menu.Icon ?? string.Empty,
                 Route = menu.Route ?? string.Empty,
                 GroupName = menu.GroupName ?? string.Empty,

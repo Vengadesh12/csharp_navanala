@@ -6,6 +6,8 @@ namespace MyBackend.Application.Interfaces
     {
         Task<User?> GetByEmailAsync(string email);
 
+        Task<UserLoginDetails?> GetLoginUserDetailsByEmailAsync(string email);
+
         Task<List<User>> GetAllUsersAsync();
 
         Task<User?> GetUserByIdAsync(int id);
@@ -14,7 +16,7 @@ namespace MyBackend.Application.Interfaces
 
         Task<bool> HasPermissionAsync(int userId, params string[] permissionKeys);
 
-        Task<List<string>> GetUserPermissionKeysAsync(int userId);
+        Task<List<string>> GetUserPermissionKeysAsync(int userId, int? roleId = null, int? designationId = null);
 
         Task<bool> UpdatePasswordHashAsync(int userId, string newPasswordHash);
 

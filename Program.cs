@@ -37,6 +37,10 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // 3. API Presentation Services (Controllers, Swagger, JWT Auth, CORS)
 // ------------------------------------------------------------------------------
 builder.Services.AddControllers();
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 30 * 1024 * 1024; // 30 MB
+});
 builder.Services.AddApiSwagger();
 builder.Services.AddApiAuthentication(builder.Configuration);
 

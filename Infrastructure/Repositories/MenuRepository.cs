@@ -28,8 +28,24 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<Menu>> GetUserMenusAsync(int roleId, int designationId)
+        public async Task<List<string>> GetAllActiveMenuNamesAsync()
         {
+            return await _context.Database.SqlQueryRaw<string>("""
+                SELECT label AS "Value"
+                FROM menus
+                WHERE deletedflag = 1
+                ORDER BY orderindex ASC, id ASC
+            """).ToListAsync();
+        }
+
+        public async Task<List<Menu>> GetUserMenusAsync(int roleId, int designationId, int? userId = null)
+        {
+            if (roleId == 2)
+            {
+                return await GetAllActiveMenusAsync();
+            }
+
+            var uid = userId ?? 0;
             return await _context.Menus
                 .FromSqlRaw("""
                     SELECT m.id, m.menukey, m.label, m.icon, m.route, m.groupname, m.description, m.orderindex, m.permissionkey, m.deletedflag, m.created_at, m.updated_at
@@ -55,13 +71,64 @@ namespace MyBackend.Infrastructure.Repositories
                                       INNER JOIN designations des ON des."DepartmentId" = dp."DepartmentId" AND des."DeletedFlag" = 1
                                       WHERE des."Id" = {1}
                                   ))
+                                  OR
+                                  ({2} > 0 AND p."Id" IN (
+                                      SELECT up."PermissionId"
+                                      FROM userpermissions up
+                                      WHERE up."UserId" = {2}
+                                  ))
                               )
                         )
                       )
                     ORDER BY m.orderindex ASC, m.id ASC
-                """, roleId, designationId)
+                """, roleId, designationId, uid)
                 .AsNoTracking()
                 .ToListAsync();
+        }
+
+        public async Task<List<string>> GetUserMenuNamesAsync(int roleId, int designationId, int? userId = null)
+        {
+            if (roleId == 2)
+            {
+                return await GetAllActiveMenuNamesAsync();
+            }
+
+            var uid = userId ?? 0;
+            return await _context.Database.SqlQueryRaw<string>("""
+                SELECT m.label AS "Value"
+                FROM menus m
+                WHERE m.deletedflag = 1
+                  AND (
+                    m.permissionkey IS NULL 
+                    OR m.permissionkey = '' 
+                    OR m.permissionkey IN (
+                        SELECT p."PermissionKey"
+                        FROM permissions p
+                        WHERE p."DeletedFlag" = 1
+                          AND (
+                              ({0} > 0 AND p."Id" IN (
+                                  SELECT rp."PermissionId" 
+                                  FROM rolepermissions rp 
+                                  WHERE rp."RoleId" = {0}
+                              ))
+                              OR
+                              ({1} > 0 AND p."Id" IN (
+                                  SELECT dp."PermissionId"
+                                  FROM departmentpermissions dp
+                                  INNER JOIN designations des ON des."DepartmentId" = dp."DepartmentId" AND des."DeletedFlag" = 1
+                                  WHERE des."Id" = {1}
+                              ))
+                              OR
+                              ({2} > 0 AND p."Id" IN (
+                                  SELECT up."PermissionId"
+                                  FROM userpermissions up
+                                  WHERE up."UserId" = {2}
+                              ))
+                          )
+                    )
+                  )
+                ORDER BY m.orderindex ASC, m.id ASC
+            """, roleId, designationId, uid).ToListAsync();
         }
     }
 }

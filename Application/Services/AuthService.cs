@@ -64,26 +64,27 @@ namespace MyBackend.Application.Services
                 throw new ArgumentException("Email and password are required.");
             }
 
-            var user = await _userRepository.GetByEmailAsync(request.Email);
+            var loginDetails = await _userRepository.GetLoginUserDetailsByEmailAsync(request.Email);
 
-            if (user is null)
+            if (loginDetails is null)
             {
                 throw new UnauthorizedAccessException("Invalid email or password.");
             }
 
-            if (user.DeletedFlag == 0)
+            if (loginDetails.DeletedFlag == 0)
             {
                 throw new UnauthorizedAccessException("This account has been deactivated. Please contact your administrator.");
             }
 
+            var user = loginDetails.ToUser();
             await EnsureMaintenanceAccessAllowedAsync(user);
 
-            if (string.IsNullOrWhiteSpace(user.PasswordHash))
+            if (string.IsNullOrWhiteSpace(loginDetails.PasswordHash))
             {
                 throw new UnauthorizedAccessException("Invalid email or password.");
             }
 
-            var verifyResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+            var verifyResult = _passwordHasher.VerifyHashedPassword(user, loginDetails.PasswordHash, request.Password);
             if (verifyResult == PasswordVerificationResult.Failed)
             {
                 throw new UnauthorizedAccessException("Invalid email or password.");
@@ -125,13 +126,24 @@ namespace MyBackend.Application.Services
                     Message = "Two-Factor Authentication is enabled. A 6-digit verification code has been sent to your registered email.",
                     Data = new AuthUserData
                     {
+                        Id = user.Id,
                         Email = user.Email,
-                        Name = user.Name
+                        Name = user.Name,
+                        Phone = user.Phone,
+                        Age = user.Age,
+                        Address = user.Address,
+                        ProfileImage = user.ProfileImage,
+                        RoleId = user.RoleId,
+                        RoleName = loginDetails.RoleName,
+                        DesignationName = loginDetails.DesignationName,
+                        DepartmentName = loginDetails.DepartmentName,
+                        Permissions = loginDetails.GetPermissions(),
+                        MenuNames = loginDetails.GetMenuNames()
                     }
                 };
             }
 
-            var authData = await BuildAuthUserDataAsync(user);
+            var authData = await BuildAuthUserDataAsync(loginDetails);
 
             // Record login session with IP Address and timestamp in PostgreSQL
             try
@@ -172,13 +184,14 @@ namespace MyBackend.Application.Services
 
         public async Task<LoginResponse> Verify2FaLoginAsync(Verify2FaLoginRequest request, string? ipAddress = null, string? userAgent = null)
         {
-            var user = await _userRepository.GetByEmailAsync(request.Email);
+            var loginDetails = await _userRepository.GetLoginUserDetailsByEmailAsync(request.Email);
 
-            if (user is null || user.DeletedFlag == 0)
+            if (loginDetails is null || loginDetails.DeletedFlag == 0)
             {
                 throw new KeyNotFoundException("User account not found or deactivated.");
             }
 
+            var user = loginDetails.ToUser();
             await EnsureMaintenanceAccessAllowedAsync(user);
 
             if (!_otpService.ConsumeOtp(user.Email, request.Otp, out var errorMessage))
@@ -186,7 +199,7 @@ namespace MyBackend.Application.Services
                 throw new InvalidOperationException(errorMessage ?? "Invalid or expired 2FA verification code.");
             }
 
-            var authData = await BuildAuthUserDataAsync(user);
+            var authData = await BuildAuthUserDataAsync(loginDetails);
 
             // Record login session with IP Address and timestamp in PostgreSQL
             try
@@ -256,26 +269,33 @@ namespace MyBackend.Application.Services
                 throw new ArgumentException("A valid Google email address is required.");
             }
 
-            var user = await _userRepository.GetByEmailAsync(request.Email);
-            if (user == null)
+            var loginDetails = await _userRepository.GetLoginUserDetailsByEmailAsync(request.Email);
+            if (loginDetails == null)
             {
                 throw new UnauthorizedAccessException($"No registered workspace account found for '{request.Email}'. Please contact your administrator to create your account or submit an access request.");
             }
 
-            if (user.DeletedFlag == 0)
+            if (loginDetails.DeletedFlag == 0)
             {
                 throw new UnauthorizedAccessException("This account has been deactivated. Please contact your administrator.");
             }
 
+            var user = loginDetails.ToUser();
             await EnsureMaintenanceAccessAllowedAsync(user);
 
             if (string.IsNullOrWhiteSpace(user.ProfileImage) && !string.IsNullOrWhiteSpace(request.ProfileImage))
             {
-                user.ProfileImage = request.ProfileImage;
-                await _unitOfWork.SaveChangesAsync();
+                var existingUser = await _userRepository.GetByEmailAsync(request.Email);
+                if (existingUser != null)
+                {
+                    existingUser.ProfileImage = request.ProfileImage;
+                    user.ProfileImage = request.ProfileImage;
+                    loginDetails.ProfileImage = request.ProfileImage;
+                    await _unitOfWork.SaveChangesAsync();
+                }
             }
 
-            var authData = await BuildAuthUserDataAsync(user);
+            var authData = await BuildAuthUserDataAsync(loginDetails);
 
             // Record login session with IP Address and timestamp
             try
@@ -502,21 +522,45 @@ namespace MyBackend.Application.Services
             return sessions.ToDtoList();
         }
 
-        private async Task<AuthUserData> BuildAuthUserDataAsync(User user)
+        private Task<AuthUserData> BuildAuthUserDataAsync(UserLoginDetails loginDetails)
         {
-            string? roleName = null;
-            if (user.RoleId.HasValue)
+            var user = loginDetails.ToUser();
+            return BuildAuthUserDataAsync(
+                user,
+                loginDetails.RoleName,
+                loginDetails.DesignationName,
+                loginDetails.DepartmentName,
+                loginDetails.GetPermissions(),
+                loginDetails.GetMenuNames());
+        }
+
+        private async Task<AuthUserData> BuildAuthUserDataAsync(
+            User user,
+            string? roleName = null,
+            string? designationName = null,
+            string? departmentName = null,
+            List<string>? initialPermissions = null,
+            List<string>? initialMenuNames = null)
+        {
+            if (string.IsNullOrWhiteSpace(roleName) && user.RoleId.HasValue)
             {
                 var role = await _unitOfWork.Roles.GetByIdAsync(user.RoleId.Value);
                 roleName = role?.Name;
             }
 
-            string? designationName = null;
-            string? departmentName = null;
-            if (user.DesignationId.HasValue)
+            if (string.IsNullOrWhiteSpace(designationName) && user.DesignationId.HasValue)
             {
                 var des = await _unitOfWork.Designations.GetByIdAsync(user.DesignationId.Value);
                 designationName = des?.Name;
+                if (string.IsNullOrWhiteSpace(departmentName) && des?.DepartmentId.HasValue == true)
+                {
+                    var dept = await _unitOfWork.Departments.GetByIdAsync(des.DepartmentId.Value);
+                    departmentName = dept?.Name;
+                }
+            }
+            else if (string.IsNullOrWhiteSpace(departmentName) && user.DesignationId.HasValue)
+            {
+                var des = await _unitOfWork.Designations.GetByIdAsync(user.DesignationId.Value);
                 if (des?.DepartmentId.HasValue == true)
                 {
                     var dept = await _unitOfWork.Departments.GetByIdAsync(des.DepartmentId.Value);
@@ -524,7 +568,9 @@ namespace MyBackend.Application.Services
                 }
             }
 
-            var permissions = await _userRepository.GetUserPermissionKeysAsync(user.Id);
+            var permissions = (initialPermissions != null && initialPermissions.Count > 0)
+                ? initialPermissions
+                : await _userRepository.GetUserPermissionKeysAsync(user.Id, user.RoleId, user.DesignationId);
 
             List<Menu> menus = [];
             try
@@ -535,12 +581,16 @@ namespace MyBackend.Application.Services
                 }
                 else
                 {
-                    menus = await _unitOfWork.Menus.GetUserMenusAsync(user.RoleId ?? 0, user.DesignationId ?? 0);
+                    menus = await _unitOfWork.Menus.GetUserMenusAsync(user.RoleId ?? 0, user.DesignationId ?? 0, user.Id);
                 }
             }
             catch
             {
             }
+
+            var menuNames = (initialMenuNames != null && initialMenuNames.Count > 0)
+                ? initialMenuNames
+                : menus.Select(m => m.Label).Where(l => !string.IsNullOrWhiteSpace(l)).Distinct().ToList();
 
             var tokenString = _jwtService.GenerateToken(user, roleName, permissions);
 
@@ -556,7 +606,11 @@ namespace MyBackend.Application.Services
                 DesignationName = designationName,
                 Permissions = permissions,
                 Menus = menus.ToDtoList(),
+                MenuNames = menuNames,
                 Token = tokenString,
+                Phone = user.Phone,
+                Age = user.Age,
+                Address = user.Address,
                 IsFirstLogin = user.IsFirstLogin
             };
         }

@@ -34,7 +34,7 @@ namespace MyBackend.Application.Services
                 var roleId = user.RoleId ?? 0;
                 var designationId = user.DesignationId ?? 0;
 
-                var rawMenus = await _unitOfWork.Menus.GetUserMenusAsync(roleId, designationId);
+                var rawMenus = await _unitOfWork.Menus.GetUserMenusAsync(roleId, designationId, user.Id);
                 return rawMenus.ToDtoList();
             }
         }

@@ -72,6 +72,9 @@ namespace MyBackend.UnitTests.Application
                 Email = "john@example.com",
                 RoleId = 1,
                 DesignationId = 5,
+                Phone = "1234567890",
+                Age = 30,
+                Address = "123 Main St",
                 DeletedFlag = 1
             };
             user.PasswordHash = _passwordHasher.HashPassword(user, "SecureP@ssword123");
@@ -95,6 +98,18 @@ namespace MyBackend.UnitTests.Application
             Assert.Equal("John Doe", response.Data.Name);
             Assert.Equal("john@example.com", response.Data.Email);
             Assert.Equal("mock_jwt_token", response.Data.Token);
+            Assert.Equal("1234567890", response.Data.Phone);
+            Assert.Equal(30, response.Data.Age);
+            Assert.Equal("123 Main St", response.Data.Address);
+            Assert.Equal("Standard Role", response.Data.RoleName);
+            Assert.Equal("Software Engineer", response.Data.DesignationName);
+            Assert.Equal("Engineering", response.Data.DepartmentName);
+            Assert.Contains("dashboard.view", response.Data.Permissions);
+            Assert.Contains("Dashboard", response.Data.MenuNames);
+            Assert.Single(response.Data.Menus);
+            Assert.Equal("Dashboard", response.Data.Menus[0].Label);
+            Assert.Equal("Dashboard", response.Data.Menus[0].Name);
+            Assert.Equal("Dashboard", response.Data.Menus[0].MenuName);
             Assert.Equal(1, _unitOfWork.SessionsRecorded);
             Assert.Equal(1, _unitOfWork.AuditLogsRecorded);
         }
@@ -348,6 +363,36 @@ namespace MyBackend.UnitTests.Application
                 return Task.FromResult(user);
             }
 
+            public Task<UserLoginDetails?> GetLoginUserDetailsByEmailAsync(string email)
+            {
+                if (UsersByEmail.TryGetValue(email, out var user))
+                {
+                    return Task.FromResult<UserLoginDetails?>(new UserLoginDetails
+                    {
+                        Id = user.Id,
+                        Name = user.Name,
+                        Email = user.Email,
+                        PasswordHash = user.PasswordHash,
+                        RoleId = user.RoleId,
+                        RoleName = "Standard Role",
+                        DesignationId = user.DesignationId,
+                        DesignationName = "Software Engineer",
+                        DepartmentName = "Engineering",
+                        Phone = user.Phone,
+                        Age = user.Age,
+                        Address = user.Address,
+                        ProfileImage = user.ProfileImage,
+                        DeletedFlag = user.DeletedFlag,
+                        IsFirstLogin = user.IsFirstLogin,
+                        CreatedAt = user.CreatedAt,
+                        UpdatedAt = user.UpdatedAt,
+                        PermissionsCsv = "dashboard.view,users.view",
+                        MenuNamesCsv = "Dashboard"
+                    });
+                }
+                return Task.FromResult<UserLoginDetails?>(null);
+            }
+
             public Task<bool> UpdatePasswordHashAsync(int userId, string newPasswordHash)
             {
                 LastUpdatedUserId = userId;
@@ -355,7 +400,7 @@ namespace MyBackend.UnitTests.Application
                 return Task.FromResult(true);
             }
 
-            public Task<List<string>> GetUserPermissionKeysAsync(int userId) =>
+            public Task<List<string>> GetUserPermissionKeysAsync(int userId, int? roleId = null, int? designationId = null) =>
                 Task.FromResult(new List<string> { "dashboard.view", "users.view" });
 
             public Task<User?> GetUserByIdAsync(int id) => Task.FromResult<User?>(null);
@@ -481,10 +526,12 @@ namespace MyBackend.UnitTests.Application
         private class FakeMenuRepository : IMenuRepository
         {
             public Task<List<Menu>> GetAllActiveMenusAsync() => Task.FromResult(new List<Menu>());
-            public Task<List<Menu>> GetUserMenusAsync(int roleId, int designationId) => Task.FromResult(new List<Menu>
+            public Task<List<string>> GetAllActiveMenuNamesAsync() => Task.FromResult(new List<string> { "Dashboard" });
+            public Task<List<Menu>> GetUserMenusAsync(int roleId, int designationId, int? userId = null) => Task.FromResult(new List<Menu>
             {
                 new Menu { Id = 1, MenuKey = "dashboard", Label = "Dashboard", Route = "/dashboard" }
             });
+            public Task<List<string>> GetUserMenuNamesAsync(int roleId, int designationId, int? userId = null) => Task.FromResult(new List<string> { "Dashboard" });
             public Task<IEnumerable<Menu>> GetAllAsync() => Task.FromResult<IEnumerable<Menu>>([]);
             public Task<Menu?> GetByIdAsync(int id) => Task.FromResult<Menu?>(null);
             public Task AddAsync(Menu entity) => Task.CompletedTask;

@@ -73,11 +73,13 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<AuditLog> CreateAuditLogAsync(string action, string module, string performedBy, string details, string ipAddress, string status)
         {
             var now = DateTime.UtcNow;
-            var newId = await _context.Database.SqlQueryRaw<int>("""
+            var newId = _context.Database.SqlQueryRaw<int>("""
                 INSERT INTO audit_logs (action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag)
                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {6}, 1)
                 RETURNING id AS "Value"
-            """, action, module, performedBy, details, ipAddress, status, now).SingleAsync();
+            """, action, module, performedBy, details, ipAddress, status, now)
+            .AsEnumerable()
+            .Single();
 
             var log = await _context.AuditLogs
                 .FromSqlRaw("""

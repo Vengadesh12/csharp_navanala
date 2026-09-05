@@ -18,7 +18,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<(List<Report> Reports, int TotalReports, int ReadyReports, int TotalUsers, int UsersWithRole, List<ReportCategory> Categories)> GetReportsOverviewDataAsync(string? category, string? search)
+        public async Task<(List<Report> Reports, int TotalReports, int ReadyReports, int TotalUsers, int UsersWithRole, List<ReportCategory> Categories)> GetReportsOverviewDataAsync(string? category, string? search, CancellationToken cancellationToken = default)
         {
             var sql = new StringBuilder("""
                 SELECT id, title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag
@@ -56,49 +56,49 @@ namespace MyBackend.Infrastructure.Repositories
             var rawReports = await _context.Reports
                 .FromSqlRaw(sql.ToString(), parameters.ToArray())
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             var totalReports = await _context.Database.SqlQueryRaw<int>("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM reports
                 WHERE deleted_flag = 1
-            """).SingleOrDefaultAsync();
+            """).SingleOrDefaultAsync(cancellationToken);
 
             var readyReports = await _context.Database.SqlQueryRaw<int>("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM reports
                 WHERE deleted_flag = 1 AND (status = 'Ready' OR status = 'Generated')
-            """).SingleOrDefaultAsync();
+            """).SingleOrDefaultAsync(cancellationToken);
 
             var totalUsers = await _context.Database.SqlQueryRaw<int>("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM users
                 WHERE "DeletedFlag" = 1
-            """).SingleOrDefaultAsync();
+            """).SingleOrDefaultAsync(cancellationToken);
 
             var usersWithRole = await _context.Database.SqlQueryRaw<int>("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM users
                 WHERE "DeletedFlag" = 1 AND "RoleId" IS NOT NULL
-            """).SingleOrDefaultAsync();
+            """).SingleOrDefaultAsync(cancellationToken);
 
             var categories = await _context.ReportCategories
                 .Where(c => c.DeletedFlag == 1)
                 .OrderBy(c => c.Name)
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             return (rawReports, totalReports, readyReports, totalUsers, usersWithRole, categories);
         }
 
-        public async Task<List<string>> GetCategoryNamesAsync()
+        public async Task<List<string>> GetCategoryNamesAsync(CancellationToken cancellationToken = default)
         {
             var dbCategories = await _context.ReportCategories
                 .Where(c => c.DeletedFlag == 1)
                 .OrderBy(c => c.Name)
                 .Select(c => c.Name)
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             if (dbCategories.Count > 0)
             {
@@ -110,10 +110,10 @@ namespace MyBackend.Infrastructure.Repositories
                 FROM reports
                 WHERE deleted_flag = 1 AND category IS NOT NULL AND category <> ''
                 ORDER BY "Value" ASC
-            """).ToListAsync();
+            """).ToListAsync(cancellationToken);
         }
 
-        public async Task<Report?> GetReportByIdAsync(int id)
+        public async Task<Report?> GetReportByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.Reports
                 .FromSqlRaw("""
@@ -122,30 +122,48 @@ namespace MyBackend.Infrastructure.Repositories
                     WHERE id = {0} AND deleted_flag = 1
                 """, id)
                 .AsNoTracking()
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
-        public async Task<Report> AddReportAsync(Report report)
+        public async Task<Report> AddReportAsync(Report report, CancellationToken cancellationToken = default)
         {
             _context.Reports.Add(report);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
             return report;
         }
 
-        public async Task<Report> CreateReportRecordAsync(string title, string description, int? categoryId, string categoryName, string format, string creatorName, string fileSize, string? storedFileName)
+        public async Task<Report> CreateReportRecordAsync(string title, string description, int? categoryId, string categoryName, string format, string creatorName, string fileSize, string? storedFileName, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var now = DateTime.UtcNow;
-            var newId = await _context.Database.SqlQueryRaw<int>("""
+            var newId = _context.Database.SqlQueryRaw<int>("""
                 INSERT INTO reports (title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag)
                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {9}, 1)
                 RETURNING id AS "Value"
-            """, title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, creatorName, "Ready", fileSize, (object?)storedFileName ?? DBNull.Value, now).SingleAsync();
+            """, title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, creatorName, "Ready", fileSize, (object?)storedFileName ?? DBNull.Value, now)
+            .AsEnumerable()
+            .Single();
 
-            var report = await GetReportByIdAsync(newId);
-            return report!;
+            var report = await GetReportByIdAsync(newId, cancellationToken);
+            return report ?? new Report
+            {
+                Id = newId,
+                Title = title,
+                Description = description,
+                CategoryId = categoryId,
+                Category = categoryName,
+                Format = format,
+                CreatedBy = creatorName,
+                Status = "Ready",
+                FileSize = fileSize,
+                FileName = storedFileName,
+                CreatedAt = now,
+                UpdatedAt = now,
+                DeletedFlag = 1
+            };
         }
 
-        public async Task<Report?> UpdateReportRecordAsync(int id, string title, string description, int? categoryId, string categoryName, string format, string? status, string? newFileName, string? newFileSize)
+        public async Task<Report?> UpdateReportRecordAsync(int id, string title, string description, int? categoryId, string categoryName, string format, string? status, string? newFileName, string? newFileSize, CancellationToken cancellationToken = default)
         {
             var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
@@ -153,32 +171,32 @@ namespace MyBackend.Infrastructure.Repositories
                 SET title = {0}, description = {1}, category_id = {2}, category = {3}, format = {4}, status = COALESCE(NULLIF({5}, ''), status),
                     file_name = COALESCE({6}, file_name), file_size = COALESCE({7}, file_size), updated_at = {8}
                 WHERE id = {9} AND deleted_flag = 1
-            """, title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, status ?? string.Empty, (object?)newFileName ?? DBNull.Value, (object?)newFileSize ?? DBNull.Value, now, id);
+            """, new object[] { title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, status ?? string.Empty, (object?)newFileName ?? DBNull.Value, (object?)newFileSize ?? DBNull.Value, now, id }, cancellationToken);
 
             if (rowsAffected == 0) return null;
 
-            return await GetReportByIdAsync(id);
+            return await GetReportByIdAsync(id, cancellationToken);
         }
 
-        public async Task UpdateReportAsync(Report report)
+        public async Task UpdateReportAsync(Report report, CancellationToken cancellationToken = default)
         {
             _context.Reports.Update(report);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<bool> SoftDeleteReportAsync(int id)
+        public async Task<bool> SoftDeleteReportAsync(int id, CancellationToken cancellationToken = default)
         {
             var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
                 UPDATE reports
                 SET deleted_flag = 0, updated_at = {0}
                 WHERE id = {1} AND deleted_flag = 1
-            """, now, id);
+            """, new object[] { now, id }, cancellationToken);
 
             return rowsAffected > 0;
         }
 
-        public async Task<List<ReportCategory>> GetAllCategoriesAsync()
+        public async Task<List<ReportCategory>> GetAllCategoriesAsync(CancellationToken cancellationToken = default)
         {
             return await _context.ReportCategories
                 .FromSqlRaw("""
@@ -188,10 +206,10 @@ namespace MyBackend.Infrastructure.Repositories
                     ORDER BY name ASC
                 """)
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
-        public async Task<ReportCategory?> GetCategoryByIdAsync(int id)
+        public async Task<ReportCategory?> GetCategoryByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.ReportCategories
                 .FromSqlRaw("""
@@ -200,41 +218,41 @@ namespace MyBackend.Infrastructure.Repositories
                     WHERE id = {0} AND deleted_flag = 1
                 """, id)
                 .AsNoTracking()
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
-        public async Task<ReportCategory?> GetCategoryByNameAsync(string name)
+        public async Task<ReportCategory?> GetCategoryByNameAsync(string name, CancellationToken cancellationToken = default)
         {
             return await _context.ReportCategories
-                .FirstOrDefaultAsync(c => c.DeletedFlag == 1 && c.Name.ToLower() == name.Trim().ToLower());
+                .FirstOrDefaultAsync(c => c.DeletedFlag == 1 && c.Name.ToLower() == name.Trim().ToLower(), cancellationToken);
         }
 
-        public async Task<bool> CategoryExistsByNameAsync(string name)
+        public async Task<bool> CategoryExistsByNameAsync(string name, CancellationToken cancellationToken = default)
         {
             var count = await _context.Database.SqlQueryRaw<int>("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM report_categories
                 WHERE deleted_flag = 1 AND LOWER(name) = LOWER({0})
-            """, name.Trim()).SingleOrDefaultAsync();
+            """, name.Trim()).SingleOrDefaultAsync(cancellationToken);
 
             return count > 0;
         }
 
-        public async Task<ReportCategory> AddCategoryAsync(ReportCategory category)
+        public async Task<ReportCategory> AddCategoryAsync(ReportCategory category, CancellationToken cancellationToken = default)
         {
             _context.ReportCategories.Add(category);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
             return category;
         }
 
-        public async Task<bool> SoftDeleteCategoryAsync(int id)
+        public async Task<bool> SoftDeleteCategoryAsync(int id, CancellationToken cancellationToken = default)
         {
-            var category = await _context.ReportCategories.FirstOrDefaultAsync(c => c.Id == id && c.DeletedFlag == 1);
+            var category = await _context.ReportCategories.FirstOrDefaultAsync(c => c.Id == id && c.DeletedFlag == 1, cancellationToken);
             if (category == null) return false;
 
             category.DeletedFlag = 0;
             category.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
             return true;
         }
     }

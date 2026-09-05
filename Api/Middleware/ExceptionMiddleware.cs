@@ -28,6 +28,14 @@ namespace MyBackend.Api.Middleware
             {
                 await _next(context);
             }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+                _logger.LogInformation("Request cancelled by client (navigation or abort).");
+                if (!context.Response.HasStarted)
+                {
+                    context.Response.StatusCode = 499; // Client Closed Request
+                }
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unhandled exception occurred during request processing: {Message}", ex.Message);

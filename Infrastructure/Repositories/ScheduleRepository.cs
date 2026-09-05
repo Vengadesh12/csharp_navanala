@@ -130,14 +130,17 @@ namespace MyBackend.Infrastructure.Repositories
             """, typeName).SingleOrDefaultAsync();
         }
 
-        public async Task<int> CreateEventTypeAsync(string name, string description, string color, string icon, string createdBy)
+        public Task<int> CreateEventTypeAsync(string name, string description, string color, string icon, string createdBy)
         {
             var now = DateTime.UtcNow;
-            return await _context.Database.SqlQueryRaw<int>("""
+            var id = _context.Database.SqlQueryRaw<int>("""
                 INSERT INTO event_types (name, description, color, icon, created_at, updated_at, created_by, deleted_flag)
                 VALUES ({0}, {1}, {2}, {3}, {4}, {4}, {5}, 1)
                 RETURNING id AS "Value"
-            """, name, description, color, icon, now, createdBy).SingleAsync();
+            """, name, description, color, icon, now, createdBy)
+            .AsEnumerable()
+            .Single();
+            return Task.FromResult(id);
         }
 
         public async Task<bool> SoftDeleteEventTypeAsync(int id)
@@ -152,14 +155,17 @@ namespace MyBackend.Infrastructure.Repositories
             return rows > 0;
         }
 
-        public async Task<int> CreateScheduleAsync(string title, string description, string eventType, string eventDate, string startTime, string endTime, string location, string organizer, string status, string priority, int attendeesCount)
+        public Task<int> CreateScheduleAsync(string title, string description, string eventType, string eventDate, string startTime, string endTime, string location, string organizer, string status, string priority, int attendeesCount)
         {
             var now = DateTime.UtcNow;
-            return await _context.Database.SqlQueryRaw<int>("""
+            var id = _context.Database.SqlQueryRaw<int>("""
                 INSERT INTO schedules (title, description, event_type, event_date, start_time, end_time, location, organizer, status, priority, attendees_count, created_at, updated_at, deleted_flag)
                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {11}, 1)
                 RETURNING id AS "Value"
-            """, title, description, eventType, eventDate, startTime, endTime, location, organizer, status, priority, attendeesCount, now).SingleAsync();
+            """, title, description, eventType, eventDate, startTime, endTime, location, organizer, status, priority, attendeesCount, now)
+            .AsEnumerable()
+            .Single();
+            return Task.FromResult(id);
         }
 
         public async Task<ScheduleEvent?> GetScheduleByIdAsync(int id)
