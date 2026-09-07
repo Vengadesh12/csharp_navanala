@@ -65,6 +65,25 @@ namespace MyBackend.Api.Controllers
             return Ok(summary);
         }
 
+        [HttpGet("next-number")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetNextInvoiceNumber()
+        {
+            var (userId, isAuthorized, _, _) = await GetCallerAuthorizationAsync();
+            if (userId <= 0) return Unauthorized(new ErrorResponse { Message = "Valid authenticated user session required." });
+            if (!isAuthorized)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse
+                {
+                    Message = "Access Denied. You do not have permission to view invoices."
+                });
+            }
+
+            var nextNumber = await _invoiceService.GetNextInvoiceNumberAsync();
+            return Ok(new { nextInvoiceNumber = nextNumber });
+        }
+
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -159,6 +178,45 @@ namespace MyBackend.Api.Controllers
             }
 
             return Ok(updated);
+        }
+
+        [HttpPatch("{id:int}/status")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> UpdateInvoiceStatus(int id, [FromBody] UpdateInvoiceStatusRequest request)
+        {
+            var (userId, isAuthorized, _, _) = await GetCallerAuthorizationAsync();
+            if (userId <= 0) return Unauthorized(new ErrorResponse { Message = "Valid authenticated user session required." });
+            if (!isAuthorized)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse
+                {
+                    Message = "Access Denied. You do not have permission to update invoice status."
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(request?.Status))
+            {
+                return BadRequest(new ErrorResponse { Message = "Status is required." });
+            }
+
+            var validStatuses = new[] { "Draft", "Pending", "Paid", "Overdue", "Cancelled" };
+            var matchedStatus = validStatuses.FirstOrDefault(s => s.Equals(request.Status.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (matchedStatus == null)
+            {
+                return BadRequest(new ErrorResponse { Message = $"Invalid status '{request.Status}'. Valid values are: {string.Join(", ", validStatuses)}" });
+            }
+
+            var success = await _invoiceService.UpdateInvoiceStatusAsync(id, matchedStatus, userId);
+            if (!success)
+            {
+                return NotFound(new ErrorResponse { Message = $"Invoice with ID {id} was not found." });
+            }
+
+            return Ok(new { success = true, id, status = matchedStatus });
         }
 
         [HttpDelete("{id:int}")]

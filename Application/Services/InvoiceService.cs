@@ -50,7 +50,7 @@ namespace MyBackend.Application.Services
 
         public async Task<InvoiceSummaryDto> GetSummaryAsync()
         {
-            var (totalInvoices, totalInvoicedAmount, totalPaidAmount, totalPendingAmount, totalGstCollected, paidCount, pendingCount, draftCount, overdueCount) =
+            var (totalInvoices, totalInvoicedAmount, totalPaidAmount, totalPendingAmount, totalOverdueAmount, totalGstCollected, paidCount, pendingCount, draftCount, overdueCount) =
                 await _invoiceRepository.GetSummaryAsync();
 
             return new InvoiceSummaryDto
@@ -59,6 +59,7 @@ namespace MyBackend.Application.Services
                 TotalInvoicedAmount = totalInvoicedAmount,
                 TotalPaidAmount = totalPaidAmount,
                 TotalPendingAmount = totalPendingAmount,
+                TotalOverdueAmount = totalOverdueAmount,
                 TotalGstCollected = totalGstCollected,
                 PaidCount = paidCount,
                 PendingCount = pendingCount,
@@ -72,6 +73,11 @@ namespace MyBackend.Application.Services
             var invoiceNumber = string.IsNullOrWhiteSpace(request.InvoiceNumber)
                 ? await GenerateInvoiceNumberAsync()
                 : request.InvoiceNumber.Trim();
+
+            if (await _invoiceRepository.InvoiceNumberExistsAsync(invoiceNumber))
+            {
+                throw new ArgumentException($"Invoice number '{invoiceNumber}' already exists. Please choose a different invoice number.");
+            }
 
             var companyGstin = (canEditGst && !string.IsNullOrWhiteSpace(request.CompanyGstin))
                 ? request.CompanyGstin.Trim().ToUpper()
@@ -136,6 +142,12 @@ namespace MyBackend.Application.Services
 
         public async Task<InvoiceDto?> UpdateInvoiceAsync(int id, UpdateInvoiceRequest request, int userId, string userName, bool canEditGst)
         {
+            if (!string.IsNullOrWhiteSpace(request.InvoiceNumber) &&
+                await _invoiceRepository.InvoiceNumberExistsAsync(request.InvoiceNumber.Trim(), excludeId: id))
+            {
+                throw new ArgumentException($"Invoice number '{request.InvoiceNumber.Trim()}' already exists. Please choose a different invoice number.");
+            }
+
             var lineItems = new List<InvoiceItem>();
             int orderIdx = 1;
             foreach (var itemReq in request.Items ?? Enumerable.Empty<CreateInvoiceItemRequest>())
@@ -188,9 +200,19 @@ namespace MyBackend.Application.Services
             return updatedInvoice?.ToDto();
         }
 
+        public async Task<bool> UpdateInvoiceStatusAsync(int id, string status, int userId)
+        {
+            return await _invoiceRepository.UpdateInvoiceStatusAsync(id, status);
+        }
+
         public async Task<bool> DeleteInvoiceAsync(int id, int userId)
         {
             return await _invoiceRepository.SoftDeleteInvoiceAsync(id);
+        }
+
+        public async Task<string> GetNextInvoiceNumberAsync()
+        {
+            return await GenerateInvoiceNumberAsync();
         }
 
         private async Task<string> GenerateInvoiceNumberAsync()
@@ -209,7 +231,14 @@ namespace MyBackend.Application.Services
                 }
             }
 
-            return $"{prefix}{nextNum:D4}";
+            var candidate = $"{prefix}{nextNum:D4}";
+            while (await _invoiceRepository.InvoiceNumberExistsAsync(candidate))
+            {
+                nextNum++;
+                candidate = $"{prefix}{nextNum:D4}";
+            }
+
+            return candidate;
         }
     }
 }

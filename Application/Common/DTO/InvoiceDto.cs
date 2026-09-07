@@ -118,9 +118,15 @@ public class InvoiceSummaryDto
     public decimal TotalInvoicedAmount { get; set; }
     public decimal TotalPaidAmount { get; set; }
     public decimal TotalPendingAmount { get; set; }
+    public decimal TotalOverdueAmount { get; set; }
     public decimal TotalGstCollected { get; set; }
     public int PaidCount { get; set; }
     public int PendingCount { get; set; }
     public int DraftCount { get; set; }
     public int OverdueCount { get; set; }
+}
+
+public class UpdateInvoiceStatusRequest
+{
+    public string Status { get; set; } = string.Empty;
 }

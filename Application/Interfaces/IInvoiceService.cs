@@ -8,8 +8,10 @@ namespace MyBackend.Application.Interfaces
         Task<PagedInvoiceResponse> GetInvoicesAsync(InvoiceQueryParameters query);
         Task<InvoiceDto?> GetInvoiceByIdAsync(int id);
         Task<InvoiceSummaryDto> GetSummaryAsync();
+        Task<string> GetNextInvoiceNumberAsync();
         Task<InvoiceDto> CreateInvoiceAsync(CreateInvoiceRequest request, int userId, string userName, bool canEditGst);
         Task<InvoiceDto?> UpdateInvoiceAsync(int id, UpdateInvoiceRequest request, int userId, string userName, bool canEditGst);
+        Task<bool> UpdateInvoiceStatusAsync(int id, string status, int userId);
         Task<bool> DeleteInvoiceAsync(int id, int userId);
     }
 }

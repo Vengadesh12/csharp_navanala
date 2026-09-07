@@ -26,6 +26,8 @@ namespace MyBackend.Infrastructure.Repositories
             int page,
             int pageSize)
         {
+            await UpdateOverdueInvoicesAsync();
+
             var dbQuery = _context.Invoices
                 .Include(i => i.Items.Where(item => item.DeletedFlag == 1))
                 .AsNoTracking()
@@ -79,8 +81,40 @@ namespace MyBackend.Infrastructure.Repositories
                 .FirstOrDefaultAsync(i => i.Id == id && i.DeletedFlag == 1);
         }
 
-        public async Task<(int TotalInvoices, decimal TotalInvoicedAmount, decimal TotalPaidAmount, decimal TotalPendingAmount, decimal TotalGstCollected, int PaidCount, int PendingCount, int DraftCount, int OverdueCount)> GetSummaryAsync()
+        public async Task<int> UpdateOverdueInvoicesAsync()
         {
+            try
+            {
+                var todayUtc = DateTime.UtcNow.Date;
+                var overdueCandidates = await _context.Invoices
+                    .Where(i => i.DeletedFlag == 1 &&
+                                i.Status == "Pending" &&
+                                i.DueDate != null &&
+                                i.DueDate.Value < todayUtc)
+                    .ToListAsync();
+
+                if (overdueCandidates.Count == 0) return 0;
+
+                foreach (var inv in overdueCandidates)
+                {
+                    inv.Status = "Overdue";
+                    inv.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+                return overdueCandidates.Count;
+            }
+            catch
+            {
+                // In case of any concurrent conflict or DB issue, fail gracefully
+                return 0;
+            }
+        }
+
+        public async Task<(int TotalInvoices, decimal TotalInvoicedAmount, decimal TotalPaidAmount, decimal TotalPendingAmount, decimal TotalOverdueAmount, decimal TotalGstCollected, int PaidCount, int PendingCount, int DraftCount, int OverdueCount)> GetSummaryAsync()
+        {
+            await UpdateOverdueInvoicesAsync();
+
             var activeInvoices = await _context.Invoices
                 .AsNoTracking()
                 .Where(i => i.DeletedFlag == 1)
@@ -90,6 +124,7 @@ namespace MyBackend.Infrastructure.Repositories
             var totalInvoicedAmount = activeInvoices.Sum(i => i.TotalAmount);
             var totalPaidAmount = activeInvoices.Where(i => i.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase)).Sum(i => i.TotalAmount);
             var totalPendingAmount = activeInvoices.Where(i => i.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase)).Sum(i => i.TotalAmount);
+            var totalOverdueAmount = activeInvoices.Where(i => i.Status.Equals("Overdue", StringComparison.OrdinalIgnoreCase)).Sum(i => i.TotalAmount);
             var totalGstCollected = activeInvoices.Sum(i => i.TaxAmount);
 
             var paidCount = activeInvoices.Count(i => i.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase));
@@ -97,7 +132,7 @@ namespace MyBackend.Infrastructure.Repositories
             var draftCount = activeInvoices.Count(i => i.Status.Equals("Draft", StringComparison.OrdinalIgnoreCase));
             var overdueCount = activeInvoices.Count(i => i.Status.Equals("Overdue", StringComparison.OrdinalIgnoreCase));
 
-            return (totalInvoices, totalInvoicedAmount, totalPaidAmount, totalPendingAmount, totalGstCollected, paidCount, pendingCount, draftCount, overdueCount);
+            return (totalInvoices, totalInvoicedAmount, totalPaidAmount, totalPendingAmount, totalOverdueAmount, totalGstCollected, paidCount, pendingCount, draftCount, overdueCount);
         }
 
         public async Task<Invoice> AddInvoiceAsync(Invoice invoice)
@@ -188,6 +223,29 @@ namespace MyBackend.Infrastructure.Repositories
                 .OrderByDescending(i => i.Id)
                 .Select(i => i.InvoiceNumber)
                 .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> InvoiceNumberExistsAsync(string invoiceNumber, int? excludeId = null)
+        {
+            if (string.IsNullOrWhiteSpace(invoiceNumber)) return false;
+            var num = invoiceNumber.Trim().ToLower();
+            var query = _context.Invoices.Where(i => i.InvoiceNumber.ToLower() == num && i.DeletedFlag == 1);
+            if (excludeId.HasValue)
+            {
+                query = query.Where(i => i.Id != excludeId.Value);
+            }
+            return await query.AnyAsync();
+        }
+
+        public async Task<bool> UpdateInvoiceStatusAsync(int id, string status)
+        {
+            var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == id && i.DeletedFlag == 1);
+            if (invoice == null) return false;
+
+            invoice.Status = status.Trim();
+            invoice.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

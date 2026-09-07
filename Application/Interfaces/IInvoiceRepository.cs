@@ -17,7 +17,10 @@ namespace MyBackend.Application.Interfaces
 
         Task<Invoice?> GetInvoiceByIdAsync(int id);
 
-        Task<(int TotalInvoices, decimal TotalInvoicedAmount, decimal TotalPaidAmount, decimal TotalPendingAmount, decimal TotalGstCollected, int PaidCount, int PendingCount, int DraftCount, int OverdueCount)> GetSummaryAsync();
+        Task<(int TotalInvoices, decimal TotalInvoicedAmount, decimal TotalPaidAmount, decimal TotalPendingAmount, decimal TotalOverdueAmount, decimal TotalGstCollected, int PaidCount, int PendingCount, int DraftCount, int OverdueCount)> GetSummaryAsync();
+
+        Task<int> UpdateOverdueInvoicesAsync();
+        Task<bool> UpdateInvoiceStatusAsync(int id, string status);
 
         Task<Invoice> AddInvoiceAsync(Invoice invoice);
 
@@ -42,5 +45,6 @@ namespace MyBackend.Application.Interfaces
         Task<bool> SoftDeleteInvoiceAsync(int id);
 
         Task<string?> GetLatestInvoiceNumberForPrefixAsync(string prefix);
+        Task<bool> InvoiceNumberExistsAsync(string invoiceNumber, int? excludeId = null);
     }
 }
