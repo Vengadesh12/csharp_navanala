@@ -89,6 +89,21 @@ namespace MyBackend.Api.Middleware
                     response.Message = knfEx.Message;
                     break;
 
+                case Microsoft.EntityFrameworkCore.DbUpdateException dbUpdateEx:
+                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    var innerEx = dbUpdateEx.InnerException;
+                    var dbMsg = innerEx?.Message ?? dbUpdateEx.Message;
+                    while (innerEx?.InnerException != null)
+                    {
+                        innerEx = innerEx.InnerException;
+                        if (!string.IsNullOrWhiteSpace(innerEx.Message))
+                        {
+                            dbMsg = innerEx.Message;
+                        }
+                    }
+                    response.Message = dbMsg;
+                    break;
+
                 default:
                     context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     response.Message = !string.IsNullOrWhiteSpace(exception.Message) ? exception.Message : "An internal server error occurred.";

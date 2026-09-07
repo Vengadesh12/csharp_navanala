@@ -6,12 +6,30 @@ namespace MyBackend.Infrastructure.Repositories
 {
     public class UserSessionRepository : Repository<UserSession>, IUserSessionRepository
     {
+        private const int DefaultSessionExpiryMinutes = 120;
+
         public UserSessionRepository(AppDbContext context) : base(context)
         {
         }
 
         public async Task<UserSession> RecordLoginAsync(int userId, string email, string userName, string ipAddress, string? userAgent = null, string? sessionToken = null)
         {
+            var now = DateTime.UtcNow;
+            var expiryCutoff = now.AddMinutes(-DefaultSessionExpiryMinutes);
+
+            // Clean up: terminate any prior open active sessions for this user, as well as any stale open sessions that have expired
+            var sessionsToDeactivate = await _context.UserSessions
+                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null &&
+                            (s.UserId == userId || (s.UpdatedAt ?? s.LoginTime) < expiryCutoff))
+                .ToListAsync();
+
+            foreach (var oldSession in sessionsToDeactivate)
+            {
+                oldSession.IsActive = false;
+                oldSession.LogoutTime = oldSession.UpdatedAt ?? now;
+                oldSession.UpdatedAt = now;
+            }
+
             var session = new UserSession
             {
                 UserId = userId,
@@ -19,7 +37,7 @@ namespace MyBackend.Infrastructure.Repositories
                 UserName = userName,
                 IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? "127.0.0.1" : ipAddress.Trim(),
                 UserAgent = userAgent,
-                LoginTime = DateTime.UtcNow,
+                LoginTime = now,
                 LogoutTime = null,
                 SessionToken = sessionToken,
                 IsActive = true,
@@ -132,7 +150,6 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        private const int DefaultSessionExpiryMinutes = 120;
 
         public async Task<List<UserSession>> GetActiveSessionsAsync()
         {
@@ -161,11 +178,13 @@ namespace MyBackend.Infrastructure.Repositories
                 var statusLower = status.Trim().ToLower();
                 if (statusLower == "active")
                 {
-                    query = query.Where(s => s.IsActive && s.LogoutTime == null);
+                    var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
+                    query = query.Where(s => s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff);
                 }
                 else if (statusLower == "completed" || statusLower == "inactive" || statusLower == "loggedout")
                 {
-                    query = query.Where(s => !s.IsActive || s.LogoutTime != null);
+                    var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
+                    query = query.Where(s => !s.IsActive || s.LogoutTime != null || (s.UpdatedAt ?? s.LoginTime) < expiryCutoff);
                 }
             }
 
@@ -300,11 +319,9 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<int> GetActiveSessionsCountAsync()
         {
-            return await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM user_sessions
-                WHERE deleted_flag = 1 AND is_active = true AND logout_time IS NULL
-            """).SingleOrDefaultAsync();
+            var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
+            return await _context.UserSessions
+                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff);
         }
 
         public async Task<bool> TerminateSessionWithAuditAsync(int sessionId, int adminUserId)

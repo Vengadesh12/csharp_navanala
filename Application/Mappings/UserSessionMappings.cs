@@ -33,11 +33,13 @@ namespace MyBackend.Application.Mappings
 
         public static UserSessionItemDto ToItemDto(this UserSession entity, Dictionary<int, string> roleMap)
         {
-            var isCurrentlyActive = entity.IsActive && entity.LogoutTime == null;
+            var expiryCutoff = DateTime.UtcNow.AddMinutes(-120);
+            var isCurrentlyActive = entity.IsActive && entity.LogoutTime == null && (entity.UpdatedAt ?? entity.LoginTime) >= expiryCutoff;
+            var effectiveLogoutTime = entity.LogoutTime ?? (isCurrentlyActive ? null : (entity.UpdatedAt ?? entity.LoginTime));
             var roleName = roleMap.TryGetValue(entity.UserId, out var r) ? r : "Member";
 
             var (browser, os) = ParseUserAgent(entity.UserAgent);
-            var durationFormatted = FormatDuration(entity.LoginTime, entity.LogoutTime, isCurrentlyActive);
+            var durationFormatted = FormatDuration(entity.LoginTime, effectiveLogoutTime, isCurrentlyActive);
 
             return new UserSessionItemDto
             {
@@ -51,7 +53,7 @@ namespace MyBackend.Application.Mappings
                 Browser = browser,
                 Os = os,
                 LoginTime = entity.LoginTime,
-                LogoutTime = entity.LogoutTime,
+                LogoutTime = effectiveLogoutTime,
                 IsActive = isCurrentlyActive,
                 DurationFormatted = durationFormatted,
                 Status = isCurrentlyActive ? "Active" : "Completed"

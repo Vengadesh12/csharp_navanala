@@ -34,7 +34,9 @@ namespace MyBackend.Infrastructure.Persistence
 
                     ALTER TABLE IF EXISTS ""designations"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        ALTER COLUMN ""CreatedAt"" TYPE TIMESTAMPTZ USING ""CreatedAt"" AT TIME ZONE 'UTC',
+                        ALTER COLUMN ""UpdatedAt"" TYPE TIMESTAMPTZ USING ""UpdatedAt"" AT TIME ZONE 'UTC';
 
                     ALTER TABLE IF EXISTS ""permissions"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

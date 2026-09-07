@@ -25,13 +25,13 @@ namespace MyBackend.Infrastructure.Repositories
             """).SingleOrDefaultAsync();
         }
 
+        private const int DefaultSessionExpiryMinutes = 120;
+
         public async Task<int> GetActiveSessionsCountAsync()
         {
-            return await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM user_sessions
-                WHERE deleted_flag = 1 AND is_active = true AND logout_time IS NULL
-            """).SingleOrDefaultAsync();
+            var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
+            return await _context.UserSessions
+                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff);
         }
 
         public async Task<List<AuditLog>> GetDashboardRecentAuditLogsAsync(int count)

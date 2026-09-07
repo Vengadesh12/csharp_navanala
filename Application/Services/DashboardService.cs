@@ -31,7 +31,7 @@ namespace MyBackend.Application.Services
             var inactiveUsersCount = inactiveUsersList.Count;
             var totalRoles = roles.Count;
 
-            var activeSessions = await _unitOfWork.Dashboard.GetActiveSessionsCountAsync();
+            var activeSessions = await _unitOfWork.Sessions.GetActiveSessionsCountAsync();
 
             var roleMap = roles.ToDictionary(r => r.Id, r => r.Name);
             var colorPalette = new[]
@@ -115,10 +115,11 @@ namespace MyBackend.Application.Services
                         latestSession = sByEmail;
                     }
 
+                    var expiryCutoff = DateTime.UtcNow.AddMinutes(-120);
                     string lastLoginText;
                     if (latestSession != null)
                     {
-                        if (latestSession.IsActive && latestSession.LogoutTime == null)
+                        if (latestSession.IsActive && latestSession.LogoutTime == null && (latestSession.UpdatedAt ?? latestSession.LoginTime) >= expiryCutoff)
                         {
                             lastLoginText = "Active now";
                         }

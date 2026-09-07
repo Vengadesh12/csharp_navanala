@@ -60,13 +60,15 @@ namespace MyBackend.Infrastructure.Persistence
             {
                 if (entry.State == EntityState.Added)
                 {
-                    var createdAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "CreatedAt");
+                    var createdAtProp = entry.Properties.FirstOrDefault(p =>
+                        string.Equals(p.Metadata.Name, "CreatedAt", StringComparison.OrdinalIgnoreCase));
                     if (createdAtProp != null && (createdAtProp.CurrentValue == null || (createdAtProp.CurrentValue is DateTime dt && dt == default)))
                     {
                         createdAtProp.CurrentValue = utcNow;
                     }
 
-                    var updatedAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedAt");
+                    var updatedAtProp = entry.Properties.FirstOrDefault(p =>
+                        string.Equals(p.Metadata.Name, "UpdatedAt", StringComparison.OrdinalIgnoreCase));
                     if (updatedAtProp != null)
                     {
                         updatedAtProp.CurrentValue = utcNow;
@@ -74,10 +76,31 @@ namespace MyBackend.Infrastructure.Persistence
                 }
                 else if (entry.State == EntityState.Modified)
                 {
-                    var updatedAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedAt");
+                    // Never overwrite CreatedAt during an entity update
+                    var createdAtProp = entry.Properties.FirstOrDefault(p =>
+                        string.Equals(p.Metadata.Name, "CreatedAt", StringComparison.OrdinalIgnoreCase));
+                    if (createdAtProp != null)
+                    {
+                        createdAtProp.IsModified = false;
+                    }
+
+                    var updatedAtProp = entry.Properties.FirstOrDefault(p =>
+                        string.Equals(p.Metadata.Name, "UpdatedAt", StringComparison.OrdinalIgnoreCase));
                     if (updatedAtProp != null)
                     {
                         updatedAtProp.CurrentValue = utcNow;
+                    }
+                }
+
+                // Ensure all DateTime properties have DateTimeKind.Utc to satisfy PostgreSQL timestamptz
+                if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
+                {
+                    foreach (var prop in entry.Properties)
+                    {
+                        if (prop.CurrentValue is DateTime dateTime && dateTime.Kind == DateTimeKind.Unspecified)
+                        {
+                            prop.CurrentValue = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+                        }
                     }
                 }
             }

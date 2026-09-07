@@ -67,11 +67,9 @@ namespace MyBackend.Infrastructure.Repositories
                 WHERE "DeletedFlag" = 1
             """).SingleOrDefaultAsync();
 
-            var activeSessions = await _context.Database.SqlQueryRaw<int>("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM user_sessions
-                WHERE deleted_flag = 1 AND is_active = TRUE AND logout_time IS NULL
-            """).SingleOrDefaultAsync();
+            var expiryCutoff = DateTime.UtcNow.AddMinutes(-120);
+            var activeSessions = await _context.UserSessions
+                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff);
 
             return (rawSchedules, upcomingReviews, dueThisWeek, totalUsers, activeSessions);
         }
