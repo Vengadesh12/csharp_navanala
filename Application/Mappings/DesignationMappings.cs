@@ -16,7 +16,8 @@ namespace MyBackend.Application.Mappings
                 Description = entity.Description ?? string.Empty,
                 DepartmentId = entity.DepartmentId,
                 DepartmentName = departmentName,
-                DeletedFlag = entity.DeletedFlag
+                DeletedFlag = entity.DeletedFlag,
+                UserCount = userCount
             };
         }
 

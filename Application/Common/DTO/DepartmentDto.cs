@@ -20,6 +20,10 @@ public sealed class DepartmentDto
 
     public int UserCount { get; set; }
 
+    public int ActiveUserCount { get; set; }
+
+    public int DeletedUserCount { get; set; }
+
     public List<DesignationDto> Designations { get; set; } = new();
 }
 

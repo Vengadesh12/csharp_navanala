@@ -67,10 +67,10 @@ namespace MyBackend.Configuration
         public static string JwtKey { get; set; } = string.Empty;
         public static string JwtIssuer { get; set; } = "Userspace";
         public static string JwtAudience { get; set; } = "Userspace.Web";
-        public static int JwtExpiresMinutes { get; set; } = 120;
+        public static int JwtExpiresMinutes { get; set; } = 525600;
         public static int RefreshTokenExpiresDays { get; set; } = 7;
         public static int OtpExpiresMinutes { get; set; } = 10;
-        public static int SessionTimeoutMinutes { get; set; } = 1440;
+        public static int SessionTimeoutMinutes { get; set; } = 525600;
         public static int MaxFailedAccessAttempts { get; set; } = 5;
         public static int LockoutTimeMinutes { get; set; } = 15;
 

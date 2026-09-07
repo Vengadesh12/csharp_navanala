@@ -25,7 +25,7 @@ namespace MyBackend.Api.Extensions
                         ValidIssuer = Config.JwtIssuer,
                         ValidateAudience = true,
                         ValidAudience = Config.JwtAudience,
-                        ValidateLifetime = true,
+                        ValidateLifetime = false,
                         ClockSkew = TimeSpan.Zero
                     };
                 });

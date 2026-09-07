@@ -83,7 +83,7 @@ namespace MyBackend.Infrastructure.Services
                     ValidIssuer = jwtIssuer,
                     ValidateAudience = !string.IsNullOrWhiteSpace(jwtAudience),
                     ValidAudience = jwtAudience,
-                    ValidateLifetime = true,
+                    ValidateLifetime = false,
                     ClockSkew = TimeSpan.Zero
                 };
 

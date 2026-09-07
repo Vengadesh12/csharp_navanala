@@ -67,9 +67,8 @@ namespace MyBackend.Infrastructure.Repositories
                 WHERE "DeletedFlag" = 1
             """).SingleOrDefaultAsync();
 
-            var expiryCutoff = DateTime.UtcNow.AddMinutes(-120);
             var activeSessions = await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff);
+                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null);
 
             return (rawSchedules, upcomingReviews, dueThisWeek, totalUsers, activeSessions);
         }

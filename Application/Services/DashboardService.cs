@@ -115,11 +115,10 @@ namespace MyBackend.Application.Services
                         latestSession = sByEmail;
                     }
 
-                    var expiryCutoff = DateTime.UtcNow.AddMinutes(-120);
                     string lastLoginText;
                     if (latestSession != null)
                     {
-                        if (latestSession.IsActive && latestSession.LogoutTime == null && (latestSession.UpdatedAt ?? latestSession.LoginTime) >= expiryCutoff)
+                        if (latestSession.IsActive && latestSession.LogoutTime == null)
                         {
                             lastLoginText = "Active now";
                         }

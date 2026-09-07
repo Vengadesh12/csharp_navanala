@@ -15,6 +15,8 @@ public sealed class DesignationDto
     public int? DepartmentId { get; set; }
 
     public string? DepartmentName { get; set; }
+
+    public int UserCount { get; set; }
 }
 
 public sealed class CreateDesignationRequest

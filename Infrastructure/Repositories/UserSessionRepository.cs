@@ -6,8 +6,6 @@ namespace MyBackend.Infrastructure.Repositories
 {
     public class UserSessionRepository : Repository<UserSession>, IUserSessionRepository
     {
-        private const int DefaultSessionExpiryMinutes = 120;
-
         public UserSessionRepository(AppDbContext context) : base(context)
         {
         }
@@ -15,12 +13,10 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<UserSession> RecordLoginAsync(int userId, string email, string userName, string ipAddress, string? userAgent = null, string? sessionToken = null)
         {
             var now = DateTime.UtcNow;
-            var expiryCutoff = now.AddMinutes(-DefaultSessionExpiryMinutes);
 
-            // Clean up: terminate any prior open active sessions for this user, as well as any stale open sessions that have expired
+            // Clean up: terminate any prior open active sessions for this user
             var sessionsToDeactivate = await _context.UserSessions
-                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null &&
-                            (s.UserId == userId || (s.UpdatedAt ?? s.LoginTime) < expiryCutoff))
+                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && s.UserId == userId)
                 .ToListAsync();
 
             foreach (var oldSession in sessionsToDeactivate)
@@ -153,9 +149,8 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<UserSession>> GetActiveSessionsAsync()
         {
-            var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
             return await _context.UserSessions
-                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff)
+                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null)
                 .OrderByDescending(s => s.LoginTime)
                 .AsNoTracking()
                 .ToListAsync();
@@ -178,13 +173,11 @@ namespace MyBackend.Infrastructure.Repositories
                 var statusLower = status.Trim().ToLower();
                 if (statusLower == "active")
                 {
-                    var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
-                    query = query.Where(s => s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff);
+                    query = query.Where(s => s.IsActive && s.LogoutTime == null);
                 }
                 else if (statusLower == "completed" || statusLower == "inactive" || statusLower == "loggedout")
                 {
-                    var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
-                    query = query.Where(s => !s.IsActive || s.LogoutTime != null || (s.UpdatedAt ?? s.LoginTime) < expiryCutoff);
+                    query = query.Where(s => !s.IsActive || s.LogoutTime != null);
                 }
             }
 
@@ -234,10 +227,9 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<(int ActiveCount, int TodayLogins, int TodayLogouts, int TotalSessions)> GetActivityStatsAsync()
         {
             var todayUtc = DateTime.UtcNow.Date;
-            var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
 
             var activeCount = await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff);
+                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null);
 
             var todayLogins = await _context.UserSessions
                 .CountAsync(s => s.DeletedFlag == 1 && s.LoginTime >= todayUtc);
@@ -319,9 +311,8 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<int> GetActiveSessionsCountAsync()
         {
-            var expiryCutoff = DateTime.UtcNow.AddMinutes(-DefaultSessionExpiryMinutes);
             return await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && (s.UpdatedAt ?? s.LoginTime) >= expiryCutoff);
+                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null);
         }
 
         public async Task<bool> TerminateSessionWithAuditAsync(int sessionId, int adminUserId)

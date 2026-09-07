@@ -24,7 +24,12 @@ namespace MyBackend.Application.Services
             var allDesignations = await _unitOfWork.Designations.GetActiveDesignationsAsync();
             var allUsers = await _unitOfWork.Users.GetAllUsersAsync();
 
-            var userCountByDesignation = allUsers
+            var totalUsersByDesignation = allUsers
+                .Where(u => u.DesignationId.HasValue)
+                .GroupBy(u => u.DesignationId!.Value)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var activeUsersByDesignation = allUsers
                 .Where(u => u.DesignationId.HasValue && u.DeletedFlag == 1)
                 .GroupBy(u => u.DesignationId!.Value)
                 .ToDictionary(g => g.Key, g => g.Count());
@@ -32,16 +37,21 @@ namespace MyBackend.Application.Services
             var departmentDtos = departments.Select(d =>
             {
                 var mappedDes = d.Designations.Where(des => des.DeletedFlag == 1).ToList();
-                var userCount = mappedDes.Sum(des => userCountByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0);
-                var desDtos = mappedDes.Select(des => des.ToDto(d.Name, userCountByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0)).ToList();
+                var userCount = mappedDes.Sum(des => totalUsersByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0);
+                var activeUserCount = mappedDes.Sum(des => activeUsersByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0);
+                var deletedUserCount = userCount - activeUserCount;
+                var desDtos = mappedDes.Select(des => des.ToDto(
+                    d.Name,
+                    totalUsersByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0
+                )).ToList();
 
-                return d.ToDto(userCount, desDtos);
+                return d.ToDto(userCount, desDtos, activeUserCount, deletedUserCount);
             }).ToList();
 
             var activeDeptIds = departments.Select(d => d.Id).ToHashSet();
             var unassignedDesignations = allDesignations
                 .Where(des => !des.DepartmentId.HasValue || !activeDeptIds.Contains(des.DepartmentId.Value))
-                .Select(des => des.ToDto(null, userCountByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0))
+                .Select(des => des.ToDto(null, totalUsersByDesignation.TryGetValue(des.Id, out var cnt) ? cnt : 0))
                 .ToList();
 
             return new DepartmentOverviewResponse
@@ -69,9 +79,16 @@ namespace MyBackend.Application.Services
             var allUsers = await _unitOfWork.Users.GetAllUsersAsync();
             var mappedDes = department.Designations.Where(des => des.DeletedFlag == 1).ToList();
             var desIds = mappedDes.Select(des => des.Id).ToHashSet();
-            var userCount = allUsers.Count(u => u.DesignationId.HasValue && desIds.Contains(u.DesignationId.Value) && u.DeletedFlag == 1);
+            var userCount = allUsers.Count(u => u.DesignationId.HasValue && desIds.Contains(u.DesignationId.Value));
+            var activeUserCount = allUsers.Count(u => u.DesignationId.HasValue && desIds.Contains(u.DesignationId.Value) && u.DeletedFlag == 1);
+            var deletedUserCount = userCount - activeUserCount;
 
-            return department.ToDto(userCount);
+            var desDtos = mappedDes.Select(des => des.ToDto(
+                department.Name,
+                allUsers.Count(u => u.DesignationId == des.Id)
+            )).ToList();
+
+            return department.ToDto(userCount, desDtos, activeUserCount, deletedUserCount);
         }
 
         public async Task<DepartmentDto> CreateDepartmentAsync(CreateDepartmentRequest request)

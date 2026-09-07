@@ -7,7 +7,7 @@ namespace MyBackend.Application.Mappings
 {
     public static class DepartmentMappings
     {
-        public static DepartmentDto ToDto(this Department department, int userCount = 0, List<DesignationDto>? designations = null)
+        public static DepartmentDto ToDto(this Department department, int userCount = 0, List<DesignationDto>? designations = null, int activeUserCount = 0, int deletedUserCount = 0)
         {
             var desList = designations ?? department.Designations
                 .Where(d => d.DeletedFlag == 1)
@@ -23,6 +23,8 @@ namespace MyBackend.Application.Mappings
                 CreatedAt = department.CreatedAt,
                 DesignationCount = desList.Count,
                 UserCount = userCount,
+                ActiveUserCount = activeUserCount,
+                DeletedUserCount = deletedUserCount,
                 Designations = desList
             };
         }
