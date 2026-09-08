@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -61,7 +61,7 @@ namespace MyBackend.Application.Services
                 throw new BadRequestException($"A project category with the name '{trimmedName}' already exists.");
             }
 
-            var category = new ProjectCategory
+            var category = new ProjectCategoryModel
             {
                 Name = trimmedName,
                 Description = request.Description?.Trim() ?? string.Empty,

@@ -1,16 +1,16 @@
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
-    public interface IUserRepository : IRepository<User>
+    public interface IUserRepository : IRepository<UserModel>
     {
-        Task<User?> GetByEmailAsync(string email);
+        Task<UserModel?> GetByEmailAsync(string email);
 
-        Task<UserLoginDetails?> GetLoginUserDetailsByEmailAsync(string email);
+        Task<UserLoginDetailsModel?> GetLoginUserDetailsByEmailAsync(string email);
 
-        Task<List<User>> GetAllUsersAsync();
+        Task<List<UserModel>> GetAllUsersAsync();
 
-        Task<User?> GetUserByIdAsync(int id);
+        Task<UserModel?> GetUserByIdAsync(int id);
 
         Task<bool> SetDeletedFlagAsync(int id, int deletedFlag);
 

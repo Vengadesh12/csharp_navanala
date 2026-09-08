@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class ApprovalMappings
     {
-        public static ApprovalRequestDto ToDto(this ApprovalRequest entity)
+        public static ApprovalRequestDto ToDto(this ApprovalRequestModel entity)
         {
             return new ApprovalRequestDto
             {
@@ -33,7 +33,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<ApprovalRequestDto> ToDtoList(this IEnumerable<ApprovalRequest> entities)
+        public static List<ApprovalRequestDto> ToDtoList(this IEnumerable<ApprovalRequestModel> entities)
         {
             return entities.Select(e => e.ToDto()).ToList();
         }

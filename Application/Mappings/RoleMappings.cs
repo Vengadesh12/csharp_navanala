@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class RoleMappings
     {
-        public static RoleDto ToDto(this Role entity)
+        public static RoleDto ToDto(this RoleModel entity)
         {
             return new RoleDto
             {
@@ -18,7 +18,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<RoleDto> ToDtoList(this IEnumerable<Role> entities)
+        public static List<RoleDto> ToDtoList(this IEnumerable<RoleModel> entities)
         {
             return entities.Select(e => e.ToDto()).ToList();
         }

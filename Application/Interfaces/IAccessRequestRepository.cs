@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
@@ -8,19 +8,19 @@ namespace MyBackend.Application.Interfaces
     {
         Task<List<string>> GetPendingKeysForUserAsync(int userId);
 
-        Task<List<Permission>> GetAllActivePermissionsAsync();
+        Task<List<PermissionModel>> GetAllActivePermissionsAsync();
 
-        Task<List<AccessRequest>> GetRequestsForUserAsync(int userId);
+        Task<List<AccessRequestModel>> GetRequestsForUserAsync(int userId);
 
-        Task<Permission?> GetPermissionByKeyAsync(string permKey);
+        Task<PermissionModel?> GetPermissionByKeyAsync(string permKey);
 
         Task<bool> HasPendingRequestAsync(int userId, string permKey);
 
         Task<string?> GetDepartmentNameForDesignationAsync(int designationId);
 
-        Task<AccessRequest> AddRequestAsync(AccessRequest request);
+        Task<AccessRequestModel> AddRequestAsync(AccessRequestModel request);
 
-        Task<(List<AccessRequest> Items, int TotalCount)> GetPagedRequestsAsync(
+        Task<(List<AccessRequestModel> Items, int TotalCount)> GetPagedRequestsAsync(
             bool onlyMyRequests,
             string? status,
             string? priority,
@@ -35,7 +35,7 @@ namespace MyBackend.Application.Interfaces
             int currentUserId,
             bool isSuperAdmin);
 
-        Task<AccessRequest?> GetRequestByIdAsync(int id);
+        Task<AccessRequestModel?> GetRequestByIdAsync(int id);
 
         Task<bool> ApproveRequestAsync(int requestId, int reviewerId, string reviewerName, string? comments);
 

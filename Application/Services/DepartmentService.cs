@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -101,7 +101,7 @@ namespace MyBackend.Application.Services
                 throw new InvalidOperationException($"A department named '{trimmedName}' already exists.");
             }
 
-            var department = new Department
+            var department = new DepartmentModel
             {
                 Name = trimmedName,
                 Description = request.Description?.Trim() ?? string.Empty,

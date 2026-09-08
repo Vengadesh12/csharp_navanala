@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -34,7 +34,7 @@ namespace MyBackend.Application.Services
         public async Task<RoleDto> CreateRoleAsync(CreateRoleRequest request)
         {
             var now = DateTime.UtcNow;
-            var role = new Role
+            var role = new RoleModel
             {
                 Name = request.Name.Trim(),
                 Description = request.Description?.Trim() ?? string.Empty,

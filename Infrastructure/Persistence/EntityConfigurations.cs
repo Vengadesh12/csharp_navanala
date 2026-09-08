@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using System;
 
 namespace MyBackend.Infrastructure.Persistence.Configurations
@@ -9,9 +9,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
     // 4. Fluent API Entity Type Configurations (IEntityTypeConfiguration<T>)
     // =========================================================================
 
-    public class UserConfiguration : IEntityTypeConfiguration<User>
+    public class UserConfiguration : IEntityTypeConfiguration<UserModel>
     {
-        public void Configure(EntityTypeBuilder<User> builder)
+        public void Configure(EntityTypeBuilder<UserModel> builder)
         {
             builder.ToTable("users");
 
@@ -75,9 +75,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class RoleConfiguration : IEntityTypeConfiguration<Role>
+    public class RoleConfiguration : IEntityTypeConfiguration<RoleModel>
     {
-        public void Configure(EntityTypeBuilder<Role> builder)
+        public void Configure(EntityTypeBuilder<RoleModel> builder)
         {
             builder.ToTable("roles");
 
@@ -107,9 +107,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
+    public class DepartmentConfiguration : IEntityTypeConfiguration<DepartmentModel>
     {
-        public void Configure(EntityTypeBuilder<Department> builder)
+        public void Configure(EntityTypeBuilder<DepartmentModel> builder)
         {
             builder.ToTable("departments");
 
@@ -139,9 +139,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class DesignationConfiguration : IEntityTypeConfiguration<Designation>
+    public class DesignationConfiguration : IEntityTypeConfiguration<DesignationModel>
     {
-        public void Configure(EntityTypeBuilder<Designation> builder)
+        public void Configure(EntityTypeBuilder<DesignationModel> builder)
         {
             builder.ToTable("designations");
 
@@ -179,9 +179,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
+    public class PermissionConfiguration : IEntityTypeConfiguration<PermissionModel>
     {
-        public void Configure(EntityTypeBuilder<Permission> builder)
+        public void Configure(EntityTypeBuilder<PermissionModel> builder)
         {
             builder.ToTable("permissions");
 
@@ -216,9 +216,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermission>
+    public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissionModel>
     {
-        public void Configure(EntityTypeBuilder<RolePermission> builder)
+        public void Configure(EntityTypeBuilder<RolePermissionModel> builder)
         {
             builder.ToTable("rolepermissions");
 
@@ -243,9 +243,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class DepartmentPermissionConfiguration : IEntityTypeConfiguration<DepartmentPermission>
+    public class DepartmentPermissionConfiguration : IEntityTypeConfiguration<DepartmentPermissionModel>
     {
-        public void Configure(EntityTypeBuilder<DepartmentPermission> builder)
+        public void Configure(EntityTypeBuilder<DepartmentPermissionModel> builder)
         {
             builder.ToTable("departmentpermissions");
 
@@ -270,9 +270,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>
+    public class UserSessionConfiguration : IEntityTypeConfiguration<UserSessionModel>
     {
-        public void Configure(EntityTypeBuilder<UserSession> builder)
+        public void Configure(EntityTypeBuilder<UserSessionModel> builder)
         {
             builder.ToTable("user_sessions");
 
@@ -328,9 +328,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class MenuConfiguration : IEntityTypeConfiguration<Menu>
+    public class MenuConfiguration : IEntityTypeConfiguration<MenuModel>
     {
-        public void Configure(EntityTypeBuilder<Menu> builder)
+        public void Configure(EntityTypeBuilder<MenuModel> builder)
         {
             builder.ToTable("menus");
 
@@ -385,9 +385,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
+    public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLogModel>
     {
-        public void Configure(EntityTypeBuilder<AuditLog> builder)
+        public void Configure(EntityTypeBuilder<AuditLogModel> builder)
         {
             builder.ToTable("audit_logs");
 
@@ -434,9 +434,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class ReportConfiguration : IEntityTypeConfiguration<Report>
+    public class ReportConfiguration : IEntityTypeConfiguration<ReportModel>
     {
-        public void Configure(EntityTypeBuilder<Report> builder)
+        public void Configure(EntityTypeBuilder<ReportModel> builder)
         {
             builder.ToTable("reports");
 
@@ -494,9 +494,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class ReportCategoryConfiguration : IEntityTypeConfiguration<ReportCategory>
+    public class ReportCategoryConfiguration : IEntityTypeConfiguration<ReportCategoryModel>
     {
-        public void Configure(EntityTypeBuilder<ReportCategory> builder)
+        public void Configure(EntityTypeBuilder<ReportCategoryModel> builder)
         {
             builder.ToTable("report_categories");
 
@@ -526,9 +526,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class ProjectConfiguration : IEntityTypeConfiguration<Project>
+    public class ProjectConfiguration : IEntityTypeConfiguration<ProjectModel>
     {
-        public void Configure(EntityTypeBuilder<Project> builder)
+        public void Configure(EntityTypeBuilder<ProjectModel> builder)
         {
             builder.ToTable("projects");
 
@@ -580,9 +580,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class ProjectCategoryConfiguration : IEntityTypeConfiguration<ProjectCategory>
+    public class ProjectCategoryConfiguration : IEntityTypeConfiguration<ProjectCategoryModel>
     {
-        public void Configure(EntityTypeBuilder<ProjectCategory> builder)
+        public void Configure(EntityTypeBuilder<ProjectCategoryModel> builder)
         {
             builder.ToTable("project_categories");
 
@@ -612,9 +612,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class ScheduleEventConfiguration : IEntityTypeConfiguration<ScheduleEvent>
+    public class ScheduleEventConfiguration : IEntityTypeConfiguration<ScheduleEventModel>
     {
-        public void Configure(EntityTypeBuilder<ScheduleEvent> builder)
+        public void Configure(EntityTypeBuilder<ScheduleEventModel> builder)
         {
             builder.ToTable("schedules");
 
@@ -678,9 +678,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting>
+    public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSettingModel>
     {
-        public void Configure(EntityTypeBuilder<SystemSetting> builder)
+        public void Configure(EntityTypeBuilder<SystemSettingModel> builder)
         {
             builder.ToTable("system_settings");
 
@@ -721,9 +721,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class SettingCategoryConfiguration : IEntityTypeConfiguration<SettingCategory>
+    public class SettingCategoryConfiguration : IEntityTypeConfiguration<SettingCategoryModel>
     {
-        public void Configure(EntityTypeBuilder<SettingCategory> builder)
+        public void Configure(EntityTypeBuilder<SettingCategoryModel> builder)
         {
             builder.ToTable("setting_categories");
 
@@ -761,9 +761,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class EventTypeConfiguration : IEntityTypeConfiguration<EventType>
+    public class EventTypeConfiguration : IEntityTypeConfiguration<EventTypeModel>
     {
-        public void Configure(EntityTypeBuilder<EventType> builder)
+        public void Configure(EntityTypeBuilder<EventTypeModel> builder)
         {
             builder.ToTable("event_types");
 
@@ -805,9 +805,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class ApprovalRequestConfiguration : IEntityTypeConfiguration<ApprovalRequest>
+    public class ApprovalRequestConfiguration : IEntityTypeConfiguration<ApprovalRequestModel>
     {
-        public void Configure(EntityTypeBuilder<ApprovalRequest> builder)
+        public void Configure(EntityTypeBuilder<ApprovalRequestModel> builder)
         {
             builder.ToTable("approval_requests");
 
@@ -888,9 +888,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class PurchaseConfiguration : IEntityTypeConfiguration<Purchase>
+    public class PurchaseConfiguration : IEntityTypeConfiguration<PurchaseModel>
     {
-        public void Configure(EntityTypeBuilder<Purchase> builder)
+        public void Configure(EntityTypeBuilder<PurchaseModel> builder)
         {
             builder.ToTable("purchases");
 
@@ -991,9 +991,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
+    public class InvoiceConfiguration : IEntityTypeConfiguration<InvoiceModel>
     {
-        public void Configure(EntityTypeBuilder<Invoice> builder)
+        public void Configure(EntityTypeBuilder<InvoiceModel> builder)
         {
             builder.ToTable("invoices");
 
@@ -1102,9 +1102,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class InvoiceItemConfiguration : IEntityTypeConfiguration<InvoiceItem>
+    public class InvoiceItemConfiguration : IEntityTypeConfiguration<InvoiceItemModel>
     {
-        public void Configure(EntityTypeBuilder<InvoiceItem> builder)
+        public void Configure(EntityTypeBuilder<InvoiceItemModel> builder)
         {
             builder.ToTable("invoice_items");
 
@@ -1161,9 +1161,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class UserPermissionConfiguration : IEntityTypeConfiguration<UserPermission>
+    public class UserPermissionConfiguration : IEntityTypeConfiguration<UserPermissionModel>
     {
-        public void Configure(EntityTypeBuilder<UserPermission> builder)
+        public void Configure(EntityTypeBuilder<UserPermissionModel> builder)
         {
             builder.ToTable("userpermissions");
 
@@ -1188,9 +1188,9 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
         }
     }
 
-    public class AccessRequestConfiguration : IEntityTypeConfiguration<AccessRequest>
+    public class AccessRequestConfiguration : IEntityTypeConfiguration<AccessRequestModel>
     {
-        public void Configure(EntityTypeBuilder<AccessRequest> builder)
+        public void Configure(EntityTypeBuilder<AccessRequestModel> builder)
         {
             builder.ToTable("access_requests");
 

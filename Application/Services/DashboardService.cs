@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -105,7 +105,7 @@ namespace MyBackend.Application.Services
                         _ => "bg-slate-50 text-slate-700 border border-slate-200"
                     };
 
-                    UserSession? latestSession = null;
+                    UserSessionModel? latestSession = null;
                     if (latestSessionByUserId.TryGetValue(u.Id, out var sById))
                     {
                         latestSession = sById;

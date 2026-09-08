@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class UserSessionMappings
     {
-        public static UserSessionDto ToDto(this UserSession entity)
+        public static UserSessionDto ToDto(this UserSessionModel entity)
         {
             return new UserSessionDto
             {
@@ -26,12 +26,12 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<UserSessionDto> ToDtoList(this IEnumerable<UserSession> entities)
+        public static List<UserSessionDto> ToDtoList(this IEnumerable<UserSessionModel> entities)
         {
             return entities.Select(e => e.ToDto()).ToList();
         }
 
-        public static UserSessionItemDto ToItemDto(this UserSession entity, Dictionary<int, string> roleMap)
+        public static UserSessionItemDto ToItemDto(this UserSessionModel entity, Dictionary<int, string> roleMap)
         {
             var isCurrentlyActive = entity.IsActive && entity.LogoutTime == null;
             var effectiveLogoutTime = entity.LogoutTime;
@@ -59,7 +59,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<UserSessionItemDto> ToItemDtoList(this IEnumerable<UserSession> entities, Dictionary<int, string> roleMap)
+        public static List<UserSessionItemDto> ToItemDtoList(this IEnumerable<UserSessionModel> entities, Dictionary<int, string> roleMap)
         {
             return entities.Select(e => e.ToItemDto(roleMap)).ToList();
         }

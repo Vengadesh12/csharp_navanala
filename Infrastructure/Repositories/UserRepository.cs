@@ -1,16 +1,16 @@
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    public class UserRepository : Repository<User>, IUserRepository
+    public class UserRepository : Repository<UserModel>, IUserRepository
     {
         public UserRepository(AppDbContext context) : base(context)
         {
         }
 
-        public async Task<User?> GetByEmailAsync(string email)
+        public async Task<UserModel?> GetByEmailAsync(string email)
         {
             if (string.IsNullOrWhiteSpace(email)) return null;
             var normalizedEmail = email.Trim().ToLowerInvariant();
@@ -26,12 +26,12 @@ namespace MyBackend.Infrastructure.Repositories
                 .SingleOrDefaultAsync();
         }
 
-        public async Task<UserLoginDetails?> GetLoginUserDetailsByEmailAsync(string email)
+        public async Task<UserLoginDetailsModel?> GetLoginUserDetailsByEmailAsync(string email)
         {
             if (string.IsNullOrWhiteSpace(email)) return null;
             var normalizedEmail = email.Trim().ToLowerInvariant();
 
-            return await _context.Database.SqlQueryRaw<UserLoginDetails>("""
+            return await _context.Database.SqlQueryRaw<UserLoginDetailsModel>("""
                 SELECT 
                     u."Id",
                     u."Name",
@@ -98,7 +98,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .SingleOrDefaultAsync();
         }
 
-        public async Task<List<User>> GetAllUsersAsync()
+        public async Task<List<UserModel>> GetAllUsersAsync()
         {
             return await _context.Users
                 .FromSqlRaw("""
@@ -110,7 +110,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<User?> GetUserByIdAsync(int id)
+        public async Task<UserModel?> GetUserByIdAsync(int id)
         {
             return await _context.Users
                 .FromSqlInterpolated($"""

@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class ScheduleMappings
     {
-        public static ScheduleEventDto ToDto(this ScheduleEvent evt)
+        public static ScheduleEventDto ToDto(this ScheduleEventModel evt)
         {
             return new ScheduleEventDto
             {
@@ -28,12 +28,12 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<ScheduleEventDto> ToDtoList(this IEnumerable<ScheduleEvent> events)
+        public static List<ScheduleEventDto> ToDtoList(this IEnumerable<ScheduleEventModel> events)
         {
             return events.Select(e => e.ToDto()).ToList();
         }
 
-        public static EventTypeDto ToDto(this EventType type, int eventCount = 0)
+        public static EventTypeDto ToDto(this EventTypeModel type, int eventCount = 0)
         {
             return new EventTypeDto
             {
@@ -49,7 +49,7 @@ namespace MyBackend.Application.Mappings
         }
 
         public static List<EventTypeDto> ToDtoList(
-            this IEnumerable<EventType> types,
+            this IEnumerable<EventTypeModel> types,
             IReadOnlyDictionary<string, int>? eventCountDict = null)
         {
             return types.Select(t =>

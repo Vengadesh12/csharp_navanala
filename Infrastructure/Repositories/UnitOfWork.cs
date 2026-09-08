@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore.Storage;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories

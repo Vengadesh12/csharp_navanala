@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -17,7 +17,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<(List<ApprovalRequest> Items, int TotalCount)> GetApprovalsPagedAsync(
+        public async Task<(List<ApprovalRequestModel> Items, int TotalCount)> GetApprovalsPagedAsync(
             int currentUserId,
             bool isManagerOrAdmin,
             string? scope,
@@ -28,7 +28,7 @@ namespace MyBackend.Infrastructure.Repositories
             int page,
             int pageSize)
         {
-            IQueryable<ApprovalRequest> queryable = _context.Approvals
+            IQueryable<ApprovalRequestModel> queryable = _context.Approvals
                 .AsNoTracking()
                 .Where(a => a.DeletedFlag == 1);
 
@@ -113,20 +113,20 @@ namespace MyBackend.Infrastructure.Repositories
             return (total, pending, approved, rejected, myRequests);
         }
 
-        public async Task<ApprovalRequest?> GetByIdAsync(int id)
+        public async Task<ApprovalRequestModel?> GetByIdAsync(int id)
         {
             return await _context.Approvals
                 .FirstOrDefaultAsync(a => a.Id == id && a.DeletedFlag == 1);
         }
 
-        public async Task<ApprovalRequest> AddApprovalAsync(ApprovalRequest approval)
+        public async Task<ApprovalRequestModel> AddApprovalAsync(ApprovalRequestModel approval)
         {
             _context.Approvals.Add(approval);
             await _context.SaveChangesAsync();
             return approval;
         }
 
-        public async Task UpdateApprovalAsync(ApprovalRequest approval)
+        public async Task UpdateApprovalAsync(ApprovalRequestModel approval)
         {
             _context.Approvals.Update(approval);
             await _context.SaveChangesAsync();
@@ -143,7 +143,7 @@ namespace MyBackend.Infrastructure.Repositories
             return true;
         }
 
-        public async Task<List<ApprovalRequest>> GetApprovedApprovalsAsync()
+        public async Task<List<ApprovalRequestModel>> GetApprovedApprovalsAsync()
         {
             return await _context.Approvals
                 .AsNoTracking()

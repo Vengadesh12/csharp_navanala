@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -15,7 +15,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<List<Menu>> GetAllActiveMenusAsync()
+        public async Task<List<MenuModel>> GetAllActiveMenusAsync()
         {
             return await _context.Menus
                 .FromSqlRaw("""
@@ -38,7 +38,7 @@ namespace MyBackend.Infrastructure.Repositories
             """).ToListAsync();
         }
 
-        public async Task<List<Menu>> GetUserMenusAsync(int roleId, int designationId, int? userId = null)
+        public async Task<List<MenuModel>> GetUserMenusAsync(int roleId, int designationId, int? userId = null)
         {
             if (roleId == 2)
             {

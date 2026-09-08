@@ -1,12 +1,12 @@
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
-    public interface IRoleRepository : IRepository<Role>
+    public interface IRoleRepository : IRepository<RoleModel>
     {
-        Task<List<Role>> GetActiveRolesAsync();
+        Task<List<RoleModel>> GetActiveRolesAsync();
 
-        Task<Role?> GetActiveRoleByIdAsync(int id);
+        Task<RoleModel?> GetActiveRoleByIdAsync(int id);
 
         Task<bool> SetDeletedFlagAsync(int id, int deletedFlag);
 

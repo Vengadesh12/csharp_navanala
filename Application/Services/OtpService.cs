@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Application.Services
@@ -15,7 +16,13 @@ namespace MyBackend.Application.Services
         }
 
         private readonly ConcurrentDictionary<string, OtpRecord> _otpStore = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ILogger<OtpService>? _logger;
         private const int MaxAttempts = 5;
+
+        public OtpService(ILogger<OtpService>? logger = null)
+        {
+            _logger = logger;
+        }
 
         public string GenerateOtp(string email, int expiryMinutes = 10)
         {
@@ -33,6 +40,11 @@ namespace MyBackend.Application.Services
             };
 
             _otpStore[normalizedEmail] = record;
+
+            _logger?.LogInformation("==========================================================================");
+            _logger?.LogInformation("[OTP SERVICE] Generated OTP for {Email}: {OtpCode} (Valid for {Minutes} min)", normalizedEmail, otpCode, expiryMinutes);
+            _logger?.LogInformation("==========================================================================");
+
             return otpCode;
         }
 

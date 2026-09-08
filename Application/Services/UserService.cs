@@ -8,7 +8,7 @@ using MyBackend.Application.Common.Validators;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -17,7 +17,7 @@ namespace MyBackend.Application.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IEmailService _emailService;
         private readonly ILogger<UserService> _logger;
-        private readonly PasswordHasher<User> _passwordHasher = new();
+        private readonly PasswordHasher<UserModel> _passwordHasher = new();
 
         public UserService(
             IUnitOfWork unitOfWork,
@@ -68,12 +68,18 @@ namespace MyBackend.Application.Services
                 throw new ArgumentException(errors.Count > 0 ? errors[0] : "Password does not meet strong security requirements.");
             }
 
+            var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+            if (await _unitOfWork.Users.EmailExistsAsync(normalizedEmail))
+            {
+                throw new InvalidOperationException($"A user with email '{request.Email.Trim()}' already exists.");
+            }
+
             // Create User entity directly
             var now = DateTime.UtcNow;
-            var user = new User
+            var user = new UserModel
             {
                 Name = request.Name.Trim(),
-                Email = request.Email.Trim().ToLowerInvariant(),
+                Email = normalizedEmail,
                 Phone = request.Phone?.Trim() ?? string.Empty,
                 Age = request.Age,
                 Address = request.Address?.Trim() ?? string.Empty,
@@ -97,6 +103,7 @@ namespace MyBackend.Application.Services
             try
             {
                 await _emailService.SendWelcomeUserEmailAsync(user.Email, user.Name, plainPassword);
+                _logger.LogInformation("Welcome credentials email dispatched successfully to {Email}", user.Email);
             }
             catch (Exception ex)
             {

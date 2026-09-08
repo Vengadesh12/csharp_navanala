@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class ReportMappings
     {
-        public static ReportDto ToDto(this Report report)
+        public static ReportDto ToDto(this ReportModel report)
         {
             return new ReportDto
             {
@@ -26,12 +26,12 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<ReportDto> ToDtoList(this IEnumerable<Report> reports)
+        public static List<ReportDto> ToDtoList(this IEnumerable<ReportModel> reports)
         {
             return reports.Select(r => r.ToDto()).ToList();
         }
 
-        public static ReportCategoryDto ToDto(this ReportCategory cat)
+        public static ReportCategoryDto ToDto(this ReportCategoryModel cat)
         {
             return new ReportCategoryDto
             {
@@ -43,7 +43,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<ReportCategoryDto> ToDtoList(this IEnumerable<ReportCategory> categories)
+        public static List<ReportCategoryDto> ToDtoList(this IEnumerable<ReportCategoryModel> categories)
         {
             return categories.Select(c => c.ToDto()).ToList();
         }

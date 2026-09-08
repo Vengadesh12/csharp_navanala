@@ -1,22 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
     public interface IAuditLogRepository
     {
-        Task<(List<AuditLog> Logs, int TotalEvents, int SuccessfulLogins, int PrivilegeChanges)> GetAuditLogsOverviewAsync(string? module, string? search);
+        Task<(List<AuditLogModel> Logs, int TotalEvents, int SuccessfulLogins, int PrivilegeChanges)> GetAuditLogsOverviewAsync(string? module, string? search);
 
-        Task<AuditLog> CreateAuditLogAsync(string action, string module, string performedBy, string details, string ipAddress, string status);
+        Task<AuditLogModel> CreateAuditLogAsync(string action, string module, string performedBy, string details, string ipAddress, string status);
 
         Task<bool> SoftDeleteAuditLogAsync(int id);
 
-        Task AddAuditLogAsync(AuditLog log);
+        Task AddAuditLogAsync(AuditLogModel log);
 
-        Task<List<AuditLog>> GetRecentAuditLogsAsync(int count);
+        Task<List<AuditLogModel>> GetRecentAuditLogsAsync(int count);
 
-        Task<List<AuditLog>> GetAuditLogsInDateRangeAsync(DateTime startDate, DateTime endDate);
+        Task<List<AuditLogModel>> GetAuditLogsInDateRangeAsync(DateTime startDate, DateTime endDate);
     }
 }

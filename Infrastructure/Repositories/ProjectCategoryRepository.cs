@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -16,7 +16,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<List<ProjectCategory>> GetAllCategoriesAsync()
+        public async Task<List<ProjectCategoryModel>> GetAllCategoriesAsync()
         {
             return await _context.ProjectCategories
                 .FromSqlRaw("""
@@ -29,7 +29,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<ProjectCategory?> GetCategoryByIdAsync(int id)
+        public async Task<ProjectCategoryModel?> GetCategoryByIdAsync(int id)
         {
             return await _context.ProjectCategories
                 .FromSqlRaw("""
@@ -52,7 +52,7 @@ namespace MyBackend.Infrastructure.Repositories
             return count > 0;
         }
 
-        public async Task<ProjectCategory> AddCategoryAsync(ProjectCategory category)
+        public async Task<ProjectCategoryModel> AddCategoryAsync(ProjectCategoryModel category)
         {
             _context.ProjectCategories.Add(category);
             await _context.SaveChangesAsync();

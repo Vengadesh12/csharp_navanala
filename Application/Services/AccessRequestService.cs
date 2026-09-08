@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -100,7 +100,7 @@ namespace MyBackend.Application.Services
 
             var module = InferModule(permKey);
             var now = DateTime.UtcNow;
-            var entity = new AccessRequest
+            var entity = new AccessRequestModel
             {
                 UserId = userId,
                 UserName = user.Name.Trim(),
@@ -188,7 +188,7 @@ namespace MyBackend.Application.Services
             return await _unitOfWork.AccessRequests.SoftDeleteRequestAsync(requestId, currentUserId, isSuperAdmin);
         }
 
-        private static AccessRequestDto MapToDto(AccessRequest r) => new()
+        private static AccessRequestDto MapToDto(AccessRequestModel r) => new()
         {
             Id = r.Id,
             UserId = r.UserId,

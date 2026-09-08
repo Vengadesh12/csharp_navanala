@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
     public interface IInvoiceRepository
     {
-        Task<(List<Invoice> Items, int TotalCount)> GetInvoicesPagedAsync(
+        Task<(List<InvoiceModel> Items, int TotalCount)> GetInvoicesPagedAsync(
             string? status,
             DateTime? startDate,
             DateTime? endDate,
@@ -15,16 +15,16 @@ namespace MyBackend.Application.Interfaces
             int page,
             int pageSize);
 
-        Task<Invoice?> GetInvoiceByIdAsync(int id);
+        Task<InvoiceModel?> GetInvoiceByIdAsync(int id);
 
         Task<(int TotalInvoices, decimal TotalInvoicedAmount, decimal TotalPaidAmount, decimal TotalPendingAmount, decimal TotalOverdueAmount, decimal TotalGstCollected, int PaidCount, int PendingCount, int DraftCount, int OverdueCount)> GetSummaryAsync();
 
         Task<int> UpdateOverdueInvoicesAsync();
         Task<bool> UpdateInvoiceStatusAsync(int id, string status);
 
-        Task<Invoice> AddInvoiceAsync(Invoice invoice);
+        Task<InvoiceModel> AddInvoiceAsync(InvoiceModel invoice);
 
-        Task<Invoice?> UpdateInvoiceWithItemsAsync(
+        Task<InvoiceModel?> UpdateInvoiceWithItemsAsync(
             int id,
             string? invoiceNumber,
             string customerName,
@@ -40,7 +40,7 @@ namespace MyBackend.Application.Interfaces
             string? paymentMethod,
             string? notes,
             string? termsAndConditions,
-            List<InvoiceItem> newItems);
+            List<InvoiceItemModel> newItems);
 
         Task<bool> SoftDeleteInvoiceAsync(int id);
 

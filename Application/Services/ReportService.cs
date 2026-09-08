@@ -11,7 +11,7 @@ using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -266,7 +266,7 @@ namespace MyBackend.Application.Services
                     }
                     else
                     {
-                        var newCat = new ReportCategory
+                        var newCat = new ReportCategoryModel
                         {
                             Name = categoryName.Trim(),
                             Description = $"{categoryName} reports",

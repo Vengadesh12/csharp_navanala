@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class InvoiceMappings
     {
-        public static InvoiceItemDto ToDto(this InvoiceItem item)
+        public static InvoiceItemDto ToDto(this InvoiceItemModel item)
         {
             return new InvoiceItemDto
             {
@@ -24,7 +24,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static InvoiceDto ToDto(this Invoice invoice, string? createdByName = null)
+        public static InvoiceDto ToDto(this InvoiceModel invoice, string? createdByName = null)
         {
             return new InvoiceDto
             {
@@ -56,7 +56,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<InvoiceDto> ToDtoList(this IEnumerable<Invoice> invoices, IReadOnlyDictionary<int, string>? userNames = null)
+        public static List<InvoiceDto> ToDtoList(this IEnumerable<InvoiceModel> invoices, IReadOnlyDictionary<int, string>? userNames = null)
         {
             return invoices.Select(inv =>
             {

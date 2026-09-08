@@ -11,7 +11,7 @@ using MyBackend.Application.Common.Validators;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -23,7 +23,7 @@ namespace MyBackend.Application.Services
         private readonly IEmailService _emailService;
         private readonly IOtpService _otpService;
         private readonly IJwtService _jwtService;
-        private readonly IPasswordHasher<User> _passwordHasher;
+        private readonly IPasswordHasher<UserModel> _passwordHasher;
         private readonly ILogger<AuthService> _logger;
 
         public AuthService(
@@ -33,7 +33,7 @@ namespace MyBackend.Application.Services
             IEmailService emailService,
             IOtpService otpService,
             IJwtService jwtService,
-            IPasswordHasher<User> passwordHasher,
+            IPasswordHasher<UserModel> passwordHasher,
             ILogger<AuthService> logger)
         {
             _userRepository = userRepository;
@@ -53,7 +53,7 @@ namespace MyBackend.Application.Services
             IOtpService otpService,
             IJwtService jwtService,
             ILogger<AuthService> logger)
-            : this(unitOfWork.Users, unitOfWork, configuration, emailService, otpService, jwtService, new PasswordHasher<User>(), logger)
+            : this(unitOfWork.Users, unitOfWork, configuration, emailService, otpService, jwtService, new PasswordHasher<UserModel>(), logger)
         {
         }
 
@@ -110,20 +110,25 @@ namespace MyBackend.Application.Services
             if (isTwoFactorEnabled)
             {
                 var otpCode = _otpService.GenerateOtp(user.Email, expiryMinutes: 10);
+                string twoFaMessage = "Two-Factor Authentication is enabled. A 6-digit verification code has been sent to your registered email.";
                 try
                 {
                     await _emailService.SendTwoFactorOtpEmailAsync(user.Email, user.Name, otpCode, expiryMinutes: 10);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to dispatch 2FA OTP email to {Email}", user.Email);
+                    _logger.LogError(ex, "Failed to dispatch 2FA OTP email to {Email}. Dev OTP: {OtpCode}", user.Email, otpCode);
+                    if (IsDevelopmentMode())
+                    {
+                        twoFaMessage = $"Two-Factor Authentication is enabled. [Dev Mode]: Email delivery failed ({ex.Message}). Your OTP is: {otpCode}";
+                    }
                 }
 
                 return new LoginResponse
                 {
                     Success = true,
                     RequiresTwoFactor = true,
-                    Message = "Two-Factor Authentication is enabled. A 6-digit verification code has been sent to your registered email.",
+                    Message = twoFaMessage,
                     Data = new AuthUserData
                     {
                         Id = user.Id,
@@ -338,7 +343,7 @@ namespace MyBackend.Application.Services
         {
             var clientIp = string.IsNullOrWhiteSpace(ipAddress) ? "127.0.0.1" : ipAddress;
 
-            User? user = null;
+            UserModel? user = null;
             if (userId > 0)
             {
                 user = await _userRepository.GetUserByIdAsync(userId);
@@ -385,13 +390,28 @@ namespace MyBackend.Application.Services
             }
 
             var otpCode = _otpService.GenerateOtp(user.Email, expiryMinutes: 10);
-            await _emailService.SendTwoFactorOtpEmailAsync(user.Email, user.Name, otpCode, expiryMinutes: 10);
-
-            return new MessageResponse
+            try
             {
-                Success = true,
-                Message = "A new 6-digit 2FA verification code has been sent to your email."
-            };
+                await _emailService.SendTwoFactorOtpEmailAsync(user.Email, user.Name, otpCode, expiryMinutes: 10);
+                return new MessageResponse
+                {
+                    Success = true,
+                    Message = "A new 6-digit 2FA verification code has been sent to your email."
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch 2FA OTP email to {Email}. Dev OTP: {OtpCode}", user.Email, otpCode);
+                if (IsDevelopmentMode())
+                {
+                    return new MessageResponse
+                    {
+                        Success = true,
+                        Message = $"2FA code generated. [Dev Mode]: Email delivery failed ({ex.Message}). Your OTP code is: {otpCode}"
+                    };
+                }
+                throw;
+            }
         }
 
         public async Task<MessageResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
@@ -404,13 +424,28 @@ namespace MyBackend.Application.Services
             }
 
             var otpCode = _otpService.GenerateOtp(user.Email, expiryMinutes: 10);
-            await _emailService.SendPasswordResetOtpEmailAsync(user.Email, user.Name, otpCode, expiryMinutes: 10);
-
-            return new MessageResponse
+            try
             {
-                Success = true,
-                Message = "A 6-digit verification OTP has been sent to your email address."
-            };
+                await _emailService.SendPasswordResetOtpEmailAsync(user.Email, user.Name, otpCode, expiryMinutes: 10);
+                return new MessageResponse
+                {
+                    Success = true,
+                    Message = "A 6-digit verification OTP has been sent to your email address."
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch password reset OTP email to {Email}. Dev OTP: {OtpCode}", user.Email, otpCode);
+                if (IsDevelopmentMode())
+                {
+                    return new MessageResponse
+                    {
+                        Success = true,
+                        Message = $"OTP generated. [Dev Mode]: Email delivery failed ({ex.Message}). Your OTP code is: {otpCode}"
+                    };
+                }
+                throw;
+            }
         }
 
         public MessageResponse VerifyOtp(VerifyOtpRequest request)
@@ -522,7 +557,7 @@ namespace MyBackend.Application.Services
             return sessions.ToDtoList();
         }
 
-        private Task<AuthUserData> BuildAuthUserDataAsync(UserLoginDetails loginDetails)
+        private Task<AuthUserData> BuildAuthUserDataAsync(UserLoginDetailsModel loginDetails)
         {
             var user = loginDetails.ToUser();
             return BuildAuthUserDataAsync(
@@ -535,7 +570,7 @@ namespace MyBackend.Application.Services
         }
 
         private async Task<AuthUserData> BuildAuthUserDataAsync(
-            User user,
+            UserModel user,
             string? roleName = null,
             string? designationName = null,
             string? departmentName = null,
@@ -572,7 +607,7 @@ namespace MyBackend.Application.Services
                 ? initialPermissions
                 : await _userRepository.GetUserPermissionKeysAsync(user.Id, user.RoleId, user.DesignationId);
 
-            List<Menu> menus = [];
+            List<MenuModel> menus = [];
             try
             {
                 if (user.RoleId == 2)
@@ -629,7 +664,7 @@ namespace MyBackend.Application.Services
             };
         }
 
-        private async Task EnsureMaintenanceAccessAllowedAsync(User user)
+        private async Task EnsureMaintenanceAccessAllowedAsync(UserModel user)
         {
             var maintenanceVal = await _unitOfWork.SystemSettings.GetSettingValueAsync("maintenance_mode");
             bool isMaintenance = string.Equals(maintenanceVal?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
@@ -644,7 +679,7 @@ namespace MyBackend.Application.Services
             }
         }
 
-        private async Task<bool> IsAdminUserAsync(User user)
+        private async Task<bool> IsAdminUserAsync(UserModel user)
         {
             if (user.RoleId == 2) return true;
             if (user.RoleId.HasValue)
@@ -656,6 +691,14 @@ namespace MyBackend.Application.Services
                 }
             }
             return false;
+        }
+
+        private bool IsDevelopmentMode()
+        {
+            var env = _configuration["Environment"]
+                ?? _configuration["ASPNETCORE_ENVIRONMENT"]
+                ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            return string.IsNullOrEmpty(env) || string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -10,8 +10,7 @@ using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Services;
-using MyBackend.Domain.Entities;
-using MyBackend.Domain.Entities.Model;
+using MyBackend.Domain.Models;
 using Xunit;
 
 namespace MyBackend.UnitTests.Application
@@ -86,12 +85,12 @@ namespace MyBackend.UnitTests.Application
 
         private class FakeReportRepository : IReportRepository
         {
-            public List<Report> Reports { get; } = new();
-            public List<ReportCategory> Categories { get; } = new();
+            public List<ReportModel> Reports { get; } = new();
+            public List<ReportCategoryModel> Categories { get; } = new();
             public bool CreateRecordCalled { get; private set; }
             public bool UpdateRecordCalled { get; private set; }
 
-            public Task<(List<Report> Reports, int TotalReports, int ReadyReports, int TotalUsers, int UsersWithRole, List<ReportCategory> Categories)> GetReportsOverviewDataAsync(string? category, string? search, CancellationToken cancellationToken = default)
+            public Task<(List<ReportModel> Reports, int TotalReports, int ReadyReports, int TotalUsers, int UsersWithRole, List<ReportCategoryModel> Categories)> GetReportsOverviewDataAsync(string? category, string? search, CancellationToken cancellationToken = default)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 return Task.FromResult((Reports, Reports.Count, Reports.Count, 1, 1, Categories));
@@ -103,25 +102,25 @@ namespace MyBackend.UnitTests.Application
                 return Task.FromResult(new List<string> { "Compliance" });
             }
 
-            public Task<Report?> GetReportByIdAsync(int id, CancellationToken cancellationToken = default)
+            public Task<ReportModel?> GetReportByIdAsync(int id, CancellationToken cancellationToken = default)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var r = Reports.Find(x => x.Id == id && x.DeletedFlag == 1);
                 return Task.FromResult(r);
             }
 
-            public Task<Report> AddReportAsync(Report report, CancellationToken cancellationToken = default)
+            public Task<ReportModel> AddReportAsync(ReportModel report, CancellationToken cancellationToken = default)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 Reports.Add(report);
                 return Task.FromResult(report);
             }
 
-            public Task<Report> CreateReportRecordAsync(string title, string description, int? categoryId, string categoryName, string format, string creatorName, string fileSize, string? storedFileName, CancellationToken cancellationToken = default)
+            public Task<ReportModel> CreateReportRecordAsync(string title, string description, int? categoryId, string categoryName, string format, string creatorName, string fileSize, string? storedFileName, CancellationToken cancellationToken = default)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 CreateRecordCalled = true;
-                var report = new Report
+                var report = new ReportModel
                 {
                     Id = Reports.Count + 1,
                     Title = title,
@@ -141,7 +140,7 @@ namespace MyBackend.UnitTests.Application
                 return Task.FromResult(report);
             }
 
-            public Task<Report?> UpdateReportRecordAsync(int id, string title, string description, int? categoryId, string categoryName, string format, string? status, string? newFileName, string? newFileSize, CancellationToken cancellationToken = default)
+            public Task<ReportModel?> UpdateReportRecordAsync(int id, string title, string description, int? categoryId, string categoryName, string format, string? status, string? newFileName, string? newFileSize, CancellationToken cancellationToken = default)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 UpdateRecordCalled = true;
@@ -161,7 +160,7 @@ namespace MyBackend.UnitTests.Application
                 return Task.FromResult(r);
             }
 
-            public Task UpdateReportAsync(Report report, CancellationToken cancellationToken = default)
+            public Task UpdateReportAsync(ReportModel report, CancellationToken cancellationToken = default)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 return Task.CompletedTask;
@@ -175,11 +174,11 @@ namespace MyBackend.UnitTests.Application
                 return Task.FromResult(r != null);
             }
 
-            public Task<List<ReportCategory>> GetAllCategoriesAsync(CancellationToken cancellationToken = default) => Task.FromResult(Categories);
-            public Task<ReportCategory?> GetCategoryByIdAsync(int id, CancellationToken cancellationToken = default) => Task.FromResult(Categories.Find(c => c.Id == id));
-            public Task<ReportCategory?> GetCategoryByNameAsync(string name, CancellationToken cancellationToken = default) => Task.FromResult(Categories.Find(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
+            public Task<List<ReportCategoryModel>> GetAllCategoriesAsync(CancellationToken cancellationToken = default) => Task.FromResult(Categories);
+            public Task<ReportCategoryModel?> GetCategoryByIdAsync(int id, CancellationToken cancellationToken = default) => Task.FromResult(Categories.Find(c => c.Id == id));
+            public Task<ReportCategoryModel?> GetCategoryByNameAsync(string name, CancellationToken cancellationToken = default) => Task.FromResult(Categories.Find(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
             public Task<bool> CategoryExistsByNameAsync(string name, CancellationToken cancellationToken = default) => Task.FromResult(Categories.Exists(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
-            public Task<ReportCategory> AddCategoryAsync(ReportCategory category, CancellationToken cancellationToken = default)
+            public Task<ReportCategoryModel> AddCategoryAsync(ReportCategoryModel category, CancellationToken cancellationToken = default)
             {
                 category.Id = Categories.Count + 1;
                 Categories.Add(category);

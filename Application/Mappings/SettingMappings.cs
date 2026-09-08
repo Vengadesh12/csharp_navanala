@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class SettingMappings
     {
-        public static SystemSettingDto ToDto(this SystemSetting entity)
+        public static SystemSettingDto ToDto(this SystemSettingModel entity)
         {
             return new SystemSettingDto
             {
@@ -23,12 +23,12 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<SystemSettingDto> ToDtoList(this IEnumerable<SystemSetting> entities)
+        public static List<SystemSettingDto> ToDtoList(this IEnumerable<SystemSettingModel> entities)
         {
             return entities.Select(e => e.ToDto()).ToList();
         }
 
-        public static SettingCategoryDto ToDto(this SettingCategory entity, int settingsCount = 0)
+        public static SettingCategoryDto ToDto(this SettingCategoryModel entity, int settingsCount = 0)
         {
             return new SettingCategoryDto
             {
@@ -43,7 +43,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<SettingCategoryDto> ToDtoList(this IEnumerable<SettingCategory> entities, Dictionary<string, int>? categoryCounts = null)
+        public static List<SettingCategoryDto> ToDtoList(this IEnumerable<SettingCategoryModel> entities, Dictionary<string, int>? categoryCounts = null)
         {
             return entities.Select(e =>
             {

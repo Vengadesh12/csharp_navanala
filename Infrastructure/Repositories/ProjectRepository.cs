@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -18,7 +18,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<(List<Project> Projects, int ActiveRollouts, int OnTrackCount, int PendingReviews)> GetProjectsOverviewDataAsync(string? category, string? status, string? search)
+        public async Task<(List<ProjectModel> Projects, int ActiveRollouts, int OnTrackCount, int PendingReviews)> GetProjectsOverviewDataAsync(string? category, string? status, string? search)
         {
             var sql = new StringBuilder("""
                 SELECT id, name, description, category, status, priority, lead_name, progress_percentage, due_date, created_at, updated_at, deleted_flag
@@ -89,7 +89,7 @@ namespace MyBackend.Infrastructure.Repositories
             return Task.FromResult(id);
         }
 
-        public async Task<Project?> GetProjectByIdAsync(int id)
+        public async Task<ProjectModel?> GetProjectByIdAsync(int id)
         {
             return await _context.Projects
                 .FromSqlRaw("""

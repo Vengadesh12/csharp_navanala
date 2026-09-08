@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class AuditLogMappings
     {
-        public static AuditLogDto ToDto(this AuditLog log)
+        public static AuditLogDto ToDto(this AuditLogModel log)
         {
             return new AuditLogDto
             {
@@ -23,7 +23,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<AuditLogDto> ToDtoList(this IEnumerable<AuditLog> logs)
+        public static List<AuditLogDto> ToDtoList(this IEnumerable<AuditLogModel> logs)
         {
             return logs.Select(l => l.ToDto()).ToList();
         }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -122,7 +122,7 @@ namespace MyBackend.Application.Services
             }
 
             var now = DateTime.UtcNow;
-            var purchase = new Purchase
+            var purchase = new PurchaseModel
             {
                 ApprovalRequestId = approval.Id,
                 ItemName = approval.ItemName.Trim(),

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -83,7 +83,7 @@ namespace MyBackend.Application.Services
                 ? request.CompanyGstin.Trim().ToUpper()
                 : DEFAULT_COMPANY_GSTIN;
 
-            var lineItems = new List<InvoiceItem>();
+            var lineItems = new List<InvoiceItemModel>();
             int orderIdx = 1;
             foreach (var itemReq in request.Items ?? Enumerable.Empty<CreateInvoiceItemRequest>())
             {
@@ -92,7 +92,7 @@ namespace MyBackend.Application.Services
                 var rate = Math.Max(0, itemReq.TaxRate);
                 var baseAmount = qty * price;
                 var taxAmount = Math.Round((baseAmount * rate) / 100m, 2);
-                lineItems.Add(new InvoiceItem
+                lineItems.Add(new InvoiceItemModel
                 {
                     ProductName = itemReq.ProductName.Trim(),
                     Description = itemReq.Description?.Trim(),
@@ -109,7 +109,7 @@ namespace MyBackend.Application.Services
             }
 
             var now = DateTime.UtcNow;
-            var invoice = new Invoice
+            var invoice = new InvoiceModel
             {
                 InvoiceNumber = invoiceNumber,
                 CustomerName = request.CustomerName.Trim(),
@@ -148,7 +148,7 @@ namespace MyBackend.Application.Services
                 throw new ArgumentException($"Invoice number '{request.InvoiceNumber.Trim()}' already exists. Please choose a different invoice number.");
             }
 
-            var lineItems = new List<InvoiceItem>();
+            var lineItems = new List<InvoiceItemModel>();
             int orderIdx = 1;
             foreach (var itemReq in request.Items ?? Enumerable.Empty<CreateInvoiceItemRequest>())
             {
@@ -157,7 +157,7 @@ namespace MyBackend.Application.Services
                 var rate = Math.Max(0, itemReq.TaxRate);
                 var baseAmount = qty * price;
                 var taxAmount = Math.Round((baseAmount * rate) / 100m, 2);
-                lineItems.Add(new InvoiceItem
+                lineItems.Add(new InvoiceItemModel
                 {
                     InvoiceId = id,
                     ProductName = itemReq.ProductName.Trim(),

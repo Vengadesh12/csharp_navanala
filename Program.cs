@@ -22,9 +22,13 @@ if (!string.IsNullOrWhiteSpace(port))
 }
 
 // ------------------------------------------------------------------------------
-// 1. Centralized Application Configuration (config.json, appsettings, env vars)
+// 1. Centralized Application Configuration (appsettings, config.json, env vars)
 // ------------------------------------------------------------------------------
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
 builder.Configuration.AddJsonFile("Config/config.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddJsonFile("config.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddEnvironmentVariables();
 Config.Load(builder.Configuration);
 
 // ------------------------------------------------------------------------------

@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    public class PermissionRepository : Repository<Permission>, IPermissionRepository
+    public class PermissionRepository : Repository<PermissionModel>, IPermissionRepository
     {
         public PermissionRepository(AppDbContext context) : base(context)
         {
@@ -177,7 +177,7 @@ namespace MyBackend.Infrastructure.Repositories
                     var permName = FormatPermissionName(key);
                     var permDesc = $"Allows access to {key} capability.";
                     
-                    var newPerm = new Permission
+                    var newPerm = new PermissionModel
                     {
                         PermissionKey = key,
                         Name = permName,

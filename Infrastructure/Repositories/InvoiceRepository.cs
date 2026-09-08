@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -18,7 +18,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<(List<Invoice> Items, int TotalCount)> GetInvoicesPagedAsync(
+        public async Task<(List<InvoiceModel> Items, int TotalCount)> GetInvoicesPagedAsync(
             string? status,
             DateTime? startDate,
             DateTime? endDate,
@@ -74,7 +74,7 @@ namespace MyBackend.Infrastructure.Repositories
             return (items, totalCount);
         }
 
-        public async Task<Invoice?> GetInvoiceByIdAsync(int id)
+        public async Task<InvoiceModel?> GetInvoiceByIdAsync(int id)
         {
             return await _context.Invoices
                 .Include(i => i.Items.Where(it => it.DeletedFlag == 1))
@@ -135,14 +135,14 @@ namespace MyBackend.Infrastructure.Repositories
             return (totalInvoices, totalInvoicedAmount, totalPaidAmount, totalPendingAmount, totalOverdueAmount, totalGstCollected, paidCount, pendingCount, draftCount, overdueCount);
         }
 
-        public async Task<Invoice> AddInvoiceAsync(Invoice invoice)
+        public async Task<InvoiceModel> AddInvoiceAsync(InvoiceModel invoice)
         {
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync();
             return invoice;
         }
 
-        public async Task<Invoice?> UpdateInvoiceWithItemsAsync(
+        public async Task<InvoiceModel?> UpdateInvoiceWithItemsAsync(
             int id,
             string? invoiceNumber,
             string customerName,
@@ -158,7 +158,7 @@ namespace MyBackend.Infrastructure.Repositories
             string? paymentMethod,
             string? notes,
             string? termsAndConditions,
-            List<InvoiceItem> newItems)
+            List<InvoiceItemModel> newItems)
         {
             var invoice = await _context.Invoices
                 .Include(i => i.Items)

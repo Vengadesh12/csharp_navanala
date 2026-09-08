@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class PurchaseMappings
     {
-        public static PurchaseDto ToDto(this Purchase entity)
+        public static PurchaseDto ToDto(this PurchaseModel entity)
         {
             return new PurchaseDto
             {
@@ -37,12 +37,12 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<PurchaseDto> ToDtoList(this IEnumerable<Purchase> entities)
+        public static List<PurchaseDto> ToDtoList(this IEnumerable<PurchaseModel> entities)
         {
             return entities.Select(e => e.ToDto()).ToList();
         }
 
-        public static ApprovedProductDto ToApprovedProductDto(this ApprovalRequest entity, int quotationCount = 0, int? existingPurchaseId = null)
+        public static ApprovedProductDto ToApprovedProductDto(this ApprovalRequestModel entity, int quotationCount = 0, int? existingPurchaseId = null)
         {
             return new ApprovedProductDto
             {

@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class DepartmentMappings
     {
-        public static DepartmentDto ToDto(this Department department, int userCount = 0, List<DesignationDto>? designations = null, int activeUserCount = 0, int deletedUserCount = 0)
+        public static DepartmentDto ToDto(this DepartmentModel department, int userCount = 0, List<DesignationDto>? designations = null, int activeUserCount = 0, int deletedUserCount = 0)
         {
             var desList = designations ?? department.Designations
                 .Where(d => d.DeletedFlag == 1)

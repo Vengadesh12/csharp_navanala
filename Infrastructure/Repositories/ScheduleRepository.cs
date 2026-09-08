@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -18,7 +18,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<(List<ScheduleEvent> Schedules, int UpcomingReviews, int DueThisWeek, int TotalUsers, int ActiveSessions)> GetSchedulesOverviewDataAsync(string? eventType, string? search)
+        public async Task<(List<ScheduleEventModel> Schedules, int UpcomingReviews, int DueThisWeek, int TotalUsers, int ActiveSessions)> GetSchedulesOverviewDataAsync(string? eventType, string? search)
         {
             var sql = new StringBuilder("""
                 SELECT id, title, description, event_type, event_date, start_time, end_time, location, organizer, status, priority, attendees_count, created_at, updated_at, deleted_flag
@@ -73,7 +73,7 @@ namespace MyBackend.Infrastructure.Repositories
             return (rawSchedules, upcomingReviews, dueThisWeek, totalUsers, activeSessions);
         }
 
-        public async Task<(List<EventType> EventTypes, List<string> ActiveScheduleTypes)> GetEventTypesWithCountsAsync()
+        public async Task<(List<EventTypeModel> EventTypes, List<string> ActiveScheduleTypes)> GetEventTypesWithCountsAsync()
         {
             var types = await _context.EventTypes
                 .FromSqlRaw("""
@@ -94,7 +94,7 @@ namespace MyBackend.Infrastructure.Repositories
             return (types, activeSchedules);
         }
 
-        public async Task<EventType?> GetEventTypeByNameAsync(string name)
+        public async Task<EventTypeModel?> GetEventTypeByNameAsync(string name)
         {
             return await _context.EventTypes
                 .FromSqlRaw("""
@@ -165,7 +165,7 @@ namespace MyBackend.Infrastructure.Repositories
             return Task.FromResult(id);
         }
 
-        public async Task<ScheduleEvent?> GetScheduleByIdAsync(int id)
+        public async Task<ScheduleEventModel?> GetScheduleByIdAsync(int id)
         {
             return await _context.Schedules
                 .FromSqlRaw("""

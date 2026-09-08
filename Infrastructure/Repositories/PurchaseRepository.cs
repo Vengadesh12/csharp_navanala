@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -17,7 +17,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<(List<Purchase> Items, int TotalCount)> GetPurchasesPagedAsync(string? status, string? category, string? search, int page, int pageSize)
+        public async Task<(List<PurchaseModel> Items, int TotalCount)> GetPurchasesPagedAsync(string? status, string? category, string? search, int page, int pageSize)
         {
             var dbQuery = _context.Purchases.AsNoTracking().Where(p => p.DeletedFlag == 1);
 
@@ -76,13 +76,13 @@ namespace MyBackend.Infrastructure.Repositories
             return groups.ToDictionary(g => g.ApprovalRequestId, g => (g.Count, g.FirstPurchaseId));
         }
 
-        public async Task<Purchase?> GetPurchaseByIdAsync(int id)
+        public async Task<PurchaseModel?> GetPurchaseByIdAsync(int id)
         {
             return await _context.Purchases
                 .FirstOrDefaultAsync(p => p.Id == id && p.DeletedFlag == 1);
         }
 
-        public async Task<List<Purchase>> GetAllActivePurchasesAsync()
+        public async Task<List<PurchaseModel>> GetAllActivePurchasesAsync()
         {
             return await _context.Purchases
                 .AsNoTracking()
@@ -90,14 +90,14 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Purchase> AddPurchaseAsync(Purchase purchase)
+        public async Task<PurchaseModel> AddPurchaseAsync(PurchaseModel purchase)
         {
             _context.Purchases.Add(purchase);
             await _context.SaveChangesAsync();
             return purchase;
         }
 
-        public async Task UpdatePurchaseAsync(Purchase purchase)
+        public async Task UpdatePurchaseAsync(PurchaseModel purchase)
         {
             _context.Purchases.Update(purchase);
             await _context.SaveChangesAsync();

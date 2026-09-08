@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -59,7 +59,7 @@ namespace MyBackend.Application.Services
                 }
             }
 
-            var designation = new Designation
+            var designation = new DesignationModel
             {
                 Name = trimmedName,
                 Description = request.Description?.Trim() ?? string.Empty,

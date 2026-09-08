@@ -1,18 +1,18 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
     public interface IProjectCategoryRepository
     {
-        Task<List<ProjectCategory>> GetAllCategoriesAsync();
+        Task<List<ProjectCategoryModel>> GetAllCategoriesAsync();
 
-        Task<ProjectCategory?> GetCategoryByIdAsync(int id);
+        Task<ProjectCategoryModel?> GetCategoryByIdAsync(int id);
 
         Task<bool> CategoryExistsByNameAsync(string name);
 
-        Task<ProjectCategory> AddCategoryAsync(ProjectCategory category);
+        Task<ProjectCategoryModel> AddCategoryAsync(ProjectCategoryModel category);
 
         Task<bool> SoftDeleteCategoryAsync(int id);
     }

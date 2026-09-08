@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class DesignationMappings
     {
-        public static DesignationDto ToDto(this Designation entity, string? departmentName = null, int userCount = 0)
+        public static DesignationDto ToDto(this DesignationModel entity, string? departmentName = null, int userCount = 0)
         {
             return new DesignationDto
             {
@@ -21,7 +21,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<DesignationDto> ToDtoList(this IEnumerable<Designation> entities, Dictionary<int, string>? departmentsDict = null)
+        public static List<DesignationDto> ToDtoList(this IEnumerable<DesignationModel> entities, Dictionary<int, string>? departmentsDict = null)
         {
             return entities.Select(e =>
             {

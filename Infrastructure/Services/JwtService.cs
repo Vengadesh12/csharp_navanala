@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using MyBackend.Application.Interfaces;
 using MyBackend.Configuration;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Infrastructure.Services
 {
@@ -21,7 +21,7 @@ namespace MyBackend.Infrastructure.Services
             _configuration = configuration;
         }
 
-        public string GenerateToken(User user, string? roleName = null, IEnumerable<string>? permissions = null, int? sessionId = null)
+        public string GenerateToken(UserModel user, string? roleName = null, IEnumerable<string>? permissions = null, int? sessionId = null)
         {
             var claims = new List<Claim>
             {

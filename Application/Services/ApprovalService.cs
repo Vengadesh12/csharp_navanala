@@ -5,7 +5,7 @@ using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Mappings;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -85,7 +85,7 @@ namespace MyBackend.Application.Services
             }
 
             var now = DateTime.UtcNow;
-            var entity = new ApprovalRequest
+            var entity = new ApprovalRequestModel
             {
                 UserId = userId,
                 EmployeeName = userName.Trim(),

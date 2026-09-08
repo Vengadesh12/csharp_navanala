@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
     public interface IApprovalRepository
     {
-        Task<(List<ApprovalRequest> Items, int TotalCount)> GetApprovalsPagedAsync(
+        Task<(List<ApprovalRequestModel> Items, int TotalCount)> GetApprovalsPagedAsync(
             int currentUserId,
             bool isManagerOrAdmin,
             string? scope,
@@ -21,14 +21,14 @@ namespace MyBackend.Application.Interfaces
             int currentUserId,
             bool isManagerOrAdmin);
 
-        Task<ApprovalRequest?> GetByIdAsync(int id);
+        Task<ApprovalRequestModel?> GetByIdAsync(int id);
 
-        Task<ApprovalRequest> AddApprovalAsync(ApprovalRequest approval);
+        Task<ApprovalRequestModel> AddApprovalAsync(ApprovalRequestModel approval);
 
-        Task UpdateApprovalAsync(ApprovalRequest approval);
+        Task UpdateApprovalAsync(ApprovalRequestModel approval);
 
         Task<bool> SoftDeleteApprovalAsync(int id);
 
-        Task<List<ApprovalRequest>> GetApprovedApprovalsAsync();
+        Task<List<ApprovalRequestModel>> GetApprovedApprovalsAsync();
     }
 }

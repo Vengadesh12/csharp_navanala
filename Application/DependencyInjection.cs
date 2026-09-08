@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Services;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application
 {
@@ -34,7 +34,7 @@ namespace MyBackend.Application
             services.AddScoped<IInvoiceService, InvoiceService>();
 
             // Password hasher service
-            services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+            services.AddScoped<IPasswordHasher<UserModel>, PasswordHasher<UserModel>>();
 
             // Singleton in-memory OTP generator/validator
             services.AddSingleton<IOtpService, OtpService>();

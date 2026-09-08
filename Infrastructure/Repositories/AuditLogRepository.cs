@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -18,7 +18,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<(List<AuditLog> Logs, int TotalEvents, int SuccessfulLogins, int PrivilegeChanges)> GetAuditLogsOverviewAsync(string? module, string? search)
+        public async Task<(List<AuditLogModel> Logs, int TotalEvents, int SuccessfulLogins, int PrivilegeChanges)> GetAuditLogsOverviewAsync(string? module, string? search)
         {
             var sql = new StringBuilder("""
                 SELECT id, action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag
@@ -70,7 +70,7 @@ namespace MyBackend.Infrastructure.Repositories
             return (rawLogs, totalEvents, successfulLogins, privilegeChanges);
         }
 
-        public async Task<AuditLog> CreateAuditLogAsync(string action, string module, string performedBy, string details, string ipAddress, string status)
+        public async Task<AuditLogModel> CreateAuditLogAsync(string action, string module, string performedBy, string details, string ipAddress, string status)
         {
             var now = DateTime.UtcNow;
             var newId = _context.Database.SqlQueryRaw<int>("""
@@ -105,13 +105,13 @@ namespace MyBackend.Infrastructure.Repositories
             return rowsAffected > 0;
         }
 
-        public async Task AddAuditLogAsync(AuditLog log)
+        public async Task AddAuditLogAsync(AuditLogModel log)
         {
             _context.AuditLogs.Add(log);
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<AuditLog>> GetRecentAuditLogsAsync(int count)
+        public async Task<List<AuditLogModel>> GetRecentAuditLogsAsync(int count)
         {
             return await _context.AuditLogs
                 .FromSqlRaw("""
@@ -125,7 +125,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<AuditLog>> GetAuditLogsInDateRangeAsync(DateTime startDate, DateTime endDate)
+        public async Task<List<AuditLogModel>> GetAuditLogsInDateRangeAsync(DateTime startDate, DateTime endDate)
         {
             return await _context.AuditLogs
                 .FromSqlRaw("""

@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class UserMappings
     {
-        public static UserDto ToDto(this User user, string? roleName = null, string? designationName = null)
+        public static UserDto ToDto(this UserModel user, string? roleName = null, string? designationName = null)
         {
             return new UserDto
             {
@@ -28,7 +28,7 @@ namespace MyBackend.Application.Mappings
         }
 
         public static List<UserDto> ToDtoList(
-            this IEnumerable<User> users,
+            this IEnumerable<UserModel> users,
             IReadOnlyDictionary<int, string>? rolesDict = null,
             IReadOnlyDictionary<int, string>? designationsDict = null)
         {

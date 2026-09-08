@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
@@ -11,10 +11,10 @@ namespace MyBackend.Application.Interfaces
 
         Task<int> GetActiveSessionsCountAsync();
 
-        Task<List<AuditLog>> GetDashboardRecentAuditLogsAsync(int count);
+        Task<List<AuditLogModel>> GetDashboardRecentAuditLogsAsync(int count);
 
-        Task<List<AuditLog>> GetAuditLogsSinceDateAsync(DateTime startDate);
+        Task<List<AuditLogModel>> GetAuditLogsSinceDateAsync(DateTime startDate);
 
-        Task<List<UserSession>> GetAllActiveSessionsForDashboardAsync();
+        Task<List<UserSessionModel>> GetAllActiveSessionsForDashboardAsync();
     }
 }

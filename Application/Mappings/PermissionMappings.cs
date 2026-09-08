@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class PermissionMappings
     {
-        public static PermissionDto ToDto(this Permission entity, bool isAssigned = false)
+        public static PermissionDto ToDto(this PermissionModel entity, bool isAssigned = false)
         {
             return new PermissionDto
             {
@@ -18,7 +18,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<PermissionDto> ToDtoList(this IEnumerable<Permission> entities, HashSet<string>? assignedKeys = null)
+        public static List<PermissionDto> ToDtoList(this IEnumerable<PermissionModel> entities, HashSet<string>? assignedKeys = null)
         {
             return entities.Select(e => e.ToDto(assignedKeys != null && assignedKeys.Contains(e.PermissionKey))).ToList();
         }

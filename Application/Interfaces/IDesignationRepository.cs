@@ -1,12 +1,12 @@
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
-    public interface IDesignationRepository : IRepository<Designation>
+    public interface IDesignationRepository : IRepository<DesignationModel>
     {
-        Task<List<Designation>> GetActiveDesignationsAsync();
+        Task<List<DesignationModel>> GetActiveDesignationsAsync();
 
-        Task<Designation?> GetActiveDesignationByIdAsync(int id);
+        Task<DesignationModel?> GetActiveDesignationByIdAsync(int id);
 
         Task<Dictionary<int, string>> GetDesignationNameDictionaryAsync();
 
@@ -16,8 +16,8 @@ namespace MyBackend.Application.Interfaces
 
         Task<bool> SetDeletedFlagAsync(int id, int deletedFlag);
 
-        Task<List<Designation>> GetDesignationsByIdsAsync(IEnumerable<int> ids);
+        Task<List<DesignationModel>> GetDesignationsByIdsAsync(IEnumerable<int> ids);
 
-        Task<List<Designation>> GetDesignationsByDepartmentIdAsync(int departmentId);
+        Task<List<DesignationModel>> GetDesignationsByDepartmentIdAsync(int departmentId);
     }
 }

@@ -1,16 +1,16 @@
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    public class UserSessionRepository : Repository<UserSession>, IUserSessionRepository
+    public class UserSessionRepository : Repository<UserSessionModel>, IUserSessionRepository
     {
         public UserSessionRepository(AppDbContext context) : base(context)
         {
         }
 
-        public async Task<UserSession> RecordLoginAsync(int userId, string email, string userName, string ipAddress, string? userAgent = null, string? sessionToken = null)
+        public async Task<UserSessionModel> RecordLoginAsync(int userId, string email, string userName, string ipAddress, string? userAgent = null, string? sessionToken = null)
         {
             var now = DateTime.UtcNow;
 
@@ -26,7 +26,7 @@ namespace MyBackend.Infrastructure.Repositories
                 oldSession.UpdatedAt = now;
             }
 
-            var session = new UserSession
+            var session = new UserSessionModel
             {
                 UserId = userId,
                 Email = email,
@@ -51,7 +51,7 @@ namespace MyBackend.Infrastructure.Repositories
             var clientIp = string.IsNullOrWhiteSpace(ipAddress) ? "127.0.0.1" : ipAddress.Trim();
 
             // 1. If specific session token is provided, prioritize terminating that exact session
-            List<UserSession> activeSessions = new();
+            List<UserSessionModel> activeSessions = new();
             if (!string.IsNullOrWhiteSpace(sessionToken))
             {
                 activeSessions = await _context.UserSessions
@@ -94,7 +94,7 @@ namespace MyBackend.Infrastructure.Repositories
             }
 
             // Fallback: If no open session row existed, create a completed session row so history is preserved
-            User? user = null;
+            UserModel? user = null;
             if (userId > 0)
             {
                 user = await _context.Users.FindAsync(userId);
@@ -106,7 +106,7 @@ namespace MyBackend.Infrastructure.Repositories
 
             if (user is not null)
             {
-                var auditSession = new UserSession
+                var auditSession = new UserSessionModel
                 {
                     UserId = user.Id,
                     Email = user.Email,
@@ -126,7 +126,7 @@ namespace MyBackend.Infrastructure.Repositories
             return false;
         }
 
-        public async Task<List<UserSession>> GetUserSessionsAsync(int userId, int limit = 50)
+        public async Task<List<UserSessionModel>> GetUserSessionsAsync(int userId, int limit = 50)
         {
             return await _context.UserSessions
                 .Where(s => s.UserId == userId && s.DeletedFlag == 1)
@@ -136,7 +136,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<UserSession>> GetAllRecentSessionsAsync(int limit = 100)
+        public async Task<List<UserSessionModel>> GetAllRecentSessionsAsync(int limit = 100)
         {
             return await _context.UserSessions
                 .Where(s => s.DeletedFlag == 1)
@@ -147,7 +147,7 @@ namespace MyBackend.Infrastructure.Repositories
         }
 
 
-        public async Task<List<UserSession>> GetActiveSessionsAsync()
+        public async Task<List<UserSessionModel>> GetActiveSessionsAsync()
         {
             return await _context.UserSessions
                 .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null)
@@ -156,7 +156,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<(List<UserSession> Items, int TotalCount)> GetPagedSessionsAsync(string? search, string? status, int page, int pageSize)
+        public async Task<(List<UserSessionModel> Items, int TotalCount)> GetPagedSessionsAsync(string? search, string? status, int page, int pageSize)
         {
             var query = _context.UserSessions.Where(s => s.DeletedFlag == 1);
 
@@ -243,7 +243,7 @@ namespace MyBackend.Infrastructure.Repositories
             return (activeCount, todayLogins, todayLogouts, totalSessions);
         }
 
-        public async Task<UserSession?> GetSessionByIdAsync(int sessionId)
+        public async Task<UserSessionModel?> GetSessionByIdAsync(int sessionId)
         {
             return await _context.UserSessions
                 .FromSqlRaw("""
@@ -254,7 +254,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<List<UserSession>> GetActiveSessionsForUserAsync(int userId, int? excludeSessionId = null)
+        public async Task<List<UserSessionModel>> GetActiveSessionsForUserAsync(int userId, int? excludeSessionId = null)
         {
             if (excludeSessionId.HasValue)
             {
@@ -276,7 +276,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<UserSession>> GetActiveSessionsForEmailAsync(string email)
+        public async Task<List<UserSessionModel>> GetActiveSessionsForEmailAsync(string email)
         {
             return await _context.UserSessions
                 .FromSqlRaw("""
@@ -287,7 +287,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<UserSession?> FindActiveSessionByTokenAsync(int userId, string token)
+        public async Task<UserSessionModel?> FindActiveSessionByTokenAsync(int userId, string token)
         {
             return await _context.UserSessions
                 .Where(s => s.UserId == userId && s.SessionToken == token && s.DeletedFlag == 1)
@@ -348,7 +348,7 @@ namespace MyBackend.Infrastructure.Repositories
 
                 var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";
 
-                _context.AuditLogs.Add(new AuditLog
+                _context.AuditLogs.Add(new AuditLogModel
                 {
                     Action = "Force Terminate Session",
                     Module = "Auth",
@@ -415,12 +415,12 @@ namespace MyBackend.Infrastructure.Repositories
 
                 var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";
 
-                _context.AuditLogs.Add(new AuditLog
+                _context.AuditLogs.Add(new AuditLogModel
                 {
-                    Action = "Force User Logout",
+                    Action = "Force UserModel Logout",
                     Module = "Auth",
                     PerformedBy = adminName,
-                    Details = $"Terminated all active sessions for {user?.Name ?? $"User #{targetUserId}"}",
+                    Details = $"Terminated all active sessions for {user?.Name ?? $"UserModel #{targetUserId}"}",
                     IpAddress = "127.0.0.1",
                     Status = "Success",
                     CreatedAt = DateTime.UtcNow,
@@ -437,7 +437,7 @@ namespace MyBackend.Infrastructure.Repositories
             return Math.Max(1, activeSessions.Count);
         }
 
-        public async Task AddSessionAsync(UserSession session)
+        public async Task AddSessionAsync(UserSessionModel session)
         {
             _context.UserSessions.Add(session);
             try

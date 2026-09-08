@@ -8,7 +8,7 @@ using MyBackend.Application.Common.Exceptions;
 using MyBackend.Application.Common.Validators;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
@@ -16,7 +16,7 @@ namespace MyBackend.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IFileService _fileService;
-        private readonly PasswordHasher<User> _passwordHasher = new();
+        private readonly PasswordHasher<UserModel> _passwordHasher = new();
 
         public ProfileService(IUnitOfWork unitOfWork, IFileService fileService)
         {

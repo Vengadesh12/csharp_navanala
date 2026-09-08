@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
-    public interface IPermissionRepository : IRepository<Permission>
+    public interface IPermissionRepository : IRepository<PermissionModel>
     {
         Task<PermissionsMatrixResponse> GetPermissionsMatrixAsync();
         Task<List<PermissionDto>> GetAllActivePermissionsAsync();

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -18,7 +18,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<(List<SystemSetting> Settings, List<SettingCategory> Categories, Dictionary<string, int> SettingCounts, int TotalSettings, string? TwoFactorValue, int AlertChannels, string? SessionTimeout)> GetSettingsOverviewDataAsync(string? category, string? search)
+        public async Task<(List<SystemSettingModel> Settings, List<SettingCategoryModel> Categories, Dictionary<string, int> SettingCounts, int TotalSettings, string? TwoFactorValue, int AlertChannels, string? SessionTimeout)> GetSettingsOverviewDataAsync(string? category, string? search)
         {
             var sql = new StringBuilder("""
                 SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
@@ -101,7 +101,7 @@ namespace MyBackend.Infrastructure.Repositories
             return (rawSettings, categoriesList, settingCounts, totalSettings, twoFactorVal, alertChannels, sessionTimeoutVal);
         }
 
-        public async Task<(List<SettingCategory> Categories, Dictionary<string, int> SettingCounts)> GetCategoriesWithCountsAsync()
+        public async Task<(List<SettingCategoryModel> Categories, Dictionary<string, int> SettingCounts)> GetCategoriesWithCountsAsync()
         {
             var categories = await _context.SettingCategories
                 .FromSqlRaw("""
@@ -163,7 +163,7 @@ namespace MyBackend.Infrastructure.Repositories
             return Task.FromResult(id);
         }
 
-        public async Task<SettingCategory?> GetCategoryByIdAsync(int id)
+        public async Task<SettingCategoryModel?> GetCategoryByIdAsync(int id)
         {
             return await _context.SettingCategories
                 .FromSqlRaw("""
@@ -256,7 +256,7 @@ namespace MyBackend.Infrastructure.Repositories
             return Task.FromResult(id);
         }
 
-        public async Task<SystemSetting?> GetSettingByIdAsync(int id)
+        public async Task<SystemSettingModel?> GetSettingByIdAsync(int id)
         {
             return await _context.SystemSettings
                 .FromSqlRaw("""

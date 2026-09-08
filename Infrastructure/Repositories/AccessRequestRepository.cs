@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -26,7 +26,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<Permission>> GetAllActivePermissionsAsync()
+        public async Task<List<PermissionModel>> GetAllActivePermissionsAsync()
         {
             return await _context.Permissions
                 .AsNoTracking()
@@ -35,7 +35,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<AccessRequest>> GetRequestsForUserAsync(int userId)
+        public async Task<List<AccessRequestModel>> GetRequestsForUserAsync(int userId)
         {
             return await _context.AccessRequests
                 .AsNoTracking()
@@ -44,7 +44,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Permission?> GetPermissionByKeyAsync(string permKey)
+        public async Task<PermissionModel?> GetPermissionByKeyAsync(string permKey)
         {
             return await _context.Permissions
                 .AsNoTracking()
@@ -68,14 +68,14 @@ namespace MyBackend.Infrastructure.Repositories
                           select d.Name).FirstOrDefaultAsync();
         }
 
-        public async Task<AccessRequest> AddRequestAsync(AccessRequest request)
+        public async Task<AccessRequestModel> AddRequestAsync(AccessRequestModel request)
         {
             _context.AccessRequests.Add(request);
             await _context.SaveChangesAsync();
             return request;
         }
 
-        public async Task<(List<AccessRequest> Items, int TotalCount)> GetPagedRequestsAsync(
+        public async Task<(List<AccessRequestModel> Items, int TotalCount)> GetPagedRequestsAsync(
             bool onlyMyRequests,
             string? status,
             string? priority,
@@ -155,7 +155,7 @@ namespace MyBackend.Infrastructure.Repositories
             return (total, pending, approved, rejected, myPending);
         }
 
-        public async Task<AccessRequest?> GetRequestByIdAsync(int id)
+        public async Task<AccessRequestModel?> GetRequestByIdAsync(int id)
         {
             return await _context.AccessRequests
                 .FirstOrDefaultAsync(r => r.Id == id && r.DeletedFlag == 1);
@@ -184,7 +184,7 @@ namespace MyBackend.Infrastructure.Repositories
 
                 if (!alreadyAssigned)
                 {
-                    _context.UserPermissions.Add(new UserPermission
+                    _context.UserPermissions.Add(new UserPermissionModel
                     {
                         UserId = request.UserId,
                         PermissionId = permission.Id,
@@ -196,9 +196,9 @@ namespace MyBackend.Infrastructure.Repositories
 
             try
             {
-                _context.AuditLogs.Add(new AuditLog
+                _context.AuditLogs.Add(new AuditLogModel
                 {
-                    Action = "AccessRequest.Approve",
+                    Action = "AccessRequestModel.Approve",
                     Module = "Access Requests",
                     PerformedBy = reviewerName,
                     Details = $"Granted permission '{request.PermissionKey}' ({request.PermissionName}) to user #{request.UserId} ({request.UserName}). Notes: {comments ?? "None"}",
@@ -232,9 +232,9 @@ namespace MyBackend.Infrastructure.Repositories
 
             try
             {
-                _context.AuditLogs.Add(new AuditLog
+                _context.AuditLogs.Add(new AuditLogModel
                 {
-                    Action = "AccessRequest.Reject",
+                    Action = "AccessRequestModel.Reject",
                     Module = "Access Requests",
                     PerformedBy = reviewerName,
                     Details = $"Rejected permission request for '{request.PermissionKey}' by user #{request.UserId} ({request.UserName}). Reason: {comments ?? "No comments"}",

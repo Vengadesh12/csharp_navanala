@@ -49,10 +49,11 @@ namespace MyBackend.Infrastructure.Services
 
                 using var client = new SmtpClient(smtpServer, port)
                 {
+                    UseDefaultCredentials = false,
                     Credentials = new NetworkCredential(senderEmail.Trim(), cleanAppPassword),
                     EnableSsl = enableSsl,
                     DeliveryMethod = SmtpDeliveryMethod.Network,
-                    UseDefaultCredentials = false
+                    Timeout = (_settings.TimeoutSeconds > 0 ? _settings.TimeoutSeconds : 15) * 1000
                 };
 
                 using var mailMessage = new MailMessage
@@ -63,14 +64,21 @@ namespace MyBackend.Infrastructure.Services
                     IsBodyHtml = true
                 };
 
-                mailMessage.To.Add(toEmail);
+                mailMessage.To.Add(toEmail.Trim());
 
                 await client.SendMailAsync(mailMessage);
-                _logger.LogInformation("Email '{Subject}' sent successfully to {Email}", subject, toEmail);
+                _logger.LogInformation("Email '{Subject}' sent successfully to {Email}", subject, toEmail.Trim());
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send email to {Email}", toEmail);
+                if (ex.Message.Contains("5.7.0") || ex.Message.Contains("5.7.8") || ex.Message.Contains("Authentication Required") || ex.Message.Contains("not authenticated"))
+                {
+                    throw new InvalidOperationException(
+                        $"SMTP authentication failed for '{senderEmail}'. Google rejected the credentials (5.7.0 / 5.7.8 BadCredentials). " +
+                        "Please configure a valid 16-character Google App Password in appsettings.json or Config/config.json under EmailSettings:AppPassword. " +
+                        "Generate one at: https://myaccount.google.com/apppasswords", ex);
+                }
                 throw;
             }
         }
@@ -78,6 +86,10 @@ namespace MyBackend.Infrastructure.Services
         public async Task SendWelcomeUserEmailAsync(string recipientEmail, string recipientName, string plainPassword)
         {
             var subject = "Welcome to Workspace - Your Account Credentials";
+            var safeName = WebUtility.HtmlEncode(recipientName ?? string.Empty);
+            var safeEmail = WebUtility.HtmlEncode(recipientEmail ?? string.Empty);
+            var safePassword = WebUtility.HtmlEncode(plainPassword ?? string.Empty);
+
             var body = $$"""
             <!DOCTYPE html>
             <html>
@@ -106,17 +118,17 @@ namespace MyBackend.Infrastructure.Services
                         <h1>Welcome to Workspace</h1>
                     </div>
                     <div class="content">
-                        <p>Hello <strong>{{recipientName}}</strong>,</p>
+                        <p>Hello <strong>{{safeName}}</strong>,</p>
                         <p>Your user account has been successfully created. You can now log into the portal using the credentials below:</p>
                         
                         <div class="credentials-box">
                             <div class="credential-row">
                                 <span class="credential-label">Email ID:</span>
-                                <span class="credential-value">{{recipientEmail}}</span>
+                                <span class="credential-value">{{safeEmail}}</span>
                             </div>
                             <div class="credential-row">
                                 <span class="credential-label">Password:</span>
-                                <span class="credential-value">{{plainPassword}}</span>
+                                <span class="credential-value">{{safePassword}}</span>
                             </div>
                         </div>
 
@@ -142,6 +154,9 @@ namespace MyBackend.Infrastructure.Services
         public async Task SendPasswordResetOtpEmailAsync(string recipientEmail, string recipientName, string otpCode, int expiryMinutes = 10)
         {
             var subject = $"Your Password Reset OTP: {otpCode}";
+            var safeName = WebUtility.HtmlEncode(recipientName ?? string.Empty);
+            var safeOtp = WebUtility.HtmlEncode(otpCode ?? string.Empty);
+
             var body = $$"""
             <!DOCTYPE html>
             <html>
@@ -167,12 +182,12 @@ namespace MyBackend.Infrastructure.Services
                         <h1>Password Reset Verification</h1>
                     </div>
                     <div class="content">
-                        <p>Hello <strong>{{recipientName}}</strong>,</p>
+                        <p>Hello <strong>{{safeName}}</strong>,</p>
                         <p>We received a request to reset your workspace account password. Use the verification OTP below to complete the reset process:</p>
                         
                         <div class="otp-box">
                             <div class="otp-label">Verification Code (OTP)</div>
-                            <div class="otp-code">{{otpCode}}</div>
+                            <div class="otp-code">{{safeOtp}}</div>
                             <div class="expiry-badge">&#9201; Valid for {{expiryMinutes}} minutes</div>
                         </div>
 
@@ -194,6 +209,9 @@ namespace MyBackend.Infrastructure.Services
         public async Task SendTwoFactorOtpEmailAsync(string recipientEmail, string recipientName, string otpCode, int expiryMinutes = 10)
         {
             var subject = $"Your 2FA Security Login Code: {otpCode}";
+            var safeName = WebUtility.HtmlEncode(recipientName ?? string.Empty);
+            var safeOtp = WebUtility.HtmlEncode(otpCode ?? string.Empty);
+
             var body = $$"""
             <!DOCTYPE html>
             <html>
@@ -219,12 +237,12 @@ namespace MyBackend.Infrastructure.Services
                         <h1>Two-Factor Authentication</h1>
                     </div>
                     <div class="content">
-                        <p>Hello <strong>{{recipientName}}</strong>,</p>
+                        <p>Hello <strong>{{safeName}}</strong>,</p>
                         <p>A login attempt was initiated for your account. Use the 6-digit two-factor verification code below to complete your sign-in:</p>
                         
                         <div class="otp-box">
                             <div class="otp-label">Security Verification Code</div>
-                            <div class="otp-code">{{otpCode}}</div>
+                            <div class="otp-code">{{safeOtp}}</div>
                             <div class="expiry-badge">&#9201; Valid for {{expiryMinutes}} minutes</div>
                         </div>
 
@@ -246,6 +264,9 @@ namespace MyBackend.Infrastructure.Services
         public async Task SendPasswordChangedNotificationAsync(string recipientEmail, string recipientName)
         {
             var subject = "Security Alert - Your Password Has Been Changed";
+            var safeName = WebUtility.HtmlEncode(recipientName ?? string.Empty);
+            var safeEmail = WebUtility.HtmlEncode(recipientEmail ?? string.Empty);
+
             var body = $$"""
             <!DOCTYPE html>
             <html>
@@ -269,9 +290,9 @@ namespace MyBackend.Infrastructure.Services
                         <h1>Password Successfully Reset</h1>
                     </div>
                     <div class="content">
-                        <p>Hello <strong>{{recipientName}}</strong>,</p>
+                        <p>Hello <strong>{{safeName}}</strong>,</p>
                         <div class="alert-box">
-                            &#10004; The password for your account (<strong>{{recipientEmail}}</strong>) was successfully changed.
+                            &#10004; The password for your account (<strong>{{safeEmail}}</strong>) was successfully changed.
                         </div>
                         <p>You can now sign in with your new password.</p>
                         <div class="btn-container">

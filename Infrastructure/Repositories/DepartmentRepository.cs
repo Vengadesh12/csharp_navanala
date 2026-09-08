@@ -1,16 +1,16 @@
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    public class DepartmentRepository : Repository<Department>, IDepartmentRepository
+    public class DepartmentRepository : Repository<DepartmentModel>, IDepartmentRepository
     {
         public DepartmentRepository(AppDbContext context) : base(context)
         {
         }
 
-        public async Task<List<Department>> GetActiveDepartmentsWithDesignationsAsync()
+        public async Task<List<DepartmentModel>> GetActiveDepartmentsWithDesignationsAsync()
         {
             return await _context.Departments
                 .AsNoTracking()
@@ -20,7 +20,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Department?> GetActiveDepartmentByIdAsync(int id)
+        public async Task<DepartmentModel?> GetActiveDepartmentByIdAsync(int id)
         {
             return await _context.Departments
                 .Include(d => d.Designations.Where(des => des.DeletedFlag == 1))

@@ -105,7 +105,12 @@ namespace MyBackend.Api.Controllers
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> UpdateSettingsBulk([FromBody] UpdateSettingsBulkRequest request)
         {
-            if (request?.Settings != null && request.Settings.ContainsKey("maintenance_mode"))
+            if (request == null)
+            {
+                return BadRequest(new ErrorResponse { Message = "Request body is required." });
+            }
+
+            if (request.Settings != null && request.Settings.ContainsKey("maintenance_mode"))
             {
                 if (!await HasMaintenancePermissionAsync())
                 {
@@ -148,7 +153,12 @@ namespace MyBackend.Api.Controllers
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateSetting(int id, [FromBody] UpdateSettingRequest request)
         {
-            if (string.Equals(request?.SettingKey, "maintenance_mode", StringComparison.OrdinalIgnoreCase))
+            if (request == null)
+            {
+                return BadRequest(new ErrorResponse { Message = "Request body is required." });
+            }
+
+            if (string.Equals(request.SettingKey, "maintenance_mode", StringComparison.OrdinalIgnoreCase))
             {
                 if (!await HasMaintenancePermissionAsync())
                 {

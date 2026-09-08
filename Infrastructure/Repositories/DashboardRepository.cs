@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -31,7 +31,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null);
         }
 
-        public async Task<List<AuditLog>> GetDashboardRecentAuditLogsAsync(int count)
+        public async Task<List<AuditLogModel>> GetDashboardRecentAuditLogsAsync(int count)
         {
             return await _context.AuditLogs
                 .FromSqlRaw("""
@@ -45,7 +45,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<AuditLog>> GetAuditLogsSinceDateAsync(DateTime startDate)
+        public async Task<List<AuditLogModel>> GetAuditLogsSinceDateAsync(DateTime startDate)
         {
             return await _context.AuditLogs
                 .FromSqlRaw("""
@@ -58,7 +58,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<UserSession>> GetAllActiveSessionsForDashboardAsync()
+        public async Task<List<UserSessionModel>> GetAllActiveSessionsForDashboardAsync()
         {
             return await _context.UserSessions
                 .FromSqlRaw("""

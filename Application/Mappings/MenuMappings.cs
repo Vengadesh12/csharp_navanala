@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class MenuMappings
     {
-        public static MenuItemDto ToDto(this Menu menu)
+        public static MenuItemDto ToDto(this MenuModel menu)
         {
             return new MenuItemDto
             {
@@ -26,7 +26,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<MenuItemDto> ToDtoList(this IEnumerable<Menu> menus)
+        public static List<MenuItemDto> ToDtoList(this IEnumerable<MenuModel> menus)
         {
             return menus.Select(m => m.ToDto()).ToList();
         }

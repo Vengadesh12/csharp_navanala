@@ -9,8 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 using MyBackend.Application.Services;
-using MyBackend.Domain.Entities;
-using MyBackend.Domain.Entities.Model;
+using MyBackend.Domain.Models;
 using Xunit;
 
 namespace MyBackend.UnitTests.Application
@@ -22,7 +21,7 @@ namespace MyBackend.UnitTests.Application
         private readonly FakeJwtService _jwtService;
         private readonly FakeOtpService _otpService;
         private readonly FakeEmailService _emailService;
-        private readonly IPasswordHasher<User> _passwordHasher;
+        private readonly IPasswordHasher<UserModel> _passwordHasher;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthService> _logger;
 
@@ -33,7 +32,7 @@ namespace MyBackend.UnitTests.Application
             _jwtService = new FakeJwtService();
             _otpService = new FakeOtpService();
             _emailService = new FakeEmailService();
-            _passwordHasher = new PasswordHasher<User>();
+            _passwordHasher = new PasswordHasher<UserModel>();
             _configuration = new FakeConfiguration();
             _logger = NullLogger<AuthService>.Instance;
         }
@@ -46,7 +45,7 @@ namespace MyBackend.UnitTests.Application
             public IConfigurationSection GetSection(string key) => null!;
         }
 
-        private AuthService CreateAuthService(IPasswordHasher<User>? hasher = null)
+        private AuthService CreateAuthService(IPasswordHasher<UserModel>? hasher = null)
         {
             return new AuthService(
                 _userRepository,
@@ -65,7 +64,7 @@ namespace MyBackend.UnitTests.Application
         {
             // Arrange
             var authService = CreateAuthService();
-            var user = new User
+            var user = new UserModel
             {
                 Id = 10,
                 Name = "John Doe",
@@ -136,7 +135,7 @@ namespace MyBackend.UnitTests.Application
         {
             // Arrange
             var authService = CreateAuthService();
-            var user = new User
+            var user = new UserModel
             {
                 Id = 11,
                 Name = "Jane Doe",
@@ -163,7 +162,7 @@ namespace MyBackend.UnitTests.Application
         {
             // Verify that plaintext matching of stored password hash is NOT accepted
             var authService = CreateAuthService();
-            var user = new User
+            var user = new UserModel
             {
                 Id = 12,
                 Name = "Target User",
@@ -191,7 +190,7 @@ namespace MyBackend.UnitTests.Application
         {
             // Verify that previous backdoor for admin@example.com with 'admin@123' is removed
             var authService = CreateAuthService();
-            var user = new User
+            var user = new UserModel
             {
                 Id = 1,
                 Name = "Administrator",
@@ -218,7 +217,7 @@ namespace MyBackend.UnitTests.Application
         {
             // Arrange
             var authService = CreateAuthService();
-            var user = new User
+            var user = new UserModel
             {
                 Id = 13,
                 Name = "Deactivated User",
@@ -261,7 +260,7 @@ namespace MyBackend.UnitTests.Application
             var authService = CreateAuthService();
             _unitOfWork.Settings["two_factor_auth"] = "true";
 
-            var user = new User
+            var user = new UserModel
             {
                 Id = 14,
                 Name = "2FA User",
@@ -297,7 +296,7 @@ namespace MyBackend.UnitTests.Application
             var mockHasher = new RehashPromptingHasher();
             var authService = CreateAuthService(mockHasher);
 
-            var user = new User
+            var user = new UserModel
             {
                 Id = 15,
                 Name = "Rehash User",
@@ -322,11 +321,88 @@ namespace MyBackend.UnitTests.Application
             Assert.StartsWith("rehashed_", _userRepository.LastUpdatedHash);
         }
 
-        private class RehashPromptingHasher : IPasswordHasher<User>
+        [Fact]
+        public async Task ForgotPasswordAsync_ValidEmail_DispatchesEmailSuccessfully()
         {
-            public string HashPassword(User user, string password) => $"rehashed_{password}";
+            // Arrange
+            var authService = CreateAuthService();
+            var user = new UserModel
+            {
+                Id = 20,
+                Name = "Jane Doe",
+                Email = "jane@example.com",
+                DeletedFlag = 1
+            };
+            _userRepository.UsersByEmail[user.Email] = user;
 
-            public PasswordVerificationResult VerifyHashedPassword(User user, string hashedPassword, string providedPassword)
+            var request = new ForgotPasswordRequest { Email = "jane@example.com" };
+
+            // Act
+            var response = await authService.ForgotPasswordAsync(request);
+
+            // Assert
+            Assert.True(response.Success);
+            Assert.Equal(1, _emailService.SentPasswordResetEmailsCount);
+            Assert.Contains("6-digit verification OTP has been sent", response.Message);
+        }
+
+        [Fact]
+        public async Task ForgotPasswordAsync_EmailFailsInDevMode_ReturnsGracefulResponseWithOtp()
+        {
+            // Arrange
+            var authService = CreateAuthService();
+            var user = new UserModel
+            {
+                Id = 21,
+                Name = "John Developer",
+                Email = "dev@example.com",
+                DeletedFlag = 1
+            };
+            _userRepository.UsersByEmail[user.Email] = user;
+            _emailService.ShouldThrow = true;
+
+            var request = new ForgotPasswordRequest { Email = "dev@example.com" };
+
+            // Act
+            var response = await authService.ForgotPasswordAsync(request);
+
+            // Assert
+            Assert.True(response.Success);
+            Assert.Contains("[Dev Mode]", response.Message);
+            Assert.Contains("123456", response.Message);
+        }
+
+        [Fact]
+        public async Task Resend2FaOtpAsync_EmailFailsInDevMode_ReturnsGracefulResponseWithOtp()
+        {
+            // Arrange
+            var authService = CreateAuthService();
+            var user = new UserModel
+            {
+                Id = 22,
+                Name = "Alice TwoFa",
+                Email = "alice@example.com",
+                DeletedFlag = 1
+            };
+            _userRepository.UsersByEmail[user.Email] = user;
+            _emailService.ShouldThrow = true;
+
+            var request = new Resend2FaOtpRequest { Email = "alice@example.com" };
+
+            // Act
+            var response = await authService.Resend2FaOtpAsync(request);
+
+            // Assert
+            Assert.True(response.Success);
+            Assert.Contains("[Dev Mode]", response.Message);
+            Assert.Contains("123456", response.Message);
+        }
+
+        private class RehashPromptingHasher : IPasswordHasher<UserModel>
+        {
+            public string HashPassword(UserModel user, string password) => $"rehashed_{password}";
+
+            public PasswordVerificationResult VerifyHashedPassword(UserModel user, string hashedPassword, string providedPassword)
             {
                 return PasswordVerificationResult.SuccessRehashNeeded;
             }
@@ -351,23 +427,23 @@ namespace MyBackend.UnitTests.Application
             public virtual void DeleteRange(IEnumerable<T> entities) { }
         }
 
-        private class FakeUserRepository : FakeRepository<User>, IUserRepository
+        private class FakeUserRepository : FakeRepository<UserModel>, IUserRepository
         {
-            public Dictionary<string, User> UsersByEmail = new(StringComparer.OrdinalIgnoreCase);
+            public Dictionary<string, UserModel> UsersByEmail = new(StringComparer.OrdinalIgnoreCase);
             public int LastUpdatedUserId { get; private set; }
             public string LastUpdatedHash { get; private set; } = string.Empty;
 
-            public Task<User?> GetByEmailAsync(string email)
+            public Task<UserModel?> GetByEmailAsync(string email)
             {
                 UsersByEmail.TryGetValue(email, out var user);
                 return Task.FromResult(user);
             }
 
-            public Task<UserLoginDetails?> GetLoginUserDetailsByEmailAsync(string email)
+            public Task<UserLoginDetailsModel?> GetLoginUserDetailsByEmailAsync(string email)
             {
                 if (UsersByEmail.TryGetValue(email, out var user))
                 {
-                    return Task.FromResult<UserLoginDetails?>(new UserLoginDetails
+                    return Task.FromResult<UserLoginDetailsModel?>(new UserLoginDetailsModel
                     {
                         Id = user.Id,
                         Name = user.Name,
@@ -390,7 +466,7 @@ namespace MyBackend.UnitTests.Application
                         MenuNamesCsv = "Dashboard"
                     });
                 }
-                return Task.FromResult<UserLoginDetails?>(null);
+                return Task.FromResult<UserLoginDetailsModel?>(null);
             }
 
             public Task<bool> UpdatePasswordHashAsync(int userId, string newPasswordHash)
@@ -403,8 +479,8 @@ namespace MyBackend.UnitTests.Application
             public Task<List<string>> GetUserPermissionKeysAsync(int userId, int? roleId = null, int? designationId = null) =>
                 Task.FromResult(new List<string> { "dashboard.view", "users.view" });
 
-            public Task<User?> GetUserByIdAsync(int id) => Task.FromResult<User?>(null);
-            public Task<List<User>> GetAllUsersAsync() => Task.FromResult(new List<User>());
+            public Task<UserModel?> GetUserByIdAsync(int id) => Task.FromResult<UserModel?>(null);
+            public Task<List<UserModel>> GetAllUsersAsync() => Task.FromResult(new List<UserModel>());
             public Task<bool> SetDeletedFlagAsync(int id, int deletedFlag) => Task.FromResult(true);
             public Task<bool> HasPermissionAsync(int userId, params string[] permissionKeys) => Task.FromResult(true);
             public Task<Dictionary<int, string>> GetActiveRolesLookupAsync() => Task.FromResult(new Dictionary<int, string>());
@@ -461,35 +537,35 @@ namespace MyBackend.UnitTests.Application
             public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         }
 
-        private class FakeRoleRepository : FakeRepository<Role>, IRoleRepository
+        private class FakeRoleRepository : FakeRepository<RoleModel>, IRoleRepository
         {
-            public override Task<Role?> GetByIdAsync(int id) => Task.FromResult<Role?>(new Role { Id = id, Name = "Standard Role", DeletedFlag = 1 });
-            public Task<List<Role>> GetActiveRolesAsync() => Task.FromResult(new List<Role>());
-            public Task<Role?> GetActiveRoleByIdAsync(int id) => Task.FromResult<Role?>(null);
+            public override Task<RoleModel?> GetByIdAsync(int id) => Task.FromResult<RoleModel?>(new RoleModel { Id = id, Name = "Standard Role", DeletedFlag = 1 });
+            public Task<List<RoleModel>> GetActiveRolesAsync() => Task.FromResult(new List<RoleModel>());
+            public Task<RoleModel?> GetActiveRoleByIdAsync(int id) => Task.FromResult<RoleModel?>(null);
             public Task<bool> SetDeletedFlagAsync(int id, int deletedFlag) => Task.FromResult(true);
             public Task<Dictionary<int, string>> GetRoleNameDictionaryAsync() => Task.FromResult(new Dictionary<int, string>());
         }
 
-        private class FakeDepartmentRepository : FakeRepository<Department>, IDepartmentRepository
+        private class FakeDepartmentRepository : FakeRepository<DepartmentModel>, IDepartmentRepository
         {
-            public override Task<Department?> GetByIdAsync(int id) => Task.FromResult<Department?>(new Department { Id = id, Name = "Engineering", DeletedFlag = 1 });
-            public Task<List<Department>> GetActiveDepartmentsWithDesignationsAsync() => Task.FromResult(new List<Department>());
-            public Task<Department?> GetActiveDepartmentByIdAsync(int id) => Task.FromResult<Department?>(null);
+            public override Task<DepartmentModel?> GetByIdAsync(int id) => Task.FromResult<DepartmentModel?>(new DepartmentModel { Id = id, Name = "Engineering", DeletedFlag = 1 });
+            public Task<List<DepartmentModel>> GetActiveDepartmentsWithDesignationsAsync() => Task.FromResult(new List<DepartmentModel>());
+            public Task<DepartmentModel?> GetActiveDepartmentByIdAsync(int id) => Task.FromResult<DepartmentModel?>(null);
             public Task<Dictionary<int, string>> GetDepartmentNameDictionaryAsync() => Task.FromResult(new Dictionary<int, string>());
             public Task<bool> DepartmentExistsByNameAsync(string name, int? excludeId = null) => Task.FromResult(false);
         }
 
-        private class FakeDesignationRepository : FakeRepository<Designation>, IDesignationRepository
+        private class FakeDesignationRepository : FakeRepository<DesignationModel>, IDesignationRepository
         {
-            public override Task<Designation?> GetByIdAsync(int id) => Task.FromResult<Designation?>(new Designation { Id = id, Name = "Software Engineer", DepartmentId = 1, DeletedFlag = 1 });
-            public Task<List<Designation>> GetActiveDesignationsAsync() => Task.FromResult(new List<Designation>());
-            public Task<Designation?> GetActiveDesignationByIdAsync(int id) => Task.FromResult<Designation?>(null);
+            public override Task<DesignationModel?> GetByIdAsync(int id) => Task.FromResult<DesignationModel?>(new DesignationModel { Id = id, Name = "Software Engineer", DepartmentId = 1, DeletedFlag = 1 });
+            public Task<List<DesignationModel>> GetActiveDesignationsAsync() => Task.FromResult(new List<DesignationModel>());
+            public Task<DesignationModel?> GetActiveDesignationByIdAsync(int id) => Task.FromResult<DesignationModel?>(null);
             public Task<Dictionary<int, string>> GetDesignationNameDictionaryAsync() => Task.FromResult(new Dictionary<int, string>());
             public Task<bool> DesignationExistsByNameAsync(string name, int? excludeId = null) => Task.FromResult(false);
             public Task<string?> GetDepartmentNameByIdAsync(int departmentId) => Task.FromResult<string?>("Engineering");
             public Task<bool> SetDeletedFlagAsync(int id, int deletedFlag) => Task.FromResult(true);
-            public Task<List<Designation>> GetDesignationsByIdsAsync(IEnumerable<int> ids) => Task.FromResult(new List<Designation>());
-            public Task<List<Designation>> GetDesignationsByDepartmentIdAsync(int departmentId) => Task.FromResult(new List<Designation>());
+            public Task<List<DesignationModel>> GetDesignationsByIdsAsync(IEnumerable<int> ids) => Task.FromResult(new List<DesignationModel>());
+            public Task<List<DesignationModel>> GetDesignationsByDepartmentIdAsync(int departmentId) => Task.FromResult(new List<DesignationModel>());
         }
 
         private class FakeSettingRepository : ISettingRepository
@@ -503,40 +579,40 @@ namespace MyBackend.UnitTests.Application
                 return Task.FromResult<string?>(val);
             }
 
-            public Task<(List<SystemSetting> Settings, List<SettingCategory> Categories, Dictionary<string, int> SettingCounts, int TotalSettings, string? TwoFactorValue, int AlertChannels, string? SessionTimeout)> GetSettingsOverviewDataAsync(string? category, string? search)
-                => Task.FromResult((new List<SystemSetting>(), new List<SettingCategory>(), new Dictionary<string, int>(), 0, (string?)"false", 0, (string?)"30m"));
+            public Task<(List<SystemSettingModel> Settings, List<SettingCategoryModel> Categories, Dictionary<string, int> SettingCounts, int TotalSettings, string? TwoFactorValue, int AlertChannels, string? SessionTimeout)> GetSettingsOverviewDataAsync(string? category, string? search)
+                => Task.FromResult((new List<SystemSettingModel>(), new List<SettingCategoryModel>(), new Dictionary<string, int>(), 0, (string?)"false", 0, (string?)"30m"));
 
-            public Task<(List<SettingCategory> Categories, Dictionary<string, int> SettingCounts)> GetCategoriesWithCountsAsync()
-                => Task.FromResult((new List<SettingCategory>(), new Dictionary<string, int>()));
+            public Task<(List<SettingCategoryModel> Categories, Dictionary<string, int> SettingCounts)> GetCategoriesWithCountsAsync()
+                => Task.FromResult((new List<SettingCategoryModel>(), new Dictionary<string, int>()));
 
             public Task<bool> CategoryExistsByNameAsync(string name, int? excludeId = null) => Task.FromResult(false);
             public Task<int> CreateCategoryAsync(string name, string description, string icon, string createdBy) => Task.FromResult(1);
-            public Task<SettingCategory?> GetCategoryByIdAsync(int id) => Task.FromResult<SettingCategory?>(null);
+            public Task<SettingCategoryModel?> GetCategoryByIdAsync(int id) => Task.FromResult<SettingCategoryModel?>(null);
             public Task<int> GetCategorySettingCountAsync(string categoryName) => Task.FromResult(0);
             public Task<bool> UpdateCategoryAsync(int id, string name, string description, string icon) => Task.FromResult(true);
             public Task<bool> SoftDeleteCategoryAsync(int id) => Task.FromResult(true);
             public Task<bool> BulkUpdateSettingsAsync(IDictionary<string, string> settings, string updatedBy) => Task.FromResult(true);
             public Task<bool> SettingExistsByKeyAsync(string key) => Task.FromResult(false);
             public Task<int> CreateSettingAsync(string key, string value, string category, string description, string dataType, string createdBy) => Task.FromResult(1);
-            public Task<SystemSetting?> GetSettingByIdAsync(int id) => Task.FromResult<SystemSetting?>(null);
+            public Task<SystemSettingModel?> GetSettingByIdAsync(int id) => Task.FromResult<SystemSettingModel?>(null);
             public Task<bool> UpdateSettingAsync(int id, string key, string value, string category, string description, string dataType, string updatedBy) => Task.FromResult(true);
             public Task<bool> DeleteSettingAsync(int id) => Task.FromResult(true);
         }
 
         private class FakeMenuRepository : IMenuRepository
         {
-            public Task<List<Menu>> GetAllActiveMenusAsync() => Task.FromResult(new List<Menu>());
+            public Task<List<MenuModel>> GetAllActiveMenusAsync() => Task.FromResult(new List<MenuModel>());
             public Task<List<string>> GetAllActiveMenuNamesAsync() => Task.FromResult(new List<string> { "Dashboard" });
-            public Task<List<Menu>> GetUserMenusAsync(int roleId, int designationId, int? userId = null) => Task.FromResult(new List<Menu>
+            public Task<List<MenuModel>> GetUserMenusAsync(int roleId, int designationId, int? userId = null) => Task.FromResult(new List<MenuModel>
             {
-                new Menu { Id = 1, MenuKey = "dashboard", Label = "Dashboard", Route = "/dashboard" }
+                new MenuModel { Id = 1, MenuKey = "dashboard", Label = "Dashboard", Route = "/dashboard" }
             });
             public Task<List<string>> GetUserMenuNamesAsync(int roleId, int designationId, int? userId = null) => Task.FromResult(new List<string> { "Dashboard" });
-            public Task<IEnumerable<Menu>> GetAllAsync() => Task.FromResult<IEnumerable<Menu>>([]);
-            public Task<Menu?> GetByIdAsync(int id) => Task.FromResult<Menu?>(null);
-            public Task AddAsync(Menu entity) => Task.CompletedTask;
-            public Task UpdateAsync(Menu entity) => Task.CompletedTask;
-            public Task DeleteAsync(Menu entity) => Task.CompletedTask;
+            public Task<IEnumerable<MenuModel>> GetAllAsync() => Task.FromResult<IEnumerable<MenuModel>>([]);
+            public Task<MenuModel?> GetByIdAsync(int id) => Task.FromResult<MenuModel?>(null);
+            public Task AddAsync(MenuModel entity) => Task.CompletedTask;
+            public Task UpdateAsync(MenuModel entity) => Task.CompletedTask;
+            public Task DeleteAsync(MenuModel entity) => Task.CompletedTask;
             public Task<int> CountAsync() => Task.FromResult(1);
         }
 
@@ -545,10 +621,10 @@ namespace MyBackend.UnitTests.Application
             private readonly Action _onRecordLogin;
             public FakeUserSessionRepository(Action onRecordLogin) => _onRecordLogin = onRecordLogin;
 
-            public Task<UserSession> RecordLoginAsync(int userId, string email, string userName, string ipAddress, string? userAgent = null, string? sessionToken = null)
+            public Task<UserSessionModel> RecordLoginAsync(int userId, string email, string userName, string ipAddress, string? userAgent = null, string? sessionToken = null)
             {
                 _onRecordLogin();
-                return Task.FromResult(new UserSession
+                return Task.FromResult(new UserSessionModel
                 {
                     UserId = userId,
                     Email = email,
@@ -559,34 +635,34 @@ namespace MyBackend.UnitTests.Application
             }
 
             public Task<bool> RecordLogoutAsync(int userId, string? ipAddress = null, string? sessionToken = null, string? email = null) => Task.FromResult(true);
-            public Task<List<UserSession>> GetUserSessionsAsync(int userId, int limit = 50) => Task.FromResult(new List<UserSession>());
-            public Task<List<UserSession>> GetAllRecentSessionsAsync(int limit = 100) => Task.FromResult(new List<UserSession>());
-            public Task<List<UserSession>> GetActiveSessionsAsync() => Task.FromResult(new List<UserSession>());
-            public Task<(List<UserSession> Items, int TotalCount)> GetPagedSessionsAsync(string? search, string? status, int page, int pageSize) => Task.FromResult((new List<UserSession>(), 0));
+            public Task<List<UserSessionModel>> GetUserSessionsAsync(int userId, int limit = 50) => Task.FromResult(new List<UserSessionModel>());
+            public Task<List<UserSessionModel>> GetAllRecentSessionsAsync(int limit = 100) => Task.FromResult(new List<UserSessionModel>());
+            public Task<List<UserSessionModel>> GetActiveSessionsAsync() => Task.FromResult(new List<UserSessionModel>());
+            public Task<(List<UserSessionModel> Items, int TotalCount)> GetPagedSessionsAsync(string? search, string? status, int page, int pageSize) => Task.FromResult((new List<UserSessionModel>(), 0));
             public Task<bool> TerminateSessionAsync(int sessionId) => Task.FromResult(true);
             public Task<int> TerminateAllUserSessionsAsync(int userId) => Task.FromResult(1);
             public Task<(int ActiveCount, int TodayLogins, int TodayLogouts, int TotalSessions)> GetActivityStatsAsync() => Task.FromResult((0, 0, 0, 0));
-            public Task<UserSession?> GetSessionByIdAsync(int sessionId) => Task.FromResult<UserSession?>(null);
-            public Task<List<UserSession>> GetActiveSessionsForUserAsync(int userId, int? excludeSessionId = null) => Task.FromResult(new List<UserSession>());
-            public Task<List<UserSession>> GetActiveSessionsForEmailAsync(string email) => Task.FromResult(new List<UserSession>());
-            public Task<UserSession?> FindActiveSessionByTokenAsync(int userId, string token) => Task.FromResult<UserSession?>(null);
+            public Task<UserSessionModel?> GetSessionByIdAsync(int sessionId) => Task.FromResult<UserSessionModel?>(null);
+            public Task<List<UserSessionModel>> GetActiveSessionsForUserAsync(int userId, int? excludeSessionId = null) => Task.FromResult(new List<UserSessionModel>());
+            public Task<List<UserSessionModel>> GetActiveSessionsForEmailAsync(string email) => Task.FromResult(new List<UserSessionModel>());
+            public Task<UserSessionModel?> FindActiveSessionByTokenAsync(int userId, string token) => Task.FromResult<UserSessionModel?>(null);
             public Task TouchSessionAsync(int sessionId, string clientIp) => Task.CompletedTask;
             public Task<int> GetActiveSessionsCountAsync() => Task.FromResult(0);
             public Task<bool> TerminateSessionWithAuditAsync(int sessionId, int adminUserId) => Task.FromResult(true);
             public Task<int> ForceLogoutUserWithAuditAsync(int targetUserId, int adminUserId) => Task.FromResult(1);
-            public Task AddSessionAsync(UserSession session) => Task.CompletedTask;
+            public Task AddSessionAsync(UserSessionModel session) => Task.CompletedTask;
 
-            public Task<UserSession?> GetByIdAsync(int id) => Task.FromResult<UserSession?>(null);
-            public Task<List<UserSession>> ListAllAsync() => Task.FromResult(new List<UserSession>());
-            public Task<List<UserSession>> FindAsync(System.Linq.Expressions.Expression<Func<UserSession, bool>> predicate) => Task.FromResult(new List<UserSession>());
-            public Task<UserSession?> FirstOrDefaultAsync(System.Linq.Expressions.Expression<Func<UserSession, bool>> predicate) => Task.FromResult<UserSession?>(null);
-            public Task<bool> AnyAsync(System.Linq.Expressions.Expression<Func<UserSession, bool>>? predicate = null) => Task.FromResult(false);
-            public Task<int> CountAsync(System.Linq.Expressions.Expression<Func<UserSession, bool>>? predicate = null) => Task.FromResult(0);
-            public Task AddAsync(UserSession entity) => Task.CompletedTask;
-            public Task AddRangeAsync(IEnumerable<UserSession> entities) => Task.CompletedTask;
-            public void Update(UserSession entity) { }
-            public void Delete(UserSession entity) { }
-            public void DeleteRange(IEnumerable<UserSession> entities) { }
+            public Task<UserSessionModel?> GetByIdAsync(int id) => Task.FromResult<UserSessionModel?>(null);
+            public Task<List<UserSessionModel>> ListAllAsync() => Task.FromResult(new List<UserSessionModel>());
+            public Task<List<UserSessionModel>> FindAsync(System.Linq.Expressions.Expression<Func<UserSessionModel, bool>> predicate) => Task.FromResult(new List<UserSessionModel>());
+            public Task<UserSessionModel?> FirstOrDefaultAsync(System.Linq.Expressions.Expression<Func<UserSessionModel, bool>> predicate) => Task.FromResult<UserSessionModel?>(null);
+            public Task<bool> AnyAsync(System.Linq.Expressions.Expression<Func<UserSessionModel, bool>>? predicate = null) => Task.FromResult(false);
+            public Task<int> CountAsync(System.Linq.Expressions.Expression<Func<UserSessionModel, bool>>? predicate = null) => Task.FromResult(0);
+            public Task AddAsync(UserSessionModel entity) => Task.CompletedTask;
+            public Task AddRangeAsync(IEnumerable<UserSessionModel> entities) => Task.CompletedTask;
+            public void Update(UserSessionModel entity) { }
+            public void Delete(UserSessionModel entity) { }
+            public void DeleteRange(IEnumerable<UserSessionModel> entities) { }
         }
 
         private class FakeAuditLogRepository : IAuditLogRepository
@@ -594,10 +670,10 @@ namespace MyBackend.UnitTests.Application
             private readonly Action _onAddLog;
             public FakeAuditLogRepository(Action onAddLog) => _onAddLog = onAddLog;
 
-            public Task<AuditLog> CreateAuditLogAsync(string action, string module, string performedBy, string details, string ipAddress, string status)
+            public Task<AuditLogModel> CreateAuditLogAsync(string action, string module, string performedBy, string details, string ipAddress, string status)
             {
                 _onAddLog();
-                return Task.FromResult(new AuditLog
+                return Task.FromResult(new AuditLogModel
                 {
                     Action = action,
                     Module = module,
@@ -608,21 +684,21 @@ namespace MyBackend.UnitTests.Application
                 });
             }
 
-            public Task AddAuditLogAsync(AuditLog log)
+            public Task AddAuditLogAsync(AuditLogModel log)
             {
                 _onAddLog();
                 return Task.CompletedTask;
             }
 
-            public Task<(List<AuditLog> Logs, int TotalEvents, int SuccessfulLogins, int PrivilegeChanges)> GetAuditLogsOverviewAsync(string? module, string? search) => Task.FromResult((new List<AuditLog>(), 0, 0, 0));
+            public Task<(List<AuditLogModel> Logs, int TotalEvents, int SuccessfulLogins, int PrivilegeChanges)> GetAuditLogsOverviewAsync(string? module, string? search) => Task.FromResult((new List<AuditLogModel>(), 0, 0, 0));
             public Task<bool> SoftDeleteAuditLogAsync(int id) => Task.FromResult(true);
-            public Task<List<AuditLog>> GetRecentAuditLogsAsync(int count) => Task.FromResult(new List<AuditLog>());
-            public Task<List<AuditLog>> GetAuditLogsInDateRangeAsync(DateTime startDate, DateTime endDate) => Task.FromResult(new List<AuditLog>());
+            public Task<List<AuditLogModel>> GetRecentAuditLogsAsync(int count) => Task.FromResult(new List<AuditLogModel>());
+            public Task<List<AuditLogModel>> GetAuditLogsInDateRangeAsync(DateTime startDate, DateTime endDate) => Task.FromResult(new List<AuditLogModel>());
         }
 
         private class FakeJwtService : IJwtService
         {
-            public string GenerateToken(User user, string? roleName = null, IEnumerable<string>? permissions = null, int? sessionId = null) => "mock_jwt_token";
+            public string GenerateToken(UserModel user, string? roleName = null, IEnumerable<string>? permissions = null, int? sessionId = null) => "mock_jwt_token";
             public System.Security.Claims.ClaimsPrincipal? GetPrincipalFromToken(string token) => null;
             public (string? Email, string? Name, string? Picture) ReadTokenPayload(string idToken) => (null, null, null);
         }
@@ -637,14 +713,22 @@ namespace MyBackend.UnitTests.Application
         private class FakeEmailService : IEmailService
         {
             public int Sent2FaEmailsCount { get; private set; }
+            public int SentPasswordResetEmailsCount { get; private set; }
+            public bool ShouldThrow { get; set; }
             public Task SendEmailAsync(string toEmail, string subject, string htmlBody) => Task.CompletedTask;
             public Task SendWelcomeUserEmailAsync(string recipientEmail, string recipientName, string plainPassword) => Task.CompletedTask;
             public Task SendTwoFactorOtpEmailAsync(string toEmail, string userName, string otpCode, int expiryMinutes = 10)
             {
+                if (ShouldThrow) throw new InvalidOperationException("The SMTP server requires a secure connection or the client was not authenticated.");
                 Sent2FaEmailsCount++;
                 return Task.CompletedTask;
             }
-            public Task SendPasswordResetOtpEmailAsync(string toEmail, string userName, string otpCode, int expiryMinutes = 10) => Task.CompletedTask;
+            public Task SendPasswordResetOtpEmailAsync(string toEmail, string userName, string otpCode, int expiryMinutes = 10)
+            {
+                if (ShouldThrow) throw new InvalidOperationException("The SMTP server requires a secure connection or the client was not authenticated.");
+                SentPasswordResetEmailsCount++;
+                return Task.CompletedTask;
+            }
             public Task SendPasswordChangedNotificationAsync(string toEmail, string userName) => Task.CompletedTask;
         }
     }

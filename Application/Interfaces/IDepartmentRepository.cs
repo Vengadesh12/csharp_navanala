@@ -1,12 +1,12 @@
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
-    public interface IDepartmentRepository : IRepository<Department>
+    public interface IDepartmentRepository : IRepository<DepartmentModel>
     {
-        Task<List<Department>> GetActiveDepartmentsWithDesignationsAsync();
+        Task<List<DepartmentModel>> GetActiveDepartmentsWithDesignationsAsync();
 
-        Task<Department?> GetActiveDepartmentByIdAsync(int id);
+        Task<DepartmentModel?> GetActiveDepartmentByIdAsync(int id);
 
         Task<Dictionary<int, string>> GetDepartmentNameDictionaryAsync();
 

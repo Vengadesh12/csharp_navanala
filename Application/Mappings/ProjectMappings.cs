@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Mappings
 {
     public static class ProjectMappings
     {
-        public static ProjectDto ToDto(this Project project)
+        public static ProjectDto ToDto(this ProjectModel project)
         {
             return new ProjectDto
             {
@@ -25,12 +25,12 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<ProjectDto> ToDtoList(this IEnumerable<Project> projects)
+        public static List<ProjectDto> ToDtoList(this IEnumerable<ProjectModel> projects)
         {
             return projects.Select(p => p.ToDto()).ToList();
         }
 
-        public static ProjectCategoryDto ToDto(this ProjectCategory cat)
+        public static ProjectCategoryDto ToDto(this ProjectCategoryModel cat)
         {
             return new ProjectCategoryDto
             {
@@ -42,7 +42,7 @@ namespace MyBackend.Application.Mappings
             };
         }
 
-        public static List<ProjectCategoryDto> ToDtoList(this IEnumerable<ProjectCategory> categories)
+        public static List<ProjectCategoryDto> ToDtoList(this IEnumerable<ProjectCategoryModel> categories)
         {
             return categories.Select(c => c.ToDto()).ToList();
         }

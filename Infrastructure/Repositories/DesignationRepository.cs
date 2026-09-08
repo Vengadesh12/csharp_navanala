@@ -1,16 +1,16 @@
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
 {
-    public class DesignationRepository : Repository<Designation>, IDesignationRepository
+    public class DesignationRepository : Repository<DesignationModel>, IDesignationRepository
     {
         public DesignationRepository(AppDbContext context) : base(context)
         {
         }
 
-        public async Task<List<Designation>> GetActiveDesignationsAsync()
+        public async Task<List<DesignationModel>> GetActiveDesignationsAsync()
         {
             return await _context.Designations
                 .AsNoTracking()
@@ -19,7 +19,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Designation?> GetActiveDesignationByIdAsync(int id)
+        public async Task<DesignationModel?> GetActiveDesignationByIdAsync(int id)
         {
             return await _context.Designations
                 .AsNoTracking()
@@ -74,7 +74,7 @@ namespace MyBackend.Infrastructure.Repositories
             return rows > 0;
         }
 
-        public async Task<List<Designation>> GetDesignationsByIdsAsync(IEnumerable<int> ids)
+        public async Task<List<DesignationModel>> GetDesignationsByIdsAsync(IEnumerable<int> ids)
         {
             var idList = ids.ToList();
             if (idList.Count == 0) return [];
@@ -84,7 +84,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<Designation>> GetDesignationsByDepartmentIdAsync(int departmentId)
+        public async Task<List<DesignationModel>> GetDesignationsByDepartmentIdAsync(int departmentId)
         {
             return await _context.Designations
                 .Where(d => d.DepartmentId == departmentId)

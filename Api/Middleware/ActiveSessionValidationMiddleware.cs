@@ -2,7 +2,7 @@ using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Api.Middleware
 {
@@ -76,7 +76,7 @@ namespace MyBackend.Api.Middleware
                                 ?? (email.Contains('@') ? email.Split('@')[0] : $"User #{userId}");
 
                             var now = DateTime.UtcNow;
-                            var newSession = new UserSession
+                            var newSession = new UserSessionModel
                             {
                                 UserId = userId,
                                 Email = email.Trim(),

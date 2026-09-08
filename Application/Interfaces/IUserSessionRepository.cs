@@ -1,20 +1,20 @@
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Interfaces
 {
-    public interface IUserSessionRepository : IRepository<UserSession>
+    public interface IUserSessionRepository : IRepository<UserSessionModel>
     {
-        Task<UserSession> RecordLoginAsync(int userId, string email, string userName, string ipAddress, string? userAgent = null, string? sessionToken = null);
+        Task<UserSessionModel> RecordLoginAsync(int userId, string email, string userName, string ipAddress, string? userAgent = null, string? sessionToken = null);
 
         Task<bool> RecordLogoutAsync(int userId, string? ipAddress = null, string? sessionToken = null, string? email = null);
 
-        Task<List<UserSession>> GetUserSessionsAsync(int userId, int limit = 50);
+        Task<List<UserSessionModel>> GetUserSessionsAsync(int userId, int limit = 50);
 
-        Task<List<UserSession>> GetAllRecentSessionsAsync(int limit = 100);
+        Task<List<UserSessionModel>> GetAllRecentSessionsAsync(int limit = 100);
 
-        Task<List<UserSession>> GetActiveSessionsAsync();
+        Task<List<UserSessionModel>> GetActiveSessionsAsync();
 
-        Task<(List<UserSession> Items, int TotalCount)> GetPagedSessionsAsync(string? search, string? status, int page, int pageSize);
+        Task<(List<UserSessionModel> Items, int TotalCount)> GetPagedSessionsAsync(string? search, string? status, int page, int pageSize);
 
         Task<bool> TerminateSessionAsync(int sessionId);
 
@@ -22,13 +22,13 @@ namespace MyBackend.Application.Interfaces
 
         Task<(int ActiveCount, int TodayLogins, int TodayLogouts, int TotalSessions)> GetActivityStatsAsync();
 
-        Task<UserSession?> GetSessionByIdAsync(int sessionId);
+        Task<UserSessionModel?> GetSessionByIdAsync(int sessionId);
 
-        Task<List<UserSession>> GetActiveSessionsForUserAsync(int userId, int? excludeSessionId = null);
+        Task<List<UserSessionModel>> GetActiveSessionsForUserAsync(int userId, int? excludeSessionId = null);
 
-        Task<List<UserSession>> GetActiveSessionsForEmailAsync(string email);
+        Task<List<UserSessionModel>> GetActiveSessionsForEmailAsync(string email);
 
-        Task<UserSession?> FindActiveSessionByTokenAsync(int userId, string token);
+        Task<UserSessionModel?> FindActiveSessionByTokenAsync(int userId, string token);
 
         Task TouchSessionAsync(int sessionId, string clientIp);
 
@@ -38,6 +38,6 @@ namespace MyBackend.Application.Interfaces
 
         Task<int> ForceLogoutUserWithAuditAsync(int targetUserId, int adminUserId);
 
-        Task AddSessionAsync(UserSession session);
+        Task AddSessionAsync(UserSessionModel session);
     }
 }

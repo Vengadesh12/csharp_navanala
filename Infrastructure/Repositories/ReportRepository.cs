@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
 namespace MyBackend.Infrastructure.Repositories
@@ -18,7 +18,7 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<(List<Report> Reports, int TotalReports, int ReadyReports, int TotalUsers, int UsersWithRole, List<ReportCategory> Categories)> GetReportsOverviewDataAsync(string? category, string? search, CancellationToken cancellationToken = default)
+        public async Task<(List<ReportModel> Reports, int TotalReports, int ReadyReports, int TotalUsers, int UsersWithRole, List<ReportCategoryModel> Categories)> GetReportsOverviewDataAsync(string? category, string? search, CancellationToken cancellationToken = default)
         {
             var sql = new StringBuilder("""
                 SELECT id, title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag
@@ -113,7 +113,7 @@ namespace MyBackend.Infrastructure.Repositories
             """).ToListAsync(cancellationToken);
         }
 
-        public async Task<Report?> GetReportByIdAsync(int id, CancellationToken cancellationToken = default)
+        public async Task<ReportModel?> GetReportByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.Reports
                 .FromSqlRaw("""
@@ -125,14 +125,14 @@ namespace MyBackend.Infrastructure.Repositories
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
-        public async Task<Report> AddReportAsync(Report report, CancellationToken cancellationToken = default)
+        public async Task<ReportModel> AddReportAsync(ReportModel report, CancellationToken cancellationToken = default)
         {
             _context.Reports.Add(report);
             await _context.SaveChangesAsync(cancellationToken);
             return report;
         }
 
-        public async Task<Report> CreateReportRecordAsync(string title, string description, int? categoryId, string categoryName, string format, string creatorName, string fileSize, string? storedFileName, CancellationToken cancellationToken = default)
+        public async Task<ReportModel> CreateReportRecordAsync(string title, string description, int? categoryId, string categoryName, string format, string creatorName, string fileSize, string? storedFileName, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var now = DateTime.UtcNow;
@@ -145,7 +145,7 @@ namespace MyBackend.Infrastructure.Repositories
             .Single();
 
             var report = await GetReportByIdAsync(newId, cancellationToken);
-            return report ?? new Report
+            return report ?? new ReportModel
             {
                 Id = newId,
                 Title = title,
@@ -163,7 +163,7 @@ namespace MyBackend.Infrastructure.Repositories
             };
         }
 
-        public async Task<Report?> UpdateReportRecordAsync(int id, string title, string description, int? categoryId, string categoryName, string format, string? status, string? newFileName, string? newFileSize, CancellationToken cancellationToken = default)
+        public async Task<ReportModel?> UpdateReportRecordAsync(int id, string title, string description, int? categoryId, string categoryName, string format, string? status, string? newFileName, string? newFileSize, CancellationToken cancellationToken = default)
         {
             var now = DateTime.UtcNow;
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
@@ -178,7 +178,7 @@ namespace MyBackend.Infrastructure.Repositories
             return await GetReportByIdAsync(id, cancellationToken);
         }
 
-        public async Task UpdateReportAsync(Report report, CancellationToken cancellationToken = default)
+        public async Task UpdateReportAsync(ReportModel report, CancellationToken cancellationToken = default)
         {
             _context.Reports.Update(report);
             await _context.SaveChangesAsync(cancellationToken);
@@ -196,7 +196,7 @@ namespace MyBackend.Infrastructure.Repositories
             return rowsAffected > 0;
         }
 
-        public async Task<List<ReportCategory>> GetAllCategoriesAsync(CancellationToken cancellationToken = default)
+        public async Task<List<ReportCategoryModel>> GetAllCategoriesAsync(CancellationToken cancellationToken = default)
         {
             return await _context.ReportCategories
                 .FromSqlRaw("""
@@ -209,7 +209,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<ReportCategory?> GetCategoryByIdAsync(int id, CancellationToken cancellationToken = default)
+        public async Task<ReportCategoryModel?> GetCategoryByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.ReportCategories
                 .FromSqlRaw("""
@@ -221,7 +221,7 @@ namespace MyBackend.Infrastructure.Repositories
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
-        public async Task<ReportCategory?> GetCategoryByNameAsync(string name, CancellationToken cancellationToken = default)
+        public async Task<ReportCategoryModel?> GetCategoryByNameAsync(string name, CancellationToken cancellationToken = default)
         {
             return await _context.ReportCategories
                 .FirstOrDefaultAsync(c => c.DeletedFlag == 1 && c.Name.ToLower() == name.Trim().ToLower(), cancellationToken);
@@ -238,7 +238,7 @@ namespace MyBackend.Infrastructure.Repositories
             return count > 0;
         }
 
-        public async Task<ReportCategory> AddCategoryAsync(ReportCategory category, CancellationToken cancellationToken = default)
+        public async Task<ReportCategoryModel> AddCategoryAsync(ReportCategoryModel category, CancellationToken cancellationToken = default)
         {
             _context.ReportCategories.Add(category);
             await _context.SaveChangesAsync(cancellationToken);

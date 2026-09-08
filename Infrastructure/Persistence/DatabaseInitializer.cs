@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Infrastructure.Persistence
 {
@@ -174,7 +174,7 @@ namespace MyBackend.Infrastructure.Persistence
                     var exists = await context.Permissions.AnyAsync(p => p.PermissionKey.ToLower() == perm.Key.ToLower());
                     if (!exists)
                     {
-                        context.Permissions.Add(new Permission
+                        context.Permissions.Add(new PermissionModel
                         {
                             PermissionKey = perm.Key,
                             Name = perm.Name,
@@ -202,7 +202,7 @@ namespace MyBackend.Infrastructure.Persistence
                     var exists = await context.Departments.AnyAsync(d => d.Name.ToLower() == dept.Name.ToLower());
                     if (!exists)
                     {
-                        context.Departments.Add(new Department
+                        context.Departments.Add(new DepartmentModel
                         {
                             Name = dept.Name,
                             Description = dept.Desc,
@@ -235,7 +235,7 @@ namespace MyBackend.Infrastructure.Persistence
                     var exists = await context.Designations.AnyAsync(d => d.Name.ToLower() == des.Name.ToLower());
                     if (!exists)
                     {
-                        context.Designations.Add(new Designation
+                        context.Designations.Add(new DesignationModel
                         {
                             Name = des.Name,
                             Description = des.Desc,
@@ -291,7 +291,7 @@ namespace MyBackend.Infrastructure.Persistence
                     var roleExists = await context.Roles.AnyAsync(role => role.Id == r.Id || role.Name.ToLower() == r.Name.ToLower());
                     if (!roleExists)
                     {
-                        context.Roles.Add(new Role
+                        context.Roles.Add(new RoleModel
                         {
                             Name = r.Name,
                             Description = r.Desc,
@@ -303,6 +303,55 @@ namespace MyBackend.Infrastructure.Persistence
 
                 // Seed default Super Admin user account if missing
                 var adminExists = await context.Users.AnyAsync(u => u.Email.ToLower() == "admin@example.com");
+                if (!adminExists)
+                {
+                    var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<UserModel>();
+                    var adminUser = new UserModel
+                    {
+                        Name = "Super Admin",
+                        Email = "admin@example.com",
+                        RoleId = 2,
+                        DesignationId = 1,
+                        Phone = "9876543210",
+                        Age = 35,
+                        Address = "Headquarters",
+                        DeletedFlag = 1,
+                        IsFirstLogin = false,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin@123");
+                    context.Users.Add(adminUser);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Seeded default Super Admin user: admin@example.com / Admin@123");
+                }
+
+                var config = scope.ServiceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var configSender = config?["EmailSettings:SenderEmail"]?.Trim().ToLower();
+                var devEmail = !string.IsNullOrWhiteSpace(configSender) ? configSender : "venkikc333@gmail.com";
+                var devExists = await context.Users.AnyAsync(u => u.Email.ToLower() == devEmail);
+                if (!devExists)
+                {
+                    var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<UserModel>();
+                    var devUser = new UserModel
+                    {
+                        Name = "Workspace Administrator",
+                        Email = devEmail,
+                        RoleId = 2,
+                        DesignationId = 1,
+                        Phone = "9876543210",
+                        Age = 30,
+                        Address = "Workspace HQ",
+                        DeletedFlag = 1,
+                        IsFirstLogin = false,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    devUser.PasswordHash = hasher.HashPassword(devUser, "Admin@123");
+                    context.Users.Add(devUser);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Seeded default administrator user: {Email} / Admin@123", devEmail);
+                }
 
                 // Ensure all roles have their baseline permissions assigned
                 var allPermissions = await context.Permissions.ToListAsync();
@@ -327,7 +376,7 @@ namespace MyBackend.Infrastructure.Persistence
                                 .AnyAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionEntity.Id);
                             if (!hasRolePerm)
                             {
-                                context.RolePermissions.Add(new RolePermission
+                                context.RolePermissions.Add(new RolePermissionModel
                                 {
                                     RoleId = roleId,
                                     PermissionId = permissionEntity.Id
@@ -365,7 +414,7 @@ namespace MyBackend.Infrastructure.Persistence
                                     .AnyAsync(dp => dp.DepartmentId == deptEntity.Id && dp.PermissionId == permissionEntity.Id);
                                 if (!hasDeptPerm)
                                 {
-                                    context.DepartmentPermissions.Add(new DepartmentPermission
+                                    context.DepartmentPermissions.Add(new DepartmentPermissionModel
                                     {
                                         DepartmentId = deptEntity.Id,
                                         PermissionId = permissionEntity.Id
@@ -378,7 +427,7 @@ namespace MyBackend.Infrastructure.Persistence
                 await context.SaveChangesAsync();
 
                 // Seed dynamic Menus if empty or missing
-                var defaultMenus = new List<Menu>
+                var defaultMenus = new List<MenuModel>
                 {
                     new() { MenuKey = "dashboard.view", Label = "Dashboard", Icon = "◫", Route = "/dashboard", GroupName = "Core Access", Description = "System metrics & access summary", OrderIndex = 1, PermissionKey = "dashboard.view", DeletedFlag = 1 },
                     new() { MenuKey = "users.view", Label = "User Directory", Icon = "▦", Route = "/add-user", GroupName = "Core Access", Description = "Manage members & assign roles", OrderIndex = 2, PermissionKey = "users.view", DeletedFlag = 1 },
@@ -417,7 +466,7 @@ namespace MyBackend.Infrastructure.Persistence
                     var sampleUserName = sampleUser?.Name ?? "Alex Morgan";
                     var sampleUserEmail = sampleUser?.Email ?? "alex.morgan@example.com";
 
-                    var sampleRequests = new List<ApprovalRequest>
+                    var sampleRequests = new List<ApprovalRequestModel>
                     {
                         new()
                         {
@@ -509,7 +558,7 @@ namespace MyBackend.Infrastructure.Persistence
                     var sampleUserId = sampleUser?.Id ?? 1;
                     var sampleUserName = sampleUser?.Name ?? "Super Admin";
 
-                    var sampleInvoices = new List<Invoice>
+                    var sampleInvoices = new List<InvoiceModel>
                     {
                         new()
                         {
@@ -536,7 +585,7 @@ namespace MyBackend.Infrastructure.Persistence
                             CreatedByName = sampleUserName,
                             CreatedAt = DateTime.UtcNow.AddDays(-5),
                             DeletedFlag = 1,
-                            Items = new List<InvoiceItem>
+                            Items = new List<InvoiceItemModel>
                             {
                                 new()
                                 {
@@ -589,7 +638,7 @@ namespace MyBackend.Infrastructure.Persistence
                             CreatedByName = sampleUserName,
                             CreatedAt = DateTime.UtcNow.AddDays(-1),
                             DeletedFlag = 1,
-                            Items = new List<InvoiceItem>
+                            Items = new List<InvoiceItemModel>
                             {
                                 new()
                                 {
@@ -614,7 +663,7 @@ namespace MyBackend.Infrastructure.Persistence
                 // System configuration and foundation metadata initialized below
 
                 // Ensure all default System Settings exist in PostgreSQL database
-                var defaultSettings = new List<SystemSetting>
+                var defaultSettings = new List<SystemSettingModel>
                 {
                     new()
                     {
@@ -735,7 +784,7 @@ namespace MyBackend.Infrastructure.Persistence
                 }
 
                 // Ensure all default Setting Categories exist in PostgreSQL database
-                var defaultCategories = new List<SettingCategory>
+                var defaultCategories = new List<SettingCategoryModel>
                 {
                     new()
                     {
@@ -764,7 +813,7 @@ namespace MyBackend.Infrastructure.Persistence
                 }
 
                 // Ensure all standard Event Types exist in PostgreSQL database
-                var defaultEventTypes = new List<EventType>
+                var defaultEventTypes = new List<EventTypeModel>
                 {
                     new()
                     {
@@ -835,7 +884,7 @@ namespace MyBackend.Infrastructure.Persistence
                 {
                     if (!await context.ProjectCategories.AnyAsync(c => c.Name.ToLower() == cat.Name.ToLower()))
                     {
-                        context.ProjectCategories.Add(new ProjectCategory
+                        context.ProjectCategories.Add(new ProjectCategoryModel
                         {
                             Name = cat.Name,
                             Description = cat.Desc,
@@ -861,7 +910,7 @@ namespace MyBackend.Infrastructure.Persistence
                 {
                     if (!await context.ReportCategories.AnyAsync(c => c.Name.ToLower() == cat.Name.ToLower()))
                     {
-                        context.ReportCategories.Add(new ReportCategory
+                        context.ReportCategories.Add(new ReportCategoryModel
                         {
                             Name = cat.Name,
                             Description = cat.Desc,
@@ -908,7 +957,7 @@ namespace MyBackend.Infrastructure.Persistence
                     if (auditLogCount < 10)
                     {
                         var nowUtc = DateTime.UtcNow;
-                        var sampleAuditLogs = new List<AuditLog>
+                        var sampleAuditLogs = new List<AuditLogModel>
                         {
                             new() { Action = "User Login", Module = "Auth", PerformedBy = "superadmin@example.com", Details = "Super Admin authenticated via OTP/JWT", IpAddress = "127.0.0.1", Status = "Success", CreatedAt = nowUtc.AddHours(-2), DeletedFlag = 1 },
                             new() { Action = "Role Assigned", Module = "Roles", PerformedBy = "superadmin@example.com", Details = "Assigned 'Admin' role to new member", IpAddress = "127.0.0.1", Status = "Success", CreatedAt = nowUtc.AddHours(-5), DeletedFlag = 1 },

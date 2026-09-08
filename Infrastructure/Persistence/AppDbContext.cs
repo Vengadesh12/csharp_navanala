@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Domain.Entities;
+using MyBackend.Domain.Models;
 
 namespace MyBackend.Infrastructure.Persistence
 {
@@ -10,30 +10,30 @@ namespace MyBackend.Infrastructure.Persistence
         {
         }
 
-        public DbSet<User> Users { get; set; }
-        public DbSet<Role> Roles { get; set; }
-        public DbSet<Department> Departments { get; set; }
-        public DbSet<Designation> Designations { get; set; }
-        public DbSet<Permission> Permissions { get; set; }
-        public DbSet<RolePermission> RolePermissions { get; set; }
-        public DbSet<DepartmentPermission> DepartmentPermissions { get; set; }
-        public DbSet<UserSession> UserSessions { get; set; }
-        public DbSet<Menu> Menus { get; set; }
-        public DbSet<AuditLog> AuditLogs { get; set; }
-        public DbSet<Report> Reports { get; set; }
-        public DbSet<ReportCategory> ReportCategories { get; set; }
-        public DbSet<Project> Projects { get; set; }
-        public DbSet<ProjectCategory> ProjectCategories { get; set; }
-        public DbSet<ScheduleEvent> Schedules { get; set; }
-        public DbSet<SystemSetting> SystemSettings { get; set; }
-        public DbSet<SettingCategory> SettingCategories { get; set; }
-        public DbSet<EventType> EventTypes { get; set; }
-        public DbSet<ApprovalRequest> Approvals { get; set; }
-        public DbSet<AccessRequest> AccessRequests { get; set; }
-        public DbSet<UserPermission> UserPermissions { get; set; }
-        public DbSet<Purchase> Purchases { get; set; }
-        public DbSet<Invoice> Invoices { get; set; }
-        public DbSet<InvoiceItem> InvoiceItems { get; set; }
+        public DbSet<UserModel> Users { get; set; }
+        public DbSet<RoleModel> Roles { get; set; }
+        public DbSet<DepartmentModel> Departments { get; set; }
+        public DbSet<DesignationModel> Designations { get; set; }
+        public DbSet<PermissionModel> Permissions { get; set; }
+        public DbSet<RolePermissionModel> RolePermissions { get; set; }
+        public DbSet<DepartmentPermissionModel> DepartmentPermissions { get; set; }
+        public DbSet<UserSessionModel> UserSessions { get; set; }
+        public DbSet<MenuModel> Menus { get; set; }
+        public DbSet<AuditLogModel> AuditLogs { get; set; }
+        public DbSet<ReportModel> Reports { get; set; }
+        public DbSet<ReportCategoryModel> ReportCategories { get; set; }
+        public DbSet<ProjectModel> Projects { get; set; }
+        public DbSet<ProjectCategoryModel> ProjectCategories { get; set; }
+        public DbSet<ScheduleEventModel> Schedules { get; set; }
+        public DbSet<SystemSettingModel> SystemSettings { get; set; }
+        public DbSet<SettingCategoryModel> SettingCategories { get; set; }
+        public DbSet<EventTypeModel> EventTypes { get; set; }
+        public DbSet<ApprovalRequestModel> Approvals { get; set; }
+        public DbSet<AccessRequestModel> AccessRequests { get; set; }
+        public DbSet<UserPermissionModel> UserPermissions { get; set; }
+        public DbSet<PurchaseModel> Purchases { get; set; }
+        public DbSet<InvoiceModel> Invoices { get; set; }
+        public DbSet<InvoiceItemModel> InvoiceItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
