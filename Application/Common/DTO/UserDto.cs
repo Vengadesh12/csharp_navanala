@@ -79,4 +79,6 @@ public sealed class UserDto
     public int DeletedFlag { get; set; } = 1;
 
     public bool IsFirstLogin { get; set; }
+
+    public DateTime CreatedAt { get; set; }
 }

@@ -14,7 +14,8 @@ namespace MyBackend.Application.Mappings
                 Id = entity.Id,
                 Name = entity.Name,
                 Description = entity.Description ?? string.Empty,
-                DeletedFlag = entity.DeletedFlag
+                DeletedFlag = entity.DeletedFlag,
+                CreatedAt = entity.CreatedAt
             };
         }
 

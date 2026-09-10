@@ -23,7 +23,8 @@ namespace MyBackend.Application.Mappings
                 DesignationId = user.DesignationId,
                 DesignationName = designationName,
                 DeletedFlag = user.DeletedFlag,
-                IsFirstLogin = user.IsFirstLogin
+                IsFirstLogin = user.IsFirstLogin,
+                CreatedAt = user.CreatedAt
             };
         }
 

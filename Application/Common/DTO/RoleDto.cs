@@ -27,4 +27,6 @@ public sealed class RoleDto
     public string Description { get; set; } = string.Empty;
 
     public int DeletedFlag { get; set; } = 1;
+
+    public DateTime CreatedAt { get; set; }
 }

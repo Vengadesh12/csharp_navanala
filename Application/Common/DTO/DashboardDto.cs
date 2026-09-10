@@ -15,7 +15,17 @@ public class DashboardSummaryResponse
 
     public List<DashboardChartPoint> ChartData { get; set; } = [];
 
+    public List<DashboardEntityCreationItem> UserTimeline { get; set; } = [];
+
+    public List<DashboardEntityCreationItem> RoleTimeline { get; set; } = [];
+
     public string DateRangeDescription { get; set; } = string.Empty;
+}
+
+public class DashboardEntityCreationItem
+{
+    public int Id { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 public class DashboardKpiMetrics

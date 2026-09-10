@@ -269,6 +269,8 @@ namespace MyBackend.Application.Services
                 RecentUsers = recentUsers,
                 RecentActivities = recentActivities,
                 ChartData = chartData,
+                UserTimeline = users.Select(u => new DashboardEntityCreationItem { Id = u.Id, CreatedAt = u.CreatedAt }).ToList(),
+                RoleTimeline = roles.Select(r => new DashboardEntityCreationItem { Id = r.Id, CreatedAt = r.CreatedAt }).ToList(),
                 DateRangeDescription = $"Last {daysCount} Days ({today.AddDays(-daysCount):MMM dd} - {today:MMM dd, yyyy})"
             };
         }
