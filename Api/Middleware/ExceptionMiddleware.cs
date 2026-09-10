@@ -62,7 +62,13 @@ namespace MyBackend.Api.Middleware
 
                 case ValidationException validationEx:
                     context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    response.Message = validationEx.Message;
+                    response.Message = !string.IsNullOrWhiteSpace(validationEx.Message) && validationEx.Message != "One or more validation failures have occurred."
+                        ? validationEx.Message
+                        : "Validation failed.";
+                    response.Data = validationEx.Errors.ToDictionary(
+                        kvp => JsonNamingPolicy.CamelCase.ConvertName(kvp.Key),
+                        kvp => kvp.Value
+                    );
                     response.Errors = validationEx.Errors.SelectMany(kv => kv.Value).ToList();
                     break;
 
@@ -76,12 +82,17 @@ namespace MyBackend.Api.Middleware
                 case UnauthorizedException unauthEx:
                 case UnauthorizedAccessException unauthAccessEx:
                     context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-                    response.Message = exception.Message;
+                    response.Message = !string.IsNullOrWhiteSpace(exception.Message) ? exception.Message : "Authentication required. Please provide a valid token.";
                     break;
 
                 case ForbiddenException forbEx:
                     context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
-                    response.Message = forbEx.Message;
+                    response.Message = !string.IsNullOrWhiteSpace(forbEx.Message) ? forbEx.Message : "Access Denied. You do not have permission to perform this action.";
+                    break;
+
+                case ConflictException conflictEx:
+                    context.Response.StatusCode = (int)HttpStatusCode.Conflict;
+                    response.Message = conflictEx.Message;
                     break;
 
                 case KeyNotFoundException knfEx:
@@ -89,8 +100,12 @@ namespace MyBackend.Api.Middleware
                     response.Message = knfEx.Message;
                     break;
 
+                case Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException:
+                    context.Response.StatusCode = (int)HttpStatusCode.Conflict;
+                    response.Message = "A concurrency conflict occurred. The resource has been modified by another operation.";
+                    break;
+
                 case Microsoft.EntityFrameworkCore.DbUpdateException dbUpdateEx:
-                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                     var innerEx = dbUpdateEx.InnerException;
                     var dbMsg = innerEx?.Message ?? dbUpdateEx.Message;
                     while (innerEx?.InnerException != null)
@@ -101,12 +116,25 @@ namespace MyBackend.Api.Middleware
                             dbMsg = innerEx.Message;
                         }
                     }
-                    response.Message = dbMsg;
+
+                    // Check for PostgreSQL unique constraint violation (23505)
+                    if (dbMsg.Contains("23505", StringComparison.OrdinalIgnoreCase) ||
+                        dbMsg.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
+                        dbMsg.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Response.StatusCode = (int)HttpStatusCode.Conflict;
+                        response.Message = "A conflicting resource with the same unique identifier or name already exists.";
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                        response.Message = "Database operation failed. Please check your request parameters.";
+                    }
                     break;
 
                 default:
                     context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                    response.Message = !string.IsNullOrWhiteSpace(exception.Message) ? exception.Message : "An internal server error occurred.";
+                    response.Message = "An unexpected error occurred.";
                     break;
             }
 

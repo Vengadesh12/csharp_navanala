@@ -20,16 +20,22 @@ namespace MyBackend.Api.Extensions
                     ## Overview
                     Enterprise Role-Based Access Control (RBAC) and User Management API built with Clean Architecture.
                     
-                    ### Modules:
-                    - **Authentication & Sessions**: Secure JWT bearer token issuance and permission resolution.
-                    - **User Directory**: Full lifecycle user management, role assignments, soft deletion, and restoration.
-                    - **Role Management**: Define, modify, and audit workspace roles.
-                    - **Permission Matrix**: Fine-grained capability mapping and role-permission enforcement.
-                    - **Dynamic Navigation Menus**: RBAC-filtered navigation structure for client applications.
-                    - **Email Notifications**: Transactional Gmail dispatch for newly provisioned user credentials & OTPs.
-                    - **Account Security & Password Recovery**: Secure OTP-based self-service password recovery with strong password enforcement.
-                    - **Projects & Audits**: Projects tracking, scheduling, and system audit logs.
-                    - **System Settings**: Configurable platform parameters and categories.
+                    ### Key Backend Capabilities:
+                    - **Request Pipeline & Middleware**: Centralized Exception Handling, Correlation ID tracking (`X-Correlation-ID`), Structured Request Logging, Authentication, Active Session Validation, and Centralized Authorization.
+                    - **Hierarchical RBAC with Permission Inheritance**: Role hierarchy (Super Admin -> Admin -> Manager -> Employee), deterministic conflict resolution (`Explicit Child Deny > Explicit Child Allow > Inherited Deny > Inherited Allow > Default Deny`), Menu-level and Action-level permissions, and privilege escalation prevention.
+                    - **Dynamic Query Parameters & Composable Filters**: Dynamic filtering (`?status=active&category=internal&department=IT&search=test`), range filtering (`minAmount/maxAmount`, `startDate/endDate`, `minAge/maxAge`, `minSalary/maxSalary`), database-level sorting (`sortBy/sortOrder`), and pagination (`page/pageSize`).
+                    - **Dynamic Field Selection**: Selectable whitelisted response fields (`?fields=id,name,email` or `?include=...` / `?exclude=...`) with strict sensitive data redaction.
+                    - **Model & Cross-Field Validation**: Consistent 400 Bad Request responses for DataAnnotations, conditional, and cross-field validation failures (`Password != Email`, `StartDate <= EndDate`).
+                    
+                    ### Standard HTTP Status Codes:
+                    - `200 OK`: Request succeeded.
+                    - `201 Created`: Resource successfully provisioned.
+                    - `400 Bad Request`: Input validation failed or invalid range query (`startDate > endDate` or `min > max`).
+                    - `401 Unauthorized`: Authentication token is missing, expired, or invalid.
+                    - `403 Forbidden`: Authenticated user lacks authorization or attempted privilege escalation.
+                    - `404 Not Found`: Target resource was not found.
+                    - `409 Conflict`: Concurrency conflict or duplicate unique resource.
+                    - `500 Internal Server Error`: Unhandled server exception (safe response without internal stack trace or credential leaks).
                     
                     ### Authentication:
                     Authenticate via `POST /api/auth/login`, copy the resulting JWT token, click **Authorize** at the top right, and paste your token.

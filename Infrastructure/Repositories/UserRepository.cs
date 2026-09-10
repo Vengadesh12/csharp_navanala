@@ -246,7 +246,7 @@ namespace MyBackend.Infrastructure.Repositories
         {
             return await _context.Roles
                 .FromSqlRaw("""
-                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    SELECT "Id", "Name", "Description", "ParentRoleId", "DeletedFlag", "CreatedAt", "UpdatedAt"
                     FROM roles
                     WHERE "DeletedFlag" = 1
                 """)
@@ -386,7 +386,7 @@ namespace MyBackend.Infrastructure.Repositories
             {
                 var roles = await _context.Roles
                     .FromSqlRaw("""
-                        SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                        SELECT "Id", "Name", "Description", "ParentRoleId", "DeletedFlag", "CreatedAt", "UpdatedAt"
                         FROM roles
                         WHERE "DeletedFlag" = 1
                     """)

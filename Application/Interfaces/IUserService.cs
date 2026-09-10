@@ -6,6 +6,8 @@ namespace MyBackend.Application.Interfaces
     {
         Task<List<UserDto>> GetAllUsersAsync();
 
+        Task<PagedResult<object>> GetUsersPagedAsync(DynamicQueryParameters query);
+
         Task<UserDto?> GetUserByIdAsync(int id);
 
         Task<UserDto> CreateUserAsync(CreateUserRequest request);

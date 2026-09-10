@@ -20,7 +20,7 @@ namespace MyBackend.Application.Services
         public async Task<List<RoleDto>> GetAllRolesAsync()
         {
             var roles = await _unitOfWork.Roles.GetActiveRolesAsync();
-            return roles.Select(r => r.ToDto()).ToList();
+            return roles.ToDtoList();
         }
 
         public async Task<RoleDto?> GetRoleByIdAsync(int id)
@@ -28,7 +28,14 @@ namespace MyBackend.Application.Services
             var role = await _unitOfWork.Roles.GetActiveRoleByIdAsync(id);
             if (role is null) return null;
 
-            return role.ToDto();
+            string? parentRoleName = null;
+            if (role.ParentRoleId.HasValue)
+            {
+                var parentRole = await _unitOfWork.Roles.GetByIdAsync(role.ParentRoleId.Value);
+                parentRoleName = parentRole?.Name;
+            }
+
+            return role.ToDto(parentRoleName);
         }
 
         public async Task<RoleDto> CreateRoleAsync(CreateRoleRequest request)
@@ -38,6 +45,7 @@ namespace MyBackend.Application.Services
             {
                 Name = request.Name.Trim(),
                 Description = request.Description?.Trim() ?? string.Empty,
+                ParentRoleId = request.ParentRoleId,
                 DeletedFlag = 1,
                 CreatedAt = now,
                 UpdatedAt = now
@@ -46,7 +54,7 @@ namespace MyBackend.Application.Services
             await _unitOfWork.Roles.AddAsync(role);
             await _unitOfWork.SaveChangesAsync();
 
-            return role.ToDto();
+            return await GetRoleByIdAsync(role.Id) ?? role.ToDto();
         }
 
         public async Task<RoleDto?> UpdateRoleAsync(int id, UpdateRoleRequest request)
@@ -56,12 +64,13 @@ namespace MyBackend.Application.Services
 
             role.Name = request.Name.Trim();
             role.Description = request.Description?.Trim() ?? string.Empty;
+            role.ParentRoleId = request.ParentRoleId;
             role.UpdatedAt = DateTime.UtcNow;
 
             _unitOfWork.Roles.Update(role);
             await _unitOfWork.SaveChangesAsync();
 
-            return role.ToDto();
+            return await GetRoleByIdAsync(id) ?? role.ToDto();
         }
 
         public async Task<bool> SoftDeleteRoleAsync(int id)

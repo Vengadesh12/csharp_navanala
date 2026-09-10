@@ -10,6 +10,10 @@ namespace MyBackend.Domain.Models
 
         public string Description { get; set; } = string.Empty;
 
+        public int? ParentRoleId { get; set; }
+
+        public RoleModel? ParentRole { get; set; }
+
         public int DeletedFlag { get; set; } = 1;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

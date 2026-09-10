@@ -7,13 +7,15 @@ namespace MyBackend.Application.Mappings
 {
     public static class RoleMappings
     {
-        public static RoleDto ToDto(this RoleModel entity)
+        public static RoleDto ToDto(this RoleModel entity, string? parentRoleName = null)
         {
             return new RoleDto
             {
                 Id = entity.Id,
                 Name = entity.Name,
                 Description = entity.Description ?? string.Empty,
+                ParentRoleId = entity.ParentRoleId,
+                ParentRoleName = parentRoleName ?? entity.ParentRole?.Name,
                 DeletedFlag = entity.DeletedFlag,
                 CreatedAt = entity.CreatedAt
             };
@@ -21,7 +23,17 @@ namespace MyBackend.Application.Mappings
 
         public static List<RoleDto> ToDtoList(this IEnumerable<RoleModel> entities)
         {
-            return entities.Select(e => e.ToDto()).ToList();
+            var list = entities.ToList();
+            var roleMap = list.ToDictionary(r => r.Id, r => r.Name);
+            return list.Select(e =>
+            {
+                string? parentName = null;
+                if (e.ParentRoleId.HasValue && roleMap.TryGetValue(e.ParentRoleId.Value, out var pName))
+                {
+                    parentName = pName;
+                }
+                return e.ToDto(parentName);
+            }).ToList();
         }
     }
 }

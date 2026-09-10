@@ -14,17 +14,35 @@ namespace MyBackend.Api.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public UsersController(IUserService userService)
+        public UsersController(IUserService userService, ICurrentUserService currentUserService)
         {
             _userService = userService;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet]
         [ProducesResponseType(typeof(List<UserDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetUsers()
+        public async Task<IActionResult> GetUsers([FromQuery] DynamicQueryParameters? query)
         {
+            if (query != null && (query.Page > 1 || query.PageSize != 20 ||
+                !string.IsNullOrWhiteSpace(query.Search) ||
+                !string.IsNullOrWhiteSpace(query.Status) ||
+                !string.IsNullOrWhiteSpace(query.Category) ||
+                !string.IsNullOrWhiteSpace(query.Department) ||
+                query.MinAge.HasValue || query.MaxAge.HasValue ||
+                !string.IsNullOrWhiteSpace(query.Fields) ||
+                !string.IsNullOrWhiteSpace(query.Include) ||
+                !string.IsNullOrWhiteSpace(query.Exclude) ||
+                !string.IsNullOrWhiteSpace(query.SortBy)))
+            {
+                var paged = await _userService.GetUsersPagedAsync(query);
+                return Ok(paged);
+            }
+
             var users = await _userService.GetAllUsersAsync();
             return Ok(users);
         }
@@ -32,14 +50,20 @@ namespace MyBackend.Api.Controllers
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetUser(int id)
+        public async Task<IActionResult> GetUser(
+            int id,
+            [FromQuery] string? fields = null,
+            [FromQuery] string? include = null,
+            [FromQuery] string? exclude = null)
         {
             var user = await _userService.GetUserByIdAsync(id);
             if (user is null)
             {
                 return NotFound(new ErrorResponse { Message = $"User with ID {id} not found." });
             }
-            return Ok(user);
+
+            var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData(user, fields, include, exclude);
+            return Ok(shaped);
         }
 
         [HttpPost]
@@ -159,7 +183,8 @@ namespace MyBackend.Api.Controllers
 
         private async Task<bool> HasPermission(params string[] requiredPermissions)
         {
-            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            var userId = _currentUserService.UserId ?? 0;
+            if (userId <= 0)
             {
                 return false;
             }

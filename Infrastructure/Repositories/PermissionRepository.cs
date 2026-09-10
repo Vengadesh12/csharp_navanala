@@ -94,10 +94,22 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<bool> UpdateRolePermissionsAsync(int roleId, IEnumerable<string> permissionKeys)
         {
+            var rules = (permissionKeys ?? Enumerable.Empty<string>())
+                .Select(k => new UpdateRolePermissionRule { PermissionKey = k, Access = "Allow" });
+            return await UpdateRolePermissionsWithRulesAsync(roleId, rules);
+        }
+
+        public async Task<bool> UpdateRolePermissionsWithRulesAsync(int roleId, IEnumerable<UpdateRolePermissionRule> rules)
+        {
             var roleExists = await _context.Roles.AnyAsync(r => r.Id == roleId && r.DeletedFlag == 1);
             if (!roleExists) return false;
 
-            var validPermissionIds = await ResolvePermissionIdsAsync(permissionKeys);
+            var rulesList = rules?.ToList() ?? new List<UpdateRolePermissionRule>();
+            var validPermissionIds = await ResolvePermissionIdsAsync(rulesList.Select(r => r.PermissionKey));
+
+            // Map key to resolved ID
+            var permissionsList = await _context.Permissions.Where(p => p.DeletedFlag == 1).ToListAsync();
+            var keyToId = permissionsList.ToDictionary(p => p.PermissionKey.ToLower(), p => p.Id);
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -106,13 +118,17 @@ namespace MyBackend.Infrastructure.Repositories
                 DELETE FROM rolepermissions WHERE "RoleId" = {roleId}
                 """);
 
-            // Insert new assignments
-            foreach (var permissionId in validPermissionIds)
+            // Insert new assignments with explicit Allow/Deny
+            foreach (var rule in rulesList)
             {
-                await _context.Database.ExecuteSqlInterpolatedAsync($"""
-                    INSERT INTO rolepermissions ("RoleId", "PermissionId")
-                    VALUES ({roleId}, {permissionId})
-                    """);
+                if (keyToId.TryGetValue(rule.PermissionKey.Trim().ToLowerInvariant(), out var permissionId))
+                {
+                    var access = string.Equals(rule.Access, "Deny", StringComparison.OrdinalIgnoreCase) ? "Deny" : "Allow";
+                    await _context.Database.ExecuteSqlInterpolatedAsync($"""
+                        INSERT INTO rolepermissions ("RoleId", "PermissionId", "Access")
+                        VALUES ({roleId}, {permissionId}, {access})
+                        """);
+                }
             }
 
             await transaction.CommitAsync();

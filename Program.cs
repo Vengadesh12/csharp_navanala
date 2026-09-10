@@ -41,6 +41,28 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // 3. API Presentation Services (Controllers, Swagger, JWT Auth, CORS)
 // ------------------------------------------------------------------------------
 builder.Services.AddControllers();
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(e => e.Value?.Errors.Count > 0)
+            .ToDictionary(
+                kvp => System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(kvp.Key),
+                kvp => kvp.Value!.Errors.Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Invalid value." : e.ErrorMessage).ToArray()
+            );
+
+        var errorResponse = new MyBackend.Application.Common.DTO.ErrorResponse
+        {
+            Success = false,
+            Message = "Validation failed.",
+            Data = errors,
+            Errors = errors.SelectMany(kv => kv.Value).ToList()
+        };
+
+        return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(errorResponse);
+    };
+});
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 30 * 1024 * 1024; // 30 MB
@@ -61,12 +83,33 @@ builder.Services.AddCors(options =>
 
 // ==============================================================================
 // HTTP Request Processing Pipeline
+// Order:
+// 1. Exception Handling
+// 2. Correlation ID & Security Headers
+// 3. Structured Request Logging
+// 4. Routing
+// 5. Swagger Documentation
+// 6. CORS
+// 7. Static Files
+// 8. Authentication
+// 9. Active Session Validation
+// 10. Authorization
+// 11. Endpoints / Controllers
 // ==============================================================================
 
 var app = builder.Build();
 
-// 4. Centralized Exception Handling Middleware
+// 1. Centralized Exception Handling Middleware
 app.UseMiddleware<ExceptionMiddleware>();
+
+// 2. Correlation ID & Security Headers Middleware
+app.UseMiddleware<CorrelationIdMiddleware>();
+
+// 3. Centralized Structured Request Logging Middleware
+app.UseMiddleware<RequestLoggingMiddleware>();
+
+// 4. Routing
+app.UseRouting();
 
 // 5. OpenAPI / Swagger Documentation UI
 app.UseSwagger();
@@ -82,7 +125,7 @@ app.UseSwaggerUI(options =>
     options.EnablePersistAuthorization();
 });
 
-// 6. Security & Static Files
+// 6. Cross-Origin Resource Sharing
 app.UseCors("ReactPolicy");
 
 // Ensure upload & report directories exist
@@ -105,17 +148,23 @@ if (!Directory.Exists(reportDirectory))
     Directory.CreateDirectory(reportDirectory);
 }
 
+// 7. Static Files
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsDirectory),
     RequestPath = "/uploads"
 });
 
+// 8. Authentication
 app.UseAuthentication();
-app.UseAuthorization();
+
+// 9. Active Session Validation Middleware
 app.UseMiddleware<ActiveSessionValidationMiddleware>();
 
-// 7. Endpoints & Controllers
+// 10. Authorization
+app.UseAuthorization();
+
+// 11. Endpoints & Controllers
 app.MapGet("/", () =>
 {
     return Results.Ok(new

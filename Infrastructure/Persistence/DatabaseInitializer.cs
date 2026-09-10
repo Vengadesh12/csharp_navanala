@@ -26,7 +26,8 @@ namespace MyBackend.Infrastructure.Persistence
 
                     ALTER TABLE IF EXISTS ""roles"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""ParentRoleId"" INTEGER NULL;
 
                     ALTER TABLE IF EXISTS ""departments"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -44,7 +45,8 @@ namespace MyBackend.Infrastructure.Persistence
 
                     ALTER TABLE IF EXISTS ""rolepermissions"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""Access"" VARCHAR(10) NOT NULL DEFAULT 'Allow';
 
                     ALTER TABLE IF EXISTS ""departmentpermissions"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -278,18 +280,20 @@ namespace MyBackend.Infrastructure.Persistence
                 }
                 await context.SaveChangesAsync();
 
-                // Seed standard roles if missing
-                var standardRoles = new (int Id, string Name, string Desc)[]
+                // Seed standard roles with hierarchy (Super Admin -> Admin -> Manager -> Employee, plus HR)
+                var standardRoles = new (string Name, string Desc, string? ParentRoleName)[]
                 {
-                    (1, "Employee", "Standard employee workspace account."),
-                    (2, "Super Admin", "Full workspace administrative access."),
-                    (3, "Manager", "Workspace manager with elevated permissions.")
+                    ("Super Admin", "Full workspace administrative access.", null),
+                    ("Admin", "Workspace administrator with delegated authority.", "Super Admin"),
+                    ("Manager", "Workspace manager with elevated operational permissions.", "Admin"),
+                    ("HR", "Human resources operations and employee management.", "Admin"),
+                    ("Employee", "Standard employee workspace account.", "Manager")
                 };
 
                 foreach (var r in standardRoles)
                 {
-                    var roleExists = await context.Roles.AnyAsync(role => role.Id == r.Id || role.Name.ToLower() == r.Name.ToLower());
-                    if (!roleExists)
+                    var existingRole = await context.Roles.FirstOrDefaultAsync(role => role.Name.ToLower() == r.Name.ToLower());
+                    if (existingRole == null)
                     {
                         context.Roles.Add(new RoleModel
                         {
@@ -297,6 +301,22 @@ namespace MyBackend.Infrastructure.Persistence
                             Description = r.Desc,
                             DeletedFlag = 1
                         });
+                    }
+                }
+                await context.SaveChangesAsync();
+
+                // Establish ParentRoleId hierarchy links
+                var allRoles = await context.Roles.Where(role => role.DeletedFlag == 1).ToListAsync();
+                foreach (var r in standardRoles)
+                {
+                    if (!string.IsNullOrWhiteSpace(r.ParentRoleName))
+                    {
+                        var role = allRoles.FirstOrDefault(x => x.Name.Equals(r.Name, StringComparison.OrdinalIgnoreCase));
+                        var parent = allRoles.FirstOrDefault(x => x.Name.Equals(r.ParentRoleName, StringComparison.OrdinalIgnoreCase));
+                        if (role != null && parent != null && role.ParentRoleId != parent.Id)
+                        {
+                            role.ParentRoleId = parent.Id;
+                        }
                     }
                 }
                 await context.SaveChangesAsync();
@@ -379,7 +399,8 @@ namespace MyBackend.Infrastructure.Persistence
                                 context.RolePermissions.Add(new RolePermissionModel
                                 {
                                     RoleId = roleId,
-                                    PermissionId = permissionEntity.Id
+                                    PermissionId = permissionEntity.Id,
+                                    Access = "Allow"
                                 });
                             }
                         }

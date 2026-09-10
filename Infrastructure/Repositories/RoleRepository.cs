@@ -14,7 +14,7 @@ namespace MyBackend.Infrastructure.Repositories
         {
             return await _context.Roles
                 .FromSqlRaw("""
-                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    SELECT "Id", "Name", "Description", "ParentRoleId", "DeletedFlag", "CreatedAt", "UpdatedAt"
                     FROM roles
                     WHERE "DeletedFlag" = 1
                     ORDER BY "Id"
@@ -27,7 +27,7 @@ namespace MyBackend.Infrastructure.Repositories
         {
             return await _context.Roles
                 .FromSqlInterpolated($"""
-                    SELECT "Id", "Name", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                    SELECT "Id", "Name", "Description", "ParentRoleId", "DeletedFlag", "CreatedAt", "UpdatedAt"
                     FROM roles
                     WHERE "Id" = {id} AND "DeletedFlag" = 1
                     """)

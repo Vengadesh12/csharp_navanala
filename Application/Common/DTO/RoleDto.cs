@@ -8,6 +8,8 @@ public sealed class CreateRoleRequest
     public string Name { get; set; } = string.Empty;
 
     public string Description { get; set; } = string.Empty;
+
+    public int? ParentRoleId { get; set; }
 }
 
 public sealed class UpdateRoleRequest
@@ -16,6 +18,8 @@ public sealed class UpdateRoleRequest
     public string Name { get; set; } = string.Empty;
 
     public string Description { get; set; } = string.Empty;
+
+    public int? ParentRoleId { get; set; }
 }
 
 public sealed class RoleDto
@@ -25,6 +29,10 @@ public sealed class RoleDto
     public string Name { get; set; } = string.Empty;
 
     public string Description { get; set; } = string.Empty;
+
+    public int? ParentRoleId { get; set; }
+
+    public string? ParentRoleName { get; set; }
 
     public int DeletedFlag { get; set; } = 1;
 

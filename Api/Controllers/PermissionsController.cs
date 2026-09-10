@@ -14,12 +14,65 @@ namespace MyBackend.Api.Controllers
     public class PermissionsController : ControllerBase
     {
         private readonly IPermissionService _permissionService;
+        private readonly IPermissionHierarchyService _permissionHierarchyService;
         private readonly IUserService _userService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public PermissionsController(IPermissionService permissionService, IUserService userService)
+        public PermissionsController(
+            IPermissionService permissionService,
+            IPermissionHierarchyService permissionHierarchyService,
+            IUserService userService,
+            ICurrentUserService currentUserService)
         {
             _permissionService = permissionService;
+            _permissionHierarchyService = permissionHierarchyService;
             _userService = userService;
+            _currentUserService = currentUserService;
+        }
+
+        [HttpGet("hierarchy")]
+        [ProducesResponseType(typeof(RoleHierarchyDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetRoleHierarchyTree()
+        {
+            if (!await CanManagePermissions())
+            {
+                return Forbid();
+            }
+
+            var tree = await _permissionHierarchyService.GetRoleHierarchyTreeAsync();
+            return Ok(tree);
+        }
+
+        [HttpGet("effective/roles/{roleId:int}")]
+        [ProducesResponseType(typeof(List<EffectivePermissionDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetEffectiveRolePermissions(int roleId)
+        {
+            if (!await CanManagePermissions())
+            {
+                return Forbid();
+            }
+
+            var permissions = await _permissionHierarchyService.GetEffectivePermissionsForRoleAsync(roleId);
+            return Ok(permissions);
+        }
+
+        [HttpGet("effective/users/{userId:int}")]
+        [ProducesResponseType(typeof(List<EffectivePermissionDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetEffectiveUserPermissions(int userId)
+        {
+            if (!await CanManagePermissions())
+            {
+                return Forbid();
+            }
+
+            var permissions = await _permissionHierarchyService.GetEffectivePermissionsForUserAsync(userId);
+            return Ok(permissions);
         }
 
         [HttpGet]
@@ -112,7 +165,8 @@ namespace MyBackend.Api.Controllers
 
         private async Task<bool> CanManagePermissions()
         {
-            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            var userId = _currentUserService.UserId ?? 0;
+            if (userId <= 0)
             {
                 return false;
             }

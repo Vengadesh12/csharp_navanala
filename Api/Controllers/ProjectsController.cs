@@ -16,17 +16,42 @@ namespace MyBackend.Api.Controllers
     public class ProjectsController : ControllerBase
     {
         private readonly IProjectService _projectService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public ProjectsController(IProjectService projectService)
+        public ProjectsController(IProjectService projectService, ICurrentUserService currentUserService)
         {
             _projectService = projectService;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet]
         [ProducesResponseType(typeof(ProjectsOverviewResponse), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetProjects([FromQuery] string? category, [FromQuery] string? status, [FromQuery] string? search)
+        public async Task<IActionResult> GetProjects(
+            [FromQuery] string? category,
+            [FromQuery] string? status,
+            [FromQuery] string? search,
+            [FromQuery] DynamicQueryParameters? query = null)
         {
-            var response = await _projectService.GetProjectsAsync(category, status, search);
+            var effectiveCategory = category ?? query?.Category;
+            var effectiveStatus = status ?? query?.Status;
+            var effectiveSearch = search ?? query?.Search;
+
+            var response = await _projectService.GetProjectsAsync(effectiveCategory, effectiveStatus, effectiveSearch);
+
+            if (query != null && (!string.IsNullOrWhiteSpace(query.Fields) || !string.IsNullOrWhiteSpace(query.Include) || !string.IsNullOrWhiteSpace(query.Exclude)))
+            {
+                var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData(
+                    response.Projects, query.Fields, query.Include, query.Exclude);
+
+                return Ok(new
+                {
+                    response.ActiveRollouts,
+                    response.OnTrackCount,
+                    response.PendingReviewsCount,
+                    projects = shaped
+                });
+            }
+
             return Ok(response);
         }
 
@@ -35,7 +60,7 @@ namespace MyBackend.Api.Controllers
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateProject([FromBody] CreateProjectRequest request)
         {
-            var callerName = User.FindFirstValue(ClaimTypes.Name) ?? "System Lead";
+            var callerName = _currentUserService.Name ?? "System Lead";
             var project = await _projectService.CreateProjectAsync(request, callerName);
 
             return CreatedAtAction(nameof(GetProjects), new { id = project.Id }, new ApiResponse<ProjectDto>

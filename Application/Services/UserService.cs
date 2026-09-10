@@ -16,16 +16,19 @@ namespace MyBackend.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IEmailService _emailService;
+        private readonly IPermissionHierarchyService _permissionHierarchyService;
         private readonly ILogger<UserService> _logger;
         private readonly PasswordHasher<UserModel> _passwordHasher = new();
 
         public UserService(
             IUnitOfWork unitOfWork,
             IEmailService emailService,
+            IPermissionHierarchyService permissionHierarchyService,
             ILogger<UserService> logger)
         {
             _unitOfWork = unitOfWork;
             _emailService = emailService;
+            _permissionHierarchyService = permissionHierarchyService;
             _logger = logger;
         }
 
@@ -36,6 +39,87 @@ namespace MyBackend.Application.Services
             var designationsDict = await _unitOfWork.Users.GetActiveDesignationsLookupAsync();
 
             return users.ToDtoList(rolesDict, designationsDict);
+        }
+
+        public async Task<PagedResult<object>> GetUsersPagedAsync(DynamicQueryParameters query)
+        {
+            var allUsers = await _unitOfWork.Users.GetAllUsersAsync();
+            var rolesDict = await _unitOfWork.Users.GetActiveRolesLookupAsync();
+            var designationsDict = await _unitOfWork.Users.GetActiveDesignationsLookupAsync();
+
+            var dtoList = allUsers.ToDtoList(rolesDict, designationsDict).AsQueryable();
+
+            // Status filter
+            if (!string.IsNullOrWhiteSpace(query.Status))
+            {
+                if (query.Status.Equals("active", StringComparison.OrdinalIgnoreCase))
+                {
+                    dtoList = dtoList.Where(u => u.DeletedFlag == 1);
+                }
+                else if (query.Status.Equals("inactive", StringComparison.OrdinalIgnoreCase) ||
+                         query.Status.Equals("deleted", StringComparison.OrdinalIgnoreCase))
+                {
+                    dtoList = dtoList.Where(u => u.DeletedFlag == 0);
+                }
+            }
+
+            // Multiple composable filters: search across name, email, phone, role
+            if (!string.IsNullOrWhiteSpace(query.Search))
+            {
+                var s = query.Search.Trim().ToLowerInvariant();
+                dtoList = dtoList.Where(u =>
+                    (u.Name != null && u.Name.ToLower().Contains(s)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(s)) ||
+                    (u.Phone != null && u.Phone.ToLower().Contains(s)) ||
+                    (u.RoleName != null && u.RoleName.ToLower().Contains(s)));
+            }
+
+            // Role / Category filter
+            if (!string.IsNullOrWhiteSpace(query.Category))
+            {
+                var cat = query.Category.Trim().ToLowerInvariant();
+                dtoList = dtoList.Where(u => u.RoleName != null && u.RoleName.ToLower().Contains(cat));
+            }
+
+            // Department filter
+            if (!string.IsNullOrWhiteSpace(query.Department))
+            {
+                var dept = query.Department.Trim().ToLowerInvariant();
+                dtoList = dtoList.Where(u => u.DesignationName != null && u.DesignationName.ToLower().Contains(dept));
+            }
+
+            // Range filter: Age
+            if (query.MinAge.HasValue)
+            {
+                dtoList = dtoList.Where(u => u.Age >= query.MinAge.Value);
+            }
+            if (query.MaxAge.HasValue)
+            {
+                dtoList = dtoList.Where(u => u.Age <= query.MaxAge.Value);
+            }
+
+            var totalCount = dtoList.Count();
+
+            // Dynamic Sorting
+            dtoList = MyBackend.Application.Common.Extensions.QueryableExtensions.ApplySorting(
+                dtoList, query.SortBy, query.SortOrder, "Id");
+
+            // Dynamic Pagination
+            var pageItems = MyBackend.Application.Common.Extensions.QueryableExtensions.ApplyPagination(
+                dtoList, query.Page, query.PageSize).ToList();
+
+            // Dynamic Field Selection with sensitive field blocklist
+            var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData<UserDto>(
+                pageItems, query.Fields, query.Include, query.Exclude).ToList();
+
+            return new PagedResult<object>
+            {
+                Success = true,
+                TotalCount = totalCount,
+                Page = query.Page,
+                PageSize = query.PageSize,
+                Data = shaped
+            };
         }
 
         public async Task<UserDto?> GetUserByIdAsync(int id)
@@ -183,7 +267,17 @@ namespace MyBackend.Application.Services
 
         public async Task<bool> HasPermissionAsync(int userId, params string[] permissionKeys)
         {
-            return await _unitOfWork.Users.HasPermissionAsync(userId, permissionKeys);
+            if (permissionKeys.Length == 0) return true;
+
+            foreach (var key in permissionKeys)
+            {
+                if (await _permissionHierarchyService.HasPermissionAsync(userId, key))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

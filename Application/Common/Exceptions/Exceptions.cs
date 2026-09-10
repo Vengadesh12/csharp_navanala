@@ -39,5 +39,15 @@ namespace MyBackend.Application.Common.Exceptions
         {
             Errors = errors;
         }
+
+        public ValidationException(string message, IDictionary<string, string[]> errors) : base(message)
+        {
+            Errors = errors;
+        }
+    }
+
+    public class ConflictException : Exception
+    {
+        public ConflictException(string message) : base(message) { }
     }
 }

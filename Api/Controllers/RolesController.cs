@@ -22,9 +22,17 @@ namespace MyBackend.Api.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(List<RoleDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetRoles()
+        public async Task<IActionResult> GetRoles([FromQuery] DynamicQueryParameters? query = null)
         {
             var roles = await _roleService.GetAllRolesAsync();
+
+            if (query != null && (!string.IsNullOrWhiteSpace(query.Fields) || !string.IsNullOrWhiteSpace(query.Include) || !string.IsNullOrWhiteSpace(query.Exclude)))
+            {
+                var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData(
+                    roles, query.Fields, query.Include, query.Exclude);
+                return Ok(shaped);
+            }
+
             return Ok(roles);
         }
 
@@ -32,14 +40,20 @@ namespace MyBackend.Api.Controllers
         [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetRole(int id)
+        public async Task<IActionResult> GetRole(
+            int id,
+            [FromQuery] string? fields = null,
+            [FromQuery] string? include = null,
+            [FromQuery] string? exclude = null)
         {
             var role = await _roleService.GetRoleByIdAsync(id);
             if (role is null)
             {
                 return NotFound(new ErrorResponse { Message = $"Role with ID {id} not found." });
             }
-            return Ok(role);
+
+            var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData(role, fields, include, exclude);
+            return Ok(shaped);
         }
 
         [HttpPost]

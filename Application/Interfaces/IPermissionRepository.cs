@@ -11,6 +11,7 @@ namespace MyBackend.Application.Interfaces
         Task<List<PermissionDto>> GetAllActivePermissionsAsync();
         Task<List<string>> GetPermissionKeysByRoleIdAsync(int roleId);
         Task<bool> UpdateRolePermissionsAsync(int roleId, IEnumerable<string> permissionKeys);
+        Task<bool> UpdateRolePermissionsWithRulesAsync(int roleId, IEnumerable<UpdateRolePermissionRule> rules);
         Task<List<string>> GetPermissionKeysByDepartmentIdAsync(int departmentId);
         Task<bool> UpdateDepartmentPermissionsAsync(int departmentId, IEnumerable<string> permissionKeys);
     }
