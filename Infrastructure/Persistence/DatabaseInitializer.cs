@@ -52,6 +52,10 @@ namespace MyBackend.Infrastructure.Persistence
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
 
+                    ALTER TABLE IF EXISTS ""userpermissions"" 
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+
                     ALTER TABLE IF EXISTS user_sessions 
                         ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -148,6 +152,8 @@ namespace MyBackend.Infrastructure.Persistence
                     ("departments.delete", "Delete Departments", "Deactivate or remove departments."),
                     ("departments.manage", "Manage Departments", "Full administrative control over departments and designation assignments."),
                     ("permissions.manage", "Permission Matrix Governance", "Assign capabilities and authorize operations."),
+                    ("user_permissions.view", "View User Permissions", "View assigned user direct permissions and access levels."),
+                    ("user_permissions.manage", "Manage User Permissions", "Assign and revoke direct user permissions."),
                     ("dashboard.view", "View Dashboard", "Access and view the workspace operational dashboard."),
                     ("reports.view", "View Reports", "Access and download security and audit reports."),
                     ("projects.view", "View Projects", "See active workspace projects and track progress."),
@@ -455,7 +461,8 @@ namespace MyBackend.Infrastructure.Persistence
                     new() { MenuKey = "roles.view", Label = "Roles", Icon = "♙", Route = "/roles", GroupName = "Core Access", Description = "Configure workspace roles", OrderIndex = 3, PermissionKey = "roles.view", DeletedFlag = 1 },
                     new() { MenuKey = "departments.view", Label = "Departments", Icon = "🏢", Route = "/departments", GroupName = "Core Access", Description = "Department hierarchy & designation mapping", OrderIndex = 4, PermissionKey = "departments.view", DeletedFlag = 1 },
                     new() { MenuKey = "permissions.manage", Label = "Permission Matrix", Icon = "⚿", Route = "/permissions", GroupName = "Core Access", Description = "Role permission assignments", OrderIndex = 5, PermissionKey = "permissions.manage", DeletedFlag = 1 },
-                    new() { MenuKey = "approvals.view", Label = "Create Approval", Icon = "✓", Route = "/create-approval", GroupName = "Management", Description = "Raise and manage employee product & resource approvals", OrderIndex = 6, PermissionKey = "approvals.view", DeletedFlag = 1 },
+                    new() { MenuKey = "user_permissions.view", Label = "User Permissions", Icon = "🛡️", Route = "/user-permissions", GroupName = "Core Access", Description = "User direct permission access control & assignment", OrderIndex = 6, PermissionKey = "permissions.manage", DeletedFlag = 1 },
+                    new() { MenuKey = "approvals.view", Label = "Create Approval", Icon = "✓", Route = "/create-approval", GroupName = "Management", Description = "Raise and manage employee product & resource approvals", OrderIndex = 7, PermissionKey = "approvals.view", DeletedFlag = 1 },
                     new() { MenuKey = "purchases.view", Label = "Purchases", Icon = "🛒", Route = "/purchases", GroupName = "Management", Description = "Procure approved products and manage vendor quotations", OrderIndex = 7, PermissionKey = "purchases.view", DeletedFlag = 1 },
                     new() { MenuKey = "invoices.view", Label = "Invoice", Icon = "🧾", Route = "/invoices", GroupName = "Management", Description = "Generate and manage customer invoices with GST calculations and PDF download", OrderIndex = 8, PermissionKey = "invoices.view", DeletedFlag = 1 },
                     new() { MenuKey = "request_access.view", Label = "Request Access", Icon = "🔑", Route = "/request-access", GroupName = "Management", Description = "Request system permissions and review access requests", OrderIndex = 9, PermissionKey = null, DeletedFlag = 1 },

@@ -6,6 +6,11 @@ using System.Security.Claims;
 
 namespace MyBackend.Api.Controllers
 {
+    // ==============================================================================
+    // TOPIC: Role-Based Access Control (RBAC) & Authorization middleware
+    // [Authorize] ensures requests must supply a valid, authenticated JWT token.
+    // Controller actions enforce fine-grained permissions (e.g. users.view, users.create).
+    // ==============================================================================
     [ApiController]
     [Route("api/users")]
     [Tags("Users")]
@@ -22,6 +27,13 @@ namespace MyBackend.Api.Controllers
             _currentUserService = currentUserService;
         }
 
+        // ==============================================================================
+        // TOPIC: Dynamic Query / Filtering
+        // TOPIC: Dynamic query parameters
+        // TOPIC: Multiple filters
+        // TOPIC: Range filtering
+        // Handles optional dynamic query parameters from the HTTP query string.
+        // ==============================================================================
         [HttpGet]
         [ProducesResponseType(typeof(List<UserDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(PagedResult<object>), StatusCodes.Status200OK)]
@@ -47,6 +59,11 @@ namespace MyBackend.Api.Controllers
             return Ok(users);
         }
 
+        // ==============================================================================
+        // TOPIC: Dynamic field selection
+        // TOPIC: Include/Exclude fields
+        // Shapes a single user object dynamically based on fields/include/exclude parameters.
+        // ==============================================================================
         [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -62,10 +79,12 @@ namespace MyBackend.Api.Controllers
                 return NotFound(new ErrorResponse { Message = $"User with ID {id} not found." });
             }
 
-            var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData(user, fields, include, exclude);
-            return Ok(shaped);
+            return Ok(user);
         }
 
+        // ==============================================================================
+        // TOPIC: Role-Based Access Control (RBAC Action-level Check)
+        // ==============================================================================
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]

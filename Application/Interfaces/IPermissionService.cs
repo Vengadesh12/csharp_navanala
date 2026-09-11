@@ -15,5 +15,13 @@ namespace MyBackend.Application.Interfaces
         Task<List<string>> GetDepartmentPermissionsAsync(int departmentId);
 
         Task<bool> UpdateDepartmentPermissionsAsync(int departmentId, UpdatePermissionsRequest request);
+
+        Task<List<UserPermissionOverviewDto>> GetUsersPermissionOverviewAsync();
+
+        Task<UserPermissionProfileDto?> GetUserPermissionsDetailAsync(int userId);
+
+        Task<bool> AssignUserPermissionAsync(int userId, string permissionKey, int granterUserId);
+
+        Task<bool> RevokeUserPermissionAsync(int userId, string permissionKey, int granterUserId);
     }
 }

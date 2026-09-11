@@ -14,6 +14,16 @@ using Xunit;
 
 namespace UnitTests.Application
 {
+    // ==============================================================================
+    // TOPIC: Role-Based Access Control (RBAC)
+    // TOPIC: Implement Hierarchical Role-Based Access Control with Permission Inheritance
+    // TOPIC: Permission conflict resolution
+    // Unit tests validating:
+    //  - Super Admin full capabilities
+    //  - Parent-to-child permission inheritance (e.g. Employee inherits from Manager)
+    //  - Deterministic 5-tier conflict resolution (Explicit Child Deny > Explicit Child Allow > Inherited Deny > Inherited Allow > Default Deny)
+    //  - Cycle detection & privilege escalation guards
+    // ==============================================================================
     public class HierarchicalRbacTests
     {
         private class InMemoryRepo<T> : IRepository<T> where T : class

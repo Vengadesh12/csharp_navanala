@@ -6,6 +6,16 @@ using MyBackend.Domain.Models;
 
 namespace MyBackend.Api.Middleware
 {
+    // ==============================================================================
+    // TOPIC: Custom middleware & Authentication middleware
+    // ==============================================================================
+    // ActiveSessionValidationMiddleware:
+    //  - Executes in the Request Pipeline immediately after UseAuthentication().
+    //  - Bridges stateless JWT Bearer tokens with stateful database session tracking.
+    //  - Enforces immediate session termination if an administrator revokes access,
+    //    even if the JWT token has not reached its cryptographic expiration time.
+    //  - Tracks client IP and heartbeat timestamps to reflect real-time active users.
+    // ==============================================================================
     public class ActiveSessionValidationMiddleware
     {
         private readonly RequestDelegate _next;
@@ -15,6 +25,11 @@ namespace MyBackend.Api.Middleware
             _next = next;
         }
 
+        // ==============================================================================
+        // TOPIC: Authentication middleware & Request/Response manipulation
+        // Inspects Bearer token for authenticated users; short-circuits with 401 JSON
+        // response if the session has been terminated by an administrator.
+        // ==============================================================================
         public async Task InvokeAsync(HttpContext context, IUserSessionRepository sessionRepository)
         {
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
@@ -46,6 +61,7 @@ namespace MyBackend.Api.Middleware
 
                         if (session != null)
                         {
+                            // Request/Response manipulation: Short-circuit pipeline if session is revoked
                             if (!session.IsActive || session.LogoutTime != null)
                             {
                                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;

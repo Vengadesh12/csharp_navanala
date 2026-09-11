@@ -4,11 +4,26 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MyBackend.Application.Common.DTO
 {
+    // ==============================================================================
+    // TOPIC: Dynamic Query / Filtering
+    // TOPIC: Dynamic query parameters
+    // TOPIC: Multiple filters
+    // TOPIC: Range filtering
+    // TOPIC: Dynamic field selection
+    // TOPIC: Include/Exclude fields
+    // ==============================================================================
+    // DynamicQueryParameters encapsulates all query string options supported across
+    // REST API endpoints for searching, sorting, pagination, multi-attribute filtering,
+    // range constraints, and sparse fieldsets (projection).
+    // ==============================================================================
     public class DynamicQueryParameters : IValidatableObject
     {
         private int _page = 1;
         private int _pageSize = 20;
 
+        // ------------------------------------------------------------------------------
+        // TOPIC: Dynamic query parameters (Pagination & Searching & Sorting)
+        // ------------------------------------------------------------------------------
         public int Page
         {
             get => _page;
@@ -27,13 +42,20 @@ namespace MyBackend.Application.Common.DTO
 
         public string? SortOrder { get; set; } = "asc"; // "asc" or "desc"
 
+        // ------------------------------------------------------------------------------
+        // TOPIC: Multiple filters
+        // Allows filtering resources across multiple business dimensions simultaneously.
+        // ------------------------------------------------------------------------------
         public string? Status { get; set; }
 
         public string? Category { get; set; }
 
         public string? Department { get; set; }
 
-        // Range Filters
+        // ------------------------------------------------------------------------------
+        // TOPIC: Range filtering
+        // Filters numerical values, dates, and amounts within defined minimum and maximum bounds.
+        // ------------------------------------------------------------------------------
         public decimal? MinAmount { get; set; }
         public decimal? MaxAmount { get; set; }
 
@@ -46,7 +68,13 @@ namespace MyBackend.Application.Common.DTO
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
 
-        // Field Selection
+        // ------------------------------------------------------------------------------
+        // TOPIC: Dynamic field selection & Include/Exclude fields
+        // Enables client-driven field projection (sparse fieldsets) to reduce network payload.
+        //  - Fields: Comma-separated list of desired fields (e.g. "id,name,email")
+        //  - Include: Explicitly requested fields
+        //  - Exclude: Fields to explicitly omit from the response (e.g. "roles,department")
+        // ------------------------------------------------------------------------------
         public string? Fields { get; set; }
         public string? Include { get; set; }
         public string? Exclude { get; set; }

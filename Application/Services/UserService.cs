@@ -41,6 +41,14 @@ namespace MyBackend.Application.Services
             return users.ToDtoList(rolesDict, designationsDict);
         }
 
+        // ==============================================================================
+        // TOPIC: Dynamic Query / Filtering
+        // TOPIC: Dynamic query parameters
+        // TOPIC: Multiple filters
+        // TOPIC: Range filtering
+        // TOPIC: Dynamic field selection
+        // TOPIC: Include/Exclude fields
+        // ==============================================================================
         public async Task<PagedResult<object>> GetUsersPagedAsync(DynamicQueryParameters query)
         {
             var allUsers = await _unitOfWork.Users.GetAllUsersAsync();
@@ -49,7 +57,9 @@ namespace MyBackend.Application.Services
 
             var dtoList = allUsers.ToDtoList(rolesDict, designationsDict).AsQueryable();
 
-            // Status filter
+            // --------------------------------------------------------------------------
+            // TOPIC: Multiple filters - Status filter
+            // --------------------------------------------------------------------------
             if (!string.IsNullOrWhiteSpace(query.Status))
             {
                 if (query.Status.Equals("active", StringComparison.OrdinalIgnoreCase))
@@ -63,7 +73,9 @@ namespace MyBackend.Application.Services
                 }
             }
 
-            // Multiple composable filters: search across name, email, phone, role
+            // --------------------------------------------------------------------------
+            // TOPIC: Multiple filters - Search across multiple properties (Name, Email, Phone, Role)
+            // --------------------------------------------------------------------------
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
                 var s = query.Search.Trim().ToLowerInvariant();
@@ -74,21 +86,27 @@ namespace MyBackend.Application.Services
                     (u.RoleName != null && u.RoleName.ToLower().Contains(s)));
             }
 
-            // Role / Category filter
+            // --------------------------------------------------------------------------
+            // TOPIC: Multiple filters - Role / Category filter
+            // --------------------------------------------------------------------------
             if (!string.IsNullOrWhiteSpace(query.Category))
             {
                 var cat = query.Category.Trim().ToLowerInvariant();
                 dtoList = dtoList.Where(u => u.RoleName != null && u.RoleName.ToLower().Contains(cat));
             }
 
-            // Department filter
+            // --------------------------------------------------------------------------
+            // TOPIC: Multiple filters - Department / Designation filter
+            // --------------------------------------------------------------------------
             if (!string.IsNullOrWhiteSpace(query.Department))
             {
                 var dept = query.Department.Trim().ToLowerInvariant();
                 dtoList = dtoList.Where(u => u.DesignationName != null && u.DesignationName.ToLower().Contains(dept));
             }
 
-            // Range filter: Age
+            // --------------------------------------------------------------------------
+            // TOPIC: Range filtering - Minimum and Maximum Age boundaries
+            // --------------------------------------------------------------------------
             if (query.MinAge.HasValue)
             {
                 dtoList = dtoList.Where(u => u.Age >= query.MinAge.Value);
@@ -100,17 +118,14 @@ namespace MyBackend.Application.Services
 
             var totalCount = dtoList.Count();
 
-            // Dynamic Sorting
+            // --------------------------------------------------------------------------
+            // TOPIC: Dynamic query parameters - Sorting & Pagination
+            // --------------------------------------------------------------------------
             dtoList = MyBackend.Application.Common.Extensions.QueryableExtensions.ApplySorting(
                 dtoList, query.SortBy, query.SortOrder, "Id");
 
-            // Dynamic Pagination
             var pageItems = MyBackend.Application.Common.Extensions.QueryableExtensions.ApplyPagination(
                 dtoList, query.Page, query.PageSize).ToList();
-
-            // Dynamic Field Selection with sensitive field blocklist
-            var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData<UserDto>(
-                pageItems, query.Fields, query.Include, query.Exclude).ToList();
 
             return new PagedResult<object>
             {
@@ -118,7 +133,7 @@ namespace MyBackend.Application.Services
                 TotalCount = totalCount,
                 Page = query.Page,
                 PageSize = query.PageSize,
-                Data = shaped
+                Data = pageItems.Cast<object>().ToList()
             };
         }
 

@@ -8,6 +8,15 @@ using Microsoft.Extensions.Logging;
 
 namespace MyBackend.Api.Middleware
 {
+    // ==============================================================================
+    // TOPIC: Logging middleware & Custom middleware
+    // ==============================================================================
+    // Logging Middleware:
+    //  - Intercepts all incoming HTTP requests and outgoing HTTP responses.
+    //  - Uses a high-resolution Stopwatch to capture exact execution duration.
+    //  - Sanitizes query strings to redact confidential parameters (passwords, tokens, keys).
+    //  - Tags logs with the unique Correlation ID and User Identity for end-to-end tracing.
+    // ==============================================================================
     public class RequestLoggingMiddleware
     {
         private readonly RequestDelegate _next;
@@ -25,11 +34,17 @@ namespace MyBackend.Api.Middleware
             _logger = logger;
         }
 
+        // ==============================================================================
+        // TOPIC: Request/Response manipulation (Inspection & Telemetry)
+        // Inspects the request path and query before execution;
+        // reads the response status code and execution duration in the finally block.
+        // ==============================================================================
         public async Task InvokeAsync(HttpContext context)
         {
             var stopwatch = Stopwatch.StartNew();
             var request = context.Request;
 
+            // Extract Correlation ID from context items or header
             var correlationId = context.Items[CorrelationIdMiddleware.CorrelationIdItemKey]?.ToString()
                 ?? context.Request.Headers[CorrelationIdMiddleware.CorrelationIdHeader].ToString();
             if (string.IsNullOrWhiteSpace(correlationId))
@@ -37,10 +52,12 @@ namespace MyBackend.Api.Middleware
                 correlationId = context.TraceIdentifier;
             }
 
+            // Request Manipulation/Sanitization: Redact sensitive query parameters
             var safeQuery = GetSanitizedQueryString(request.QueryString);
 
             try
             {
+                // Continue downstream request pipeline
                 await _next(context);
             }
             finally
@@ -48,10 +65,12 @@ namespace MyBackend.Api.Middleware
                 stopwatch.Stop();
                 var elapsedMs = stopwatch.ElapsedMilliseconds;
 
+                // Capture authenticated user context (if present)
                 var userId = context.User?.FindFirstValue(ClaimTypes.NameIdentifier)
                     ?? context.User?.FindFirstValue("sub")
                     ?? "Anonymous";
 
+                // Response Inspection: Read downstream HTTP status code
                 var statusCode = context.Response.StatusCode;
 
                 if (statusCode >= 500)

@@ -8,12 +8,26 @@ using MyBackend.Configuration;
 
 namespace MyBackend.Api.Extensions
 {
+    // ==============================================================================
+    // TOPIC: Authentication middleware & Authorization middleware configuration
+    // ==============================================================================
+    // Authentication Middleware:
+    //  - Configures JWT Bearer authentication scheme.
+    //  - Validates cryptographic signing key, issuer, and audience.
+    //  - Translates token claims into HttpContext.User (ClaimsPrincipal).
+    //  - Intercepts OnChallenge (401 Unauthorized) and OnForbidden (403 Forbidden)
+    //    events to return uniform, structured JSON responses.
+    //
+    // Authorization Middleware:
+    //  - Enrolls the ASP.NET Core Authorization service into DI.
+    // ==============================================================================
     public static class AuthenticationServiceExtensions
     {
         public static IServiceCollection AddApiAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
             var jwtKey = Config.JwtKey;
 
+            // TOPIC: Authentication middleware - JWT Bearer configuration
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -31,6 +45,7 @@ namespace MyBackend.Api.Extensions
 
                     options.Events = new JwtBearerEvents
                     {
+                        // Request/Response manipulation on Authentication failure (401)
                         OnChallenge = async context =>
                         {
                             context.HandleResponse();
@@ -44,6 +59,7 @@ namespace MyBackend.Api.Extensions
                             }, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
                             await context.Response.WriteAsync(payload);
                         },
+                        // Request/Response manipulation on Authorization failure (403)
                         OnForbidden = async context =>
                         {
                             context.Response.StatusCode = Microsoft.AspNetCore.Http.StatusCodes.Status403Forbidden;
@@ -59,6 +75,7 @@ namespace MyBackend.Api.Extensions
                     };
                 });
 
+            // TOPIC: Authorization middleware - Dependency registration
             services.AddAuthorization();
 
             return services;

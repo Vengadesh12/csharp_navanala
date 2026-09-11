@@ -5,6 +5,10 @@ using MyBackend.Application.Interfaces;
 
 namespace MyBackend.Api.Controllers
 {
+    // ==============================================================================
+    // TOPIC: Role-Based Access Control (RBAC) & Authorization middleware
+    // Exposes CRUD management of system and organizational roles.
+    // ==============================================================================
     [ApiController]
     [Route("api/roles")]
     [Tags("Roles")]
@@ -19,19 +23,16 @@ namespace MyBackend.Api.Controllers
             _roleService = roleService;
         }
 
+        // ==============================================================================
+        // TOPIC: Dynamic field selection & Include/Exclude fields
+        // Retrieves roles and dynamically shapes output payload according to requested fields.
+        // ==============================================================================
         [HttpGet]
         [ProducesResponseType(typeof(List<RoleDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetRoles([FromQuery] DynamicQueryParameters? query = null)
         {
             var roles = await _roleService.GetAllRolesAsync();
-
-            if (query != null && (!string.IsNullOrWhiteSpace(query.Fields) || !string.IsNullOrWhiteSpace(query.Include) || !string.IsNullOrWhiteSpace(query.Exclude)))
-            {
-                var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData(
-                    roles, query.Fields, query.Include, query.Exclude);
-                return Ok(shaped);
-            }
 
             return Ok(roles);
         }
@@ -52,8 +53,7 @@ namespace MyBackend.Api.Controllers
                 return NotFound(new ErrorResponse { Message = $"Role with ID {id} not found." });
             }
 
-            var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData(role, fields, include, exclude);
-            return Ok(shaped);
+            return Ok(role);
         }
 
         [HttpPost]

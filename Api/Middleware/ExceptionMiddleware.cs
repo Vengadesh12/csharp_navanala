@@ -11,6 +11,19 @@ using MyBackend.Application.Common.Exceptions;
 
 namespace MyBackend.Api.Middleware
 {
+    // ==============================================================================
+    // TOPIC: Custom middleware & Exception middleware
+    // ==============================================================================
+    // Custom Middleware in ASP.NET Core:
+    //  - Defined with a constructor accepting RequestDelegate 'next' and dependencies.
+    //  - Implements 'InvokeAsync(HttpContext context)' to intercept requests/responses.
+    //
+    // Exception Middleware Role:
+    //  - Placed at the very top of the HTTP request pipeline.
+    //  - Catches any unhandled exceptions thrown by downstream middleware or controllers.
+    //  - Translates domain/application exceptions into standardized JSON ErrorResponse objects.
+    //  - Prevents sensitive stack traces and internal server details from leaking to clients.
+    // ==============================================================================
     public class ExceptionMiddleware
     {
         private readonly RequestDelegate _next;
@@ -22,10 +35,15 @@ namespace MyBackend.Api.Middleware
             _logger = logger;
         }
 
+        // ==============================================================================
+        // TOPIC: Request pipeline execution & Exception catching
+        // Invokes downstream pipeline and catches any unhandled exceptions.
+        // ==============================================================================
         public async Task InvokeAsync(HttpContext context)
         {
             try
             {
+                // Pass control to the next middleware in the request pipeline
                 await _next(context);
             }
             catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
@@ -43,8 +61,14 @@ namespace MyBackend.Api.Middleware
             }
         }
 
+        // ==============================================================================
+        // TOPIC: Request/Response manipulation
+        // Intercepts the response, sets appropriate HTTP status code, sets Content-Type,
+        // and serializes a unified JSON error payload into the HTTP response stream.
+        // ==============================================================================
         private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
+            // Response Manipulation: Set JSON response headers and content type
             context.Response.ContentType = "application/json";
 
             var response = new ErrorResponse

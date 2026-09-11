@@ -38,20 +38,6 @@ namespace MyBackend.Api.Controllers
 
             var response = await _projectService.GetProjectsAsync(effectiveCategory, effectiveStatus, effectiveSearch);
 
-            if (query != null && (!string.IsNullOrWhiteSpace(query.Fields) || !string.IsNullOrWhiteSpace(query.Include) || !string.IsNullOrWhiteSpace(query.Exclude)))
-            {
-                var shaped = MyBackend.Application.Common.Helpers.FieldSelector.ShapeData(
-                    response.Projects, query.Fields, query.Include, query.Exclude);
-
-                return Ok(new
-                {
-                    response.ActiveRollouts,
-                    response.OnTrackCount,
-                    response.PendingReviewsCount,
-                    projects = shaped
-                });
-            }
-
             return Ok(response);
         }
 

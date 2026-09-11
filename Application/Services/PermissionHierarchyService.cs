@@ -9,6 +9,28 @@ using MyBackend.Domain.Models;
 
 namespace MyBackend.Application.Services
 {
+    // ==============================================================================
+    // TOPIC: Role-Based Access Control (RBAC)
+    // TOPIC: Implement Hierarchical Role-Based Access Control with Permission Inheritance
+    // TOPIC: Permission conflict resolution
+    // ==============================================================================
+    // 1. Role-Based Access Control (RBAC):
+    //    Users are assigned roles, and permissions are associated with roles or user-specific overrides.
+    //    Controls access at both Menu level (viewing UI sections) and Action level (create, edit, delete).
+    //
+    // 2. Hierarchical Role-Based Access Control with Permission Inheritance:
+    //    Roles form a tree hierarchy via 'ParentRoleId' (e.g., Super Admin -> Admin -> Manager -> Employee).
+    //    Child roles automatically inherit all allowed permissions from their parent and ancestors.
+    //    Protected against cyclic parent-child loops using HashSet cycle detection.
+    //
+    // 3. Deterministic Permission Conflict Resolution (5-Tier Priority):
+    //    When multiple permissions apply or conflict, resolution follows a strict priority order:
+    //      Tier 1: Explicit Child Deny   -> If child role explicitly has 'Deny', access is blocked immediately.
+    //      Tier 2: Explicit Child Allow  -> If child role explicitly has 'Allow', access is granted.
+    //      Tier 3: Inherited Deny        -> Inherited from nearest ancestor with 'Deny' rule.
+    //      Tier 4: Inherited Allow       -> Inherited from nearest ancestor with 'Allow' rule.
+    //      Tier 5: Default Deny          -> Fail-secure zero trust default (if unassigned, deny access).
+    // ==============================================================================
     public class PermissionHierarchyService : IPermissionHierarchyService
     {
         private readonly IUnitOfWork _unitOfWork;
@@ -22,6 +44,10 @@ namespace MyBackend.Application.Services
             _logger = logger;
         }
 
+        // ==============================================================================
+        // TOPIC: Implement Hierarchical Role-Based Access Control with Permission Inheritance
+        // Traverses the ancestor role hierarchy and evaluates effective permissions for a role.
+        // ==============================================================================
         public async Task<List<EffectivePermissionDto>> GetEffectivePermissionsForRoleAsync(int roleId)
         {
             var allPermissions = await _unitOfWork.Permissions.GetAllActivePermissionsAsync();
@@ -52,7 +78,8 @@ namespace MyBackend.Application.Services
                 }).ToList();
             }
 
-            // Build role hierarchy ancestor chain with cycle protection
+            // TOPIC: Hierarchical RBAC - Ancestor Chain with Cycle Protection
+            // Traverses parent roles upwards (Child -> Parent -> Grandparent -> Root)
             var roleChain = new List<RoleModel>();
             var visitedRoleIds = new HashSet<int>();
             var currentRole = targetRole;
@@ -86,18 +113,20 @@ namespace MyBackend.Application.Services
                 var permEntity = permissionsList.FirstOrDefault(p => p.PermissionKey.Equals(perm.PermissionKey, StringComparison.OrdinalIgnoreCase));
                 if (permEntity == null) continue;
 
-                // Deterministic Precedence Resolution:
+                // ==============================================================================
+                // TOPIC: Permission conflict resolution (Deterministic Precedence Evaluation)
                 // 1. Explicit child Deny
                 // 2. Explicit child Allow
                 // 3. Inherited Deny (by ancestor proximity)
                 // 4. Inherited Allow (by ancestor proximity)
                 // 5. Default Deny (fail securely)
+                // ==============================================================================
                 string access = "Deny";
                 bool isAllowed = false;
                 string source = "DefaultDeny";
                 string? inheritedFrom = null;
 
-                // Check direct child role rule first
+                // Step 1 & 2: Check direct child role rule first (Explicit Child Deny / Explicit Child Allow)
                 var directRule = rolePermissions.FirstOrDefault(rp => rp.RoleId == targetRole.Id && rp.PermissionId == permEntity.Id);
                 if (directRule != null)
                 {
@@ -108,17 +137,14 @@ namespace MyBackend.Application.Services
                 }
                 else
                 {
-                    // Check ancestor chain in order of proximity (Parent -> Grandparent -> ...)
+                    // Step 3 & 4: Permission Inheritance - Check ancestor chain in order of proximity (Parent -> Grandparent -> ...)
                     for (int i = 1; i < roleChain.Count; i++)
                     {
                         var ancestor = roleChain[i];
+                        // Super Admin full capability does not blanket-propagate down to child roles
                         if (ancestor.Id == 2 || string.Equals(ancestor.Name, "Super Admin", StringComparison.OrdinalIgnoreCase))
                         {
-                            access = "Allow";
-                            isAllowed = true;
-                            source = "InheritedAllow";
-                            inheritedFrom = ancestor.Name;
-                            break;
+                            continue;
                         }
 
                         var ancestorRule = rolePermissions.FirstOrDefault(rp => rp.RoleId == ancestor.Id && rp.PermissionId == permEntity.Id);
@@ -154,32 +180,139 @@ namespace MyBackend.Application.Services
             var user = await _unitOfWork.Users.GetUserByIdAsync(userId);
             if (user == null) return [];
 
-            if (!user.RoleId.HasValue)
+            var allPermissions = await _unitOfWork.Permissions.GetAllActivePermissionsAsync();
+            var allPermissionsList = await _unitOfWork.Permissions.ListAllAsync();
+
+            // 1. Super Admin check
+            if (user.RoleId == 2)
             {
-                return [];
+                return allPermissions.Select(p =>
+                {
+                    var (menu, action) = ParseMenuAndAction(p.PermissionKey);
+                    return new EffectivePermissionDto
+                    {
+                        PermissionKey = p.PermissionKey,
+                        Menu = menu,
+                        Action = action,
+                        Access = "Allow",
+                        IsAllowed = true,
+                        Source = "SuperAdmin"
+                    };
+                }).ToList();
             }
 
-            var rolePermissions = await GetEffectivePermissionsForRoleAsync(user.RoleId.Value);
-
-            // Check User Direct Overrides from userpermissions table
-            var userPerms = await _unitOfWork.Repository<UserPermissionModel>().FindAsync(up => up.UserId == userId);
-            var permissionsList = await _unitOfWork.Permissions.ListAllAsync();
-
-            var userPermIds = userPerms.Select(up => up.PermissionId).ToHashSet();
-
-            foreach (var ep in rolePermissions)
+            // 2. Role Permissions
+            List<EffectivePermissionDto> rolePermissions = [];
+            if (user.RoleId.HasValue)
             {
-                var permEntity = permissionsList.FirstOrDefault(p => p.PermissionKey.Equals(ep.PermissionKey, StringComparison.OrdinalIgnoreCase));
-                if (permEntity != null && userPermIds.Contains(permEntity.Id))
+                rolePermissions = await GetEffectivePermissionsForRoleAsync(user.RoleId.Value);
+            }
+            var rolePermMap = rolePermissions.ToDictionary(rp => rp.PermissionKey, rp => rp, StringComparer.OrdinalIgnoreCase);
+
+            // 3. Department Permissions (via designation -> department)
+            var deptPermKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string? deptName = null;
+            if (user.DesignationId.HasValue)
+            {
+                var designations = await _unitOfWork.Designations.ListAllAsync();
+                var designation = designations.FirstOrDefault(d => d.Id == user.DesignationId.Value && d.DeletedFlag == 1);
+                if (designation?.DepartmentId.HasValue == true)
                 {
-                    // User direct grant overrides role default
-                    ep.Access = "Allow";
-                    ep.IsAllowed = true;
-                    ep.Source = "UserDirectGrant";
+                    var departments = await _unitOfWork.Departments.ListAllAsync();
+                    var dept = departments.FirstOrDefault(d => d.Id == designation.DepartmentId.Value && d.DeletedFlag == 1);
+                    deptName = dept?.Name;
+
+                    var keys = await _unitOfWork.Permissions.GetPermissionKeysByDepartmentIdAsync(designation.DepartmentId.Value);
+                    foreach (var k in keys)
+                    {
+                        deptPermKeys.Add(k);
+                    }
                 }
             }
 
-            return rolePermissions;
+            // 4. User Direct Permissions
+            var userPerms = await _unitOfWork.Repository<UserPermissionModel>().FindAsync(up => up.UserId == userId);
+            var userPermIdSet = userPerms.Select(up => up.PermissionId).ToHashSet();
+            var permIdToKey = allPermissionsList.ToDictionary(p => p.Id, p => p.PermissionKey);
+            var directPermKeys = userPermIdSet.Where(id => permIdToKey.ContainsKey(id)).Select(id => permIdToKey[id]).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var result = new List<EffectivePermissionDto>();
+
+            foreach (var p in allPermissions)
+            {
+                var (menu, action) = ParseMenuAndAction(p.PermissionKey);
+                var isDirect = directPermKeys.Contains(p.PermissionKey);
+                rolePermMap.TryGetValue(p.PermissionKey, out var rp);
+                var isRoleAllowed = rp != null && rp.IsAllowed;
+                var isDeptAllowed = deptPermKeys.Contains(p.PermissionKey);
+
+                if (isDirect)
+                {
+                    result.Add(new EffectivePermissionDto
+                    {
+                        PermissionKey = p.PermissionKey,
+                        Menu = menu,
+                        Action = action,
+                        Access = "Allow",
+                        IsAllowed = true,
+                        Source = "UserDirectGrant"
+                    });
+                }
+                else if (isRoleAllowed && isDeptAllowed)
+                {
+                    result.Add(new EffectivePermissionDto
+                    {
+                        PermissionKey = p.PermissionKey,
+                        Menu = menu,
+                        Action = action,
+                        Access = "Allow",
+                        IsAllowed = true,
+                        Source = "RoleAndDepartment",
+                        InheritedFromRole = rp?.InheritedFromRole,
+                        InheritedFromDepartment = deptName
+                    });
+                }
+                else if (isRoleAllowed)
+                {
+                    result.Add(new EffectivePermissionDto
+                    {
+                        PermissionKey = p.PermissionKey,
+                        Menu = menu,
+                        Action = action,
+                        Access = "Allow",
+                        IsAllowed = true,
+                        Source = "Role",
+                        InheritedFromRole = rp?.InheritedFromRole
+                    });
+                }
+                else if (isDeptAllowed)
+                {
+                    result.Add(new EffectivePermissionDto
+                    {
+                        PermissionKey = p.PermissionKey,
+                        Menu = menu,
+                        Action = action,
+                        Access = "Allow",
+                        IsAllowed = true,
+                        Source = "Department",
+                        InheritedFromDepartment = deptName
+                    });
+                }
+                else
+                {
+                    result.Add(new EffectivePermissionDto
+                    {
+                        PermissionKey = p.PermissionKey,
+                        Menu = menu,
+                        Action = action,
+                        Access = "Deny",
+                        IsAllowed = false,
+                        Source = "DefaultDeny"
+                    });
+                }
+            }
+
+            return result;
         }
 
         public async Task<bool> HasPermissionAsync(int userId, string permissionKey)
@@ -229,6 +362,11 @@ namespace MyBackend.Application.Services
             return await HasPermissionAsync(userId, key);
         }
 
+        // ==============================================================================
+        // TOPIC: Implement Hierarchical Role-Based Access Control with Permission Inheritance
+        // Recursively constructs the hierarchical role tree starting from the root role
+        // (Super Admin) down to leaf roles, calculating effective permissions at each level.
+        // ==============================================================================
         public async Task<RoleHierarchyDto> GetRoleHierarchyTreeAsync()
         {
             var allRoles = await _unitOfWork.Roles.ListAllAsync();
@@ -276,6 +414,10 @@ namespace MyBackend.Application.Services
             return node;
         }
 
+        // ==============================================================================
+        // TOPIC: Role-Based Access Control - Privilege Escalation Prevention
+        // Enforces that a user or role cannot grant permissions they do not themselves possess.
+        // ==============================================================================
         public async Task ValidatePermissionAssignmentAsync(int granterUserId, IEnumerable<string> requestedPermissionKeys)
         {
             var granterUser = await _unitOfWork.Users.GetUserByIdAsync(granterUserId);

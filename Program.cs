@@ -82,36 +82,61 @@ builder.Services.AddCors(options =>
 });
 
 // ==============================================================================
-// HTTP Request Processing Pipeline
-// Order:
-// 1. Exception Handling
-// 2. Correlation ID & Security Headers
-// 3. Structured Request Logging
-// 4. Routing
-// 5. Swagger Documentation
-// 6. CORS
-// 7. Static Files
-// 8. Authentication
-// 9. Active Session Validation
-// 10. Authorization
-// 11. Endpoints / Controllers
+// TOPIC: Request pipeline & Middleware Ordering
+// ==============================================================================
+// In ASP.NET Core, the Request Pipeline is assembled as a series of middleware components.
+// Each middleware can:
+//  1. Pass execution to the next component in the pipeline via next().
+//  2. Perform work before and after the next component.
+//  3. Short-circuit the pipeline (e.g., authorization failure, validation error, cached response).
+//
+// CRITICAL: Middleware Ordering determines the lifecycle of every incoming HTTP request:
+//  Step 1: Exception Handling (First in, last out - catches unhandled errors from all downstream middlewares)
+//  Step 2: Correlation ID & Security Headers (Tags request/response headers for tracing and browser hardening)
+//  Step 3: Structured Request Logging (Captures latency, method, path, and HTTP status codes)
+//  Step 4: Routing (Selects matching endpoint route based on URL and HTTP method)
+//  Step 5: Swagger / OpenAPI (API documentation UI)
+//  Step 6: CORS (Cross-Origin Resource Sharing headers for frontend communication)
+//  Step 7: Static Files (Serves uploaded assets and documents directly without hitting MVC controllers)
+//  Step 8: Authentication (Validates JWT Bearer tokens and populates HttpContext.User ClaimsPrincipal)
+//  Step 9: Active Session Validation (Custom stateful validation to verify token is still active in database)
+//  Step 10: Authorization (Evaluates RBAC permissions and role policies against the authenticated user)
+//  Step 11: Endpoints / Controllers (Invokes target Controller Actions to process business logic)
 // ==============================================================================
 
 var app = builder.Build();
 
-// 1. Centralized Exception Handling Middleware
+// ------------------------------------------------------------------------------
+// TOPIC: Exception middleware & Custom middleware
+// Catches all unhandled exceptions globally across the request pipeline.
+// Translates exceptions into standardized JSON responses (e.g., 400, 401, 403, 404, 500)
+// and ensures sensitive internal stack traces are suppressed in production.
+// ------------------------------------------------------------------------------
 app.UseMiddleware<ExceptionMiddleware>();
 
-// 2. Correlation ID & Security Headers Middleware
+// ------------------------------------------------------------------------------
+// TOPIC: Custom middleware & Request/Response manipulation
+// Injects a unique X-Correlation-ID into HttpContext and response headers.
+// Adds HTTP security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection).
+// ------------------------------------------------------------------------------
 app.UseMiddleware<CorrelationIdMiddleware>();
 
-// 3. Centralized Structured Request Logging Middleware
+// ------------------------------------------------------------------------------
+// TOPIC: Logging middleware & Custom middleware
+// Measures request execution duration, records HTTP method, sanitized path/query string,
+// response status code, authenticated user identifier, and correlation ID.
+// ------------------------------------------------------------------------------
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// 4. Routing
+// ------------------------------------------------------------------------------
+// TOPIC: Request pipeline - Endpoint Routing
+// Matches incoming HTTP requests to route endpoints.
+// ------------------------------------------------------------------------------
 app.UseRouting();
 
-// 5. OpenAPI / Swagger Documentation UI
+// ------------------------------------------------------------------------------
+// TOPIC: Request pipeline - OpenAPI / Swagger Documentation UI
+// ------------------------------------------------------------------------------
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
@@ -125,7 +150,10 @@ app.UseSwaggerUI(options =>
     options.EnablePersistAuthorization();
 });
 
-// 6. Cross-Origin Resource Sharing
+// ------------------------------------------------------------------------------
+// TOPIC: Request pipeline - Cross-Origin Resource Sharing (CORS)
+// Must precede Authentication and Endpoints to allow cross-origin browser preflight requests.
+// ------------------------------------------------------------------------------
 app.UseCors("ReactPolicy");
 
 // Ensure upload & report directories exist
@@ -148,23 +176,41 @@ if (!Directory.Exists(reportDirectory))
     Directory.CreateDirectory(reportDirectory);
 }
 
-// 7. Static Files
+// ------------------------------------------------------------------------------
+// TOPIC: Request pipeline - Static Files
+// Serves physical files from disk for avatars and uploaded documents.
+// ------------------------------------------------------------------------------
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsDirectory),
     RequestPath = "/uploads"
 });
 
-// 8. Authentication
+// ------------------------------------------------------------------------------
+// TOPIC: Authentication middleware
+// Validates incoming JWT Bearer tokens, decrypts/verifies signatures, and establishes
+// the ClaimsPrincipal (HttpContext.User) for downstream authorization.
+// ------------------------------------------------------------------------------
 app.UseAuthentication();
 
-// 9. Active Session Validation Middleware
+// ------------------------------------------------------------------------------
+// TOPIC: Custom middleware & Authentication middleware (Session Validation)
+// Executes immediately after UseAuthentication to enforce database-backed session state.
+// Verifies if an authenticated user's session was terminated/revoked by an administrator.
+// ------------------------------------------------------------------------------
 app.UseMiddleware<ActiveSessionValidationMiddleware>();
 
-// 10. Authorization
+// ------------------------------------------------------------------------------
+// TOPIC: Authorization middleware
+// Enforces Role-Based Access Control (RBAC) and permission requirements.
+// Evaluates [Authorize] attributes and policies on controller actions.
+// ------------------------------------------------------------------------------
 app.UseAuthorization();
 
-// 11. Endpoints & Controllers
+// ------------------------------------------------------------------------------
+// TOPIC: Request pipeline - Endpoint Execution
+// Terminal stage of pipeline where routed controller actions are executed.
+// ------------------------------------------------------------------------------
 app.MapGet("/", () =>
 {
     return Results.Ok(new

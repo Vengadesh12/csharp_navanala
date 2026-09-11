@@ -36,6 +36,7 @@ public sealed class EffectivePermissionDto
     public string Source { get; set; } = "Direct"; // "Direct", "Inherited", "SuperAdmin", "DefaultDeny"
 
     public string? InheritedFromRole { get; set; }
+    public string? InheritedFromDepartment { get; set; }
 }
 
 public sealed class RoleHierarchyDto

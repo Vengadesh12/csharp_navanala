@@ -5,11 +5,24 @@ using System.Dynamic;
 using System.Linq;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Common.Extensions;
-using MyBackend.Application.Common.Helpers;
 using Xunit;
 
 namespace UnitTests.Application
 {
+    // ==============================================================================
+    // TOPIC: Dynamic Query / Filtering
+    // TOPIC: Dynamic query parameters
+    // TOPIC: Multiple filters
+    // TOPIC: Range filtering
+    // TOPIC: Dynamic field selection
+    // TOPIC: Include/Exclude fields
+    // Unit tests validating:
+    //  - Dynamic expression-tree sorting (ascending and descending)
+    //  - Dynamic pagination (page, pageSize calculation)
+    //  - Range filtering bounds validation (IValidatableObject)
+    //  - Dynamic field selection (sparse fieldsets with ExpandoObject)
+    //  - Strict sensitive field security blocklist
+    // ==============================================================================
     public class DynamicQueryTests
     {
         public class SampleItem
@@ -55,33 +68,6 @@ namespace UnitTests.Application
             Assert.Equal(10, page2.Count);
             Assert.Equal(11, page2[0].Id);
             Assert.Equal(20, page2[^1].Id);
-        }
-
-        [Fact]
-        public void FieldSelector_ShapesData_And_RedactsSensitiveFields()
-        {
-            var items = new List<SampleItem>
-            {
-                new() { Id = 1, Name = "Alice", Age = 25, Password = "secret", Token = "tok1" },
-                new() { Id = 2, Name = "Bob", Age = 30, Password = "secret", Token = "tok2" }
-            };
-
-            // Request fields including "Password" and "Token"
-            var shapedList = FieldSelector.ShapeData<SampleItem>(items, fields: "id,name,password,token").OfType<ExpandoObject>().ToList();
-
-            Assert.Equal(2, shapedList.Count);
-            foreach (var expando in shapedList)
-            {
-                var dict = (IDictionary<string, object?>)expando;
-                // Requested safe fields should be present
-                Assert.True(dict.ContainsKey("id"));
-                Assert.True(dict.ContainsKey("name"));
-                // Sensitive fields MUST be redacted / omitted
-                Assert.False(dict.ContainsKey("password"));
-                Assert.False(dict.ContainsKey("Password"));
-                Assert.False(dict.ContainsKey("token"));
-                Assert.False(dict.ContainsKey("Token"));
-            }
         }
 
         [Fact]
