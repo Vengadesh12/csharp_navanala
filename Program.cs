@@ -13,12 +13,16 @@ using MyBackend.Infrastructure.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 
 // ------------------------------------------------------------------------------
-// Dynamic Cloud / Container Port Configuration
+// Dynamic Cloud / Container / LAN Port Configuration
 // ------------------------------------------------------------------------------
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
 {
     builder.WebHost.UseUrls($"http://+:{port}");
+}
+else if (string.IsNullOrWhiteSpace(builder.Configuration["urls"]) && args.All(a => !a.StartsWith("--urls", StringComparison.OrdinalIgnoreCase)))
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:8080");
 }
 
 // ------------------------------------------------------------------------------
@@ -75,7 +79,24 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ReactPolicy", policy =>
     {
         policy
-            .AllowAnyOrigin()
+            .WithOrigins(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://192.23.0.125:5173"
+            )
+            .SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrWhiteSpace(origin)) return false;
+                try
+                {
+                    var uri = new Uri(origin);
+                    return uri.Port == 5173;
+                }
+                catch
+                {
+                    return false;
+                }
+            })
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

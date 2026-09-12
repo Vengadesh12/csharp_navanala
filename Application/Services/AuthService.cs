@@ -25,6 +25,7 @@ namespace MyBackend.Application.Services
         private readonly IJwtService _jwtService;
         private readonly IPasswordHasher<UserModel> _passwordHasher;
         private readonly ILogger<AuthService> _logger;
+        private readonly IPermissionHierarchyService? _permissionHierarchyService;
 
         public AuthService(
             IUserRepository userRepository,
@@ -34,7 +35,8 @@ namespace MyBackend.Application.Services
             IOtpService otpService,
             IJwtService jwtService,
             IPasswordHasher<UserModel> passwordHasher,
-            ILogger<AuthService> logger)
+            ILogger<AuthService> logger,
+            IPermissionHierarchyService? permissionHierarchyService = null)
         {
             _userRepository = userRepository;
             _unitOfWork = unitOfWork;
@@ -44,6 +46,7 @@ namespace MyBackend.Application.Services
             _jwtService = jwtService;
             _passwordHasher = passwordHasher;
             _logger = logger;
+            _permissionHierarchyService = permissionHierarchyService;
         }
 
         public AuthService(
@@ -541,7 +544,22 @@ namespace MyBackend.Application.Services
                 throw new UnauthorizedAccessException("User not found or deactivated.");
             }
 
-            var permissions = await _userRepository.GetUserPermissionKeysAsync(userId);
+            List<string> permissions;
+            if (_permissionHierarchyService != null)
+            {
+                var effective = await _permissionHierarchyService.GetEffectivePermissionsForUserAsync(userId);
+                permissions = effective
+                    .Where(p => p.IsAllowed)
+                    .Select(p => p.PermissionKey)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(k => k)
+                    .ToList();
+            }
+            else
+            {
+                permissions = await _userRepository.GetUserPermissionKeysAsync(userId);
+            }
+
             return new CurrentUserPermissionsResponse { Permissions = permissions };
         }
 
@@ -603,9 +621,25 @@ namespace MyBackend.Application.Services
                 }
             }
 
-            var permissions = (initialPermissions != null && initialPermissions.Count > 0)
-                ? initialPermissions
-                : await _userRepository.GetUserPermissionKeysAsync(user.Id, user.RoleId, user.DesignationId);
+            List<string> permissions;
+            if (initialPermissions != null && initialPermissions.Count > 0)
+            {
+                permissions = initialPermissions;
+            }
+            else if (_permissionHierarchyService != null)
+            {
+                var effective = await _permissionHierarchyService.GetEffectivePermissionsForUserAsync(user.Id);
+                permissions = effective
+                    .Where(p => p.IsAllowed)
+                    .Select(p => p.PermissionKey)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(k => k)
+                    .ToList();
+            }
+            else
+            {
+                permissions = await _userRepository.GetUserPermissionKeysAsync(user.Id, user.RoleId, user.DesignationId);
+            }
 
             List<MenuModel> menus = [];
             try

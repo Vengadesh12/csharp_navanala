@@ -29,7 +29,7 @@ namespace MyBackend.Application.Services
 
             var is2Fa = string.Equals(twoFactorVal?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
             var securityLevel = is2Fa ? "High (2FA & RBAC)" : "Standard (RBAC)";
-            var sessionTimeout = !string.IsNullOrWhiteSpace(sessionTimeoutVal) ? sessionTimeoutVal : "30 Minutes";
+            var sessionTimeout = !string.IsNullOrWhiteSpace(sessionTimeoutVal) ? sessionTimeoutVal : "5 Hours";
 
             return new SettingsOverviewResponse
             {

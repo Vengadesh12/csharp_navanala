@@ -39,22 +39,34 @@ namespace MyBackend.Api.Extensions
                         ValidIssuer = Config.JwtIssuer,
                         ValidateAudience = true,
                         ValidAudience = Config.JwtAudience,
-                        ValidateLifetime = false,
+                        ValidateLifetime = true,
                         ClockSkew = TimeSpan.Zero
                     };
 
                     options.Events = new JwtBearerEvents
                     {
+                        OnAuthenticationFailed = context =>
+                        {
+                            if (context.Exception is SecurityTokenExpiredException)
+                            {
+                                context.Response.Headers["Token-Expired"] = "true";
+                            }
+                            return Task.CompletedTask;
+                        },
                         // Request/Response manipulation on Authentication failure (401)
                         OnChallenge = async context =>
                         {
                             context.HandleResponse();
                             context.Response.StatusCode = Microsoft.AspNetCore.Http.StatusCodes.Status401Unauthorized;
                             context.Response.ContentType = "application/json";
+                            var isExpired = context.Response.Headers.ContainsKey("Token-Expired");
+                            var message = isExpired
+                                ? "Your session has expired after 5 hours. Please log in again."
+                                : "Authentication required. Please log in or provide a valid Bearer token.";
                             var payload = System.Text.Json.JsonSerializer.Serialize(new MyBackend.Application.Common.DTO.ErrorResponse
                             {
                                 Success = false,
-                                Message = "Authentication required. Please log in or provide a valid Bearer token.",
+                                Message = message,
                                 Data = null
                             }, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
                             await context.Response.WriteAsync(payload);

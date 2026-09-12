@@ -2,6 +2,7 @@ using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using MyBackend.Configuration;
 using MyBackend.Domain.Models;
 
 namespace MyBackend.Api.Middleware
@@ -14,6 +15,7 @@ namespace MyBackend.Api.Middleware
     //  - Bridges stateless JWT Bearer tokens with stateful database session tracking.
     //  - Enforces immediate session termination if an administrator revokes access,
     //    even if the JWT token has not reached its cryptographic expiration time.
+    //  - Enforces automatic session expiration after 5 hours (300 minutes) of login.
     //  - Tracks client IP and heartbeat timestamps to reflect real-time active users.
     // ==============================================================================
     public class ActiveSessionValidationMiddleware
@@ -28,7 +30,7 @@ namespace MyBackend.Api.Middleware
         // ==============================================================================
         // TOPIC: Authentication middleware & Request/Response manipulation
         // Inspects Bearer token for authenticated users; short-circuits with 401 JSON
-        // response if the session has been terminated by an administrator.
+        // response if the session has expired after 5 hours or been revoked.
         // ==============================================================================
         public async Task InvokeAsync(HttpContext context, IUserSessionRepository sessionRepository)
         {
@@ -61,7 +63,23 @@ namespace MyBackend.Api.Middleware
 
                         if (session != null)
                         {
-                            // Request/Response manipulation: Short-circuit pipeline if session is revoked
+                            // 1. Enforce automatic session logout after 5 hours (300 minutes)
+                            var maxMinutes = Config.SessionTimeoutMinutes > 0 ? Config.SessionTimeoutMinutes : 300;
+                            var sessionAge = DateTime.UtcNow - session.LoginTime;
+                            if (sessionAge.TotalMinutes >= maxMinutes)
+                            {
+                                session.IsActive = false;
+                                session.LogoutTime = DateTime.UtcNow;
+                                session.UpdatedAt = DateTime.UtcNow;
+                                await sessionRepository.TerminateSessionAsync(session.Id);
+
+                                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                                context.Response.ContentType = "application/json";
+                                await context.Response.WriteAsync("{\"message\":\"Your session has expired after 5 hours. Please log in again.\"}");
+                                return;
+                            }
+
+                            // 2. Request/Response manipulation: Short-circuit pipeline if session is revoked
                             if (!session.IsActive || session.LogoutTime != null)
                             {
                                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MyBackend.Configuration;
 using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
 
@@ -149,8 +150,34 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<UserSessionModel>> GetActiveSessionsAsync()
         {
+            var maxMinutes = Config.SessionTimeoutMinutes > 0 ? Config.SessionTimeoutMinutes : 300;
+            var cutoff = DateTime.UtcNow.AddMinutes(-maxMinutes);
+
+            // Auto-deactivate any orphaned active sessions that exceeded the 5-hour limit
+            try
+            {
+                var expiredSessions = await _context.UserSessions
+                    .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && s.LoginTime < cutoff)
+                    .ToListAsync();
+
+                if (expiredSessions.Count > 0)
+                {
+                    foreach (var exp in expiredSessions)
+                    {
+                        exp.IsActive = false;
+                        exp.LogoutTime = exp.LoginTime.AddMinutes(maxMinutes);
+                        exp.UpdatedAt = DateTime.UtcNow;
+                    }
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch
+            {
+                // Non-blocking in case of concurrent updates
+            }
+
             return await _context.UserSessions
-                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null)
+                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && s.LoginTime >= cutoff)
                 .OrderByDescending(s => s.LoginTime)
                 .AsNoTracking()
                 .ToListAsync();
@@ -227,9 +254,11 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<(int ActiveCount, int TodayLogins, int TodayLogouts, int TotalSessions)> GetActivityStatsAsync()
         {
             var todayUtc = DateTime.UtcNow.Date;
+            var maxMinutes = Config.SessionTimeoutMinutes > 0 ? Config.SessionTimeoutMinutes : 300;
+            var cutoff = DateTime.UtcNow.AddMinutes(-maxMinutes);
 
             var activeCount = await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null);
+                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && s.LoginTime >= cutoff);
 
             var todayLogins = await _context.UserSessions
                 .CountAsync(s => s.DeletedFlag == 1 && s.LoginTime >= todayUtc);

@@ -26,7 +26,7 @@
     "Key": "your-long-random-secret-key-at-least-32-characters",
     "Issuer": "Userspace",
     "Audience": "Userspace.Web",
-    "ExpiresMinutes": 600,
+    "ExpiresMinutes": 300,
     "RefreshTokenExpiresDays": 7
   },
   "Authentication": {
@@ -36,7 +36,7 @@
   },
   "Security": {
     "OtpExpiresMinutes": 10,
-    "SessionTimeoutMinutes": 600,
+    "SessionTimeoutMinutes": 300,
     "MaxFailedAccessAttempts": 5,
     "LockoutTimeMinutes": 15
   }

@@ -191,13 +191,19 @@ namespace MyBackend.Application.Services
 
             var allPermissions = await _unitOfWork.Permissions.GetAllActivePermissionsAsync();
             var effectivePerms = await _permissionHierarchyService.GetEffectivePermissionsForUserAsync(userId);
-            var effectiveMap = effectivePerms.ToDictionary(ep => ep.PermissionKey.ToLower(), ep => ep);
+            var effectiveMap = effectivePerms
+                .GroupBy(ep => ep.PermissionKey.ToLower())
+                .ToDictionary(g => g.Key, g => g.First());
 
             var directPerms = await _unitOfWork.Repository<MyBackend.Domain.Models.UserPermissionModel>().FindAsync(up => up.UserId == userId);
-            var directPermMap = directPerms.ToDictionary(dp => dp.PermissionId, dp => dp);
+            var directPermMap = directPerms
+                .GroupBy(dp => dp.PermissionId)
+                .ToDictionary(g => g.Key, g => g.First());
 
             var allPermissionsEntities = await _unitOfWork.Permissions.ListAllAsync();
-            var permIdMap = allPermissionsEntities.ToDictionary(p => p.PermissionKey.ToLower(), p => p.Id);
+            var permIdMap = allPermissionsEntities
+                .GroupBy(p => p.PermissionKey.ToLower())
+                .ToDictionary(g => g.Key, g => g.First().Id);
 
             var detailList = new List<UserPermissionDetailDto>();
 

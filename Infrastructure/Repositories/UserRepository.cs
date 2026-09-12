@@ -156,7 +156,7 @@ namespace MyBackend.Infrastructure.Repositories
                       ({0} > 0 AND p."Id" IN (
                           SELECT rp."PermissionId" 
                           FROM rolepermissions rp 
-                          WHERE rp."RoleId" = {0}
+                          WHERE rp."RoleId" = {0} AND (rp."Access" IS NULL OR rp."Access" = 'Allow')
                       ))
                       OR
                       ({1} > 0 AND p."Id" IN (
@@ -182,7 +182,7 @@ namespace MyBackend.Infrastructure.Repositories
             var rId = roleId ?? 0;
             var dId = designationId ?? 0;
 
-            if (rId == 0 && dId == 0 && userId > 0)
+            if ((rId == 0 || dId == 0) && userId > 0)
             {
                 var userRecord = await _context.Users
                     .AsNoTracking()
@@ -190,9 +190,12 @@ namespace MyBackend.Infrastructure.Repositories
                     .Select(u => new { u.RoleId, u.DesignationId })
                     .FirstOrDefaultAsync();
 
-                if (userRecord is null) return [];
-                rId = userRecord.RoleId ?? 0;
-                dId = userRecord.DesignationId ?? 0;
+                if (userRecord is null && rId == 0) return [];
+                if (userRecord != null)
+                {
+                    if (rId == 0) rId = userRecord.RoleId ?? 0;
+                    if (dId == 0) dId = userRecord.DesignationId ?? 0;
+                }
             }
 
             // Super Admin role ID = 2 has all active permissions
@@ -214,7 +217,7 @@ namespace MyBackend.Infrastructure.Repositories
                       ({0} > 0 AND p."Id" IN (
                           SELECT rp."PermissionId" 
                           FROM rolepermissions rp 
-                          WHERE rp."RoleId" = {0}
+                          WHERE rp."RoleId" = {0} AND (rp."Access" IS NULL OR rp."Access" = 'Allow')
                       ))
                       OR
                       ({1} > 0 AND p."Id" IN (

@@ -759,7 +759,7 @@ namespace MyBackend.Infrastructure.Persistence
                     new()
                     {
                         SettingKey = "session_timeout",
-                        SettingValue = "30 Minutes",
+                        SettingValue = "5 Hours",
                         Category = "General",
                         Description = "Automatically logout user after period of inactivity.",
                         DataType = "string",
