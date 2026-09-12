@@ -88,6 +88,15 @@ namespace MyBackend.Application.Services
                 .GroupBy(up => up.UserId)
                 .ToDictionary(g => g.Key, g => g.Count());
 
+            // Pre-calculate active department permission counts
+            var allDeptPerms = await _unitOfWork.Repository<MyBackend.Domain.Models.DepartmentPermissionModel>().ListAllAsync();
+            var allPerms = await _unitOfWork.Permissions.ListAllAsync();
+            var activePermIds = allPerms.Where(p => p.DeletedFlag == 1).Select(p => p.Id).ToHashSet();
+            var deptPermCountMap = allDeptPerms
+                .Where(dp => activePermIds.Contains(dp.PermissionId))
+                .GroupBy(dp => dp.DepartmentId)
+                .ToDictionary(g => g.Key, g => g.Count());
+
             var result = new List<UserPermissionOverviewDto>();
 
             foreach (var u in activeUsers)
@@ -110,8 +119,16 @@ namespace MyBackend.Application.Services
                 var directCount = directPermCountByUser.TryGetValue(u.Id, out var dc) ? dc : 0;
                 var effective = await _permissionHierarchyService.GetEffectivePermissionsForUserAsync(u.Id);
                 var effectiveCount = effective.Count(p => p.IsAllowed);
-                var roleCount = effective.Count(p => p.IsAllowed && (p.Source == "Role" || p.Source == "RoleAndDepartment" || p.Source == "ExplicitChildAllow" || p.Source == "InheritedAllow"));
-                var deptCount = effective.Count(p => p.IsAllowed && (p.Source == "Department" || p.Source == "RoleAndDepartment"));
+
+                bool isSuperAdmin = u.RoleId == 2 || string.Equals(roleName, "Super Admin", StringComparison.OrdinalIgnoreCase);
+
+                var roleCount = isSuperAdmin
+                    ? effectiveCount
+                    : effective.Count(p => p.IsAllowed && (p.Source == "Role" || p.Source == "RoleAndDepartment" || p.Source == "ExplicitChildAllow" || p.Source == "InheritedAllow" || p.Source == "SuperAdmin"));
+
+                var deptCount = deptId.HasValue && deptPermCountMap.TryGetValue(deptId.Value, out var dCount)
+                    ? dCount
+                    : effective.Count(p => p.IsAllowed && (p.Source == "Department" || p.Source == "RoleAndDepartment"));
 
                 result.Add(new UserPermissionOverviewDto
                 {
@@ -142,6 +159,7 @@ namespace MyBackend.Application.Services
             var roles = await _unitOfWork.Roles.ListAllAsync();
             var role = user.RoleId.HasValue ? roles.FirstOrDefault(r => r.Id == user.RoleId.Value) : null;
             var roleName = role?.Name ?? "Unassigned";
+            bool isSuperAdmin = user.RoleId == 2 || string.Equals(roleName, "Super Admin", StringComparison.OrdinalIgnoreCase);
 
             var designations = await _unitOfWork.Designations.ListAllAsync();
             var designation = user.DesignationId.HasValue ? designations.FirstOrDefault(d => d.Id == user.DesignationId.Value) : null;
@@ -158,6 +176,17 @@ namespace MyBackend.Application.Services
             {
                 var keys = await _unitOfWork.Permissions.GetPermissionKeysByDepartmentIdAsync(deptId.Value);
                 foreach (var k in keys) deptPermKeys.Add(k);
+            }
+
+            // Role permission keys (for non-super admin roles, check effective role permissions)
+            var rolePermKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (user.RoleId.HasValue && !isSuperAdmin)
+            {
+                var roleEffective = await _permissionHierarchyService.GetEffectivePermissionsForRoleAsync(user.RoleId.Value);
+                foreach (var rp in roleEffective.Where(r => r.IsAllowed))
+                {
+                    rolePermKeys.Add(rp.PermissionKey);
+                }
             }
 
             var allPermissions = await _unitOfWork.Permissions.GetAllActivePermissionsAsync();
@@ -180,15 +209,22 @@ namespace MyBackend.Application.Services
                 effectiveMap.TryGetValue(permKeyLower, out var effective);
                 var isDirect = directPermMap.TryGetValue(permId, out var directRecord);
 
-                var isAllowed = effective?.IsAllowed ?? false;
-                var source = effective?.Source ?? (isAllowed ? "Inherited" : "DefaultDeny");
+                var isAllowed = effective?.IsAllowed ?? (isSuperAdmin || isDirect);
+                var rawSource = effective?.Source ?? (isAllowed ? "Inherited" : "DefaultDeny");
+                var source = rawSource;
                 if (isDirect)
                 {
                     source = "UserDirectGrant";
                 }
 
                 var isDept = deptPermKeys.Contains(perm.PermissionKey);
-                var isRole = source == "Role" || source == "RoleAndDepartment" || source == "ExplicitChildAllow" || source == "InheritedAllow";
+                var isRole = isSuperAdmin
+                    || rolePermKeys.Contains(perm.PermissionKey)
+                    || rawSource == "Role"
+                    || rawSource == "RoleAndDepartment"
+                    || rawSource == "ExplicitChildAllow"
+                    || rawSource == "InheritedAllow"
+                    || rawSource == "SuperAdmin";
 
                 var category = perm.PermissionKey.Contains('.')
                     ? perm.PermissionKey.Split('.')[0]

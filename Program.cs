@@ -81,29 +81,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ==============================================================================
-// TOPIC: Request pipeline & Middleware Ordering
-// ==============================================================================
-// In ASP.NET Core, the Request Pipeline is assembled as a series of middleware components.
-// Each middleware can:
-//  1. Pass execution to the next component in the pipeline via next().
-//  2. Perform work before and after the next component.
-//  3. Short-circuit the pipeline (e.g., authorization failure, validation error, cached response).
-//
-// CRITICAL: Middleware Ordering determines the lifecycle of every incoming HTTP request:
-//  Step 1: Exception Handling (First in, last out - catches unhandled errors from all downstream middlewares)
-//  Step 2: Correlation ID & Security Headers (Tags request/response headers for tracing and browser hardening)
-//  Step 3: Structured Request Logging (Captures latency, method, path, and HTTP status codes)
-//  Step 4: Routing (Selects matching endpoint route based on URL and HTTP method)
-//  Step 5: Swagger / OpenAPI (API documentation UI)
-//  Step 6: CORS (Cross-Origin Resource Sharing headers for frontend communication)
-//  Step 7: Static Files (Serves uploaded assets and documents directly without hitting MVC controllers)
-//  Step 8: Authentication (Validates JWT Bearer tokens and populates HttpContext.User ClaimsPrincipal)
-//  Step 9: Active Session Validation (Custom stateful validation to verify token is still active in database)
-//  Step 10: Authorization (Evaluates RBAC permissions and role policies against the authenticated user)
-//  Step 11: Endpoints / Controllers (Invokes target Controller Actions to process business logic)
-// ==============================================================================
-
 var app = builder.Build();
 
 // ------------------------------------------------------------------------------
