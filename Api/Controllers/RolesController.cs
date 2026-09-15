@@ -109,9 +109,15 @@ namespace MyBackend.Api.Controllers
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteRole(int id)
         {
-            if (id == 2)
+            var role = await _roleService.GetRoleByIdAsync(id);
+            if (role is null)
             {
-                return BadRequest(new ErrorResponse { Message = "Super Admin system role cannot be deleted." });
+                return NotFound(new ErrorResponse { Message = $"Role with ID {id} not found." });
+            }
+
+            if (role.IsSuperAdmin || role.IsSystemRole || string.Equals(role.Name, "Super Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new ErrorResponse { Message = "System or Super Admin roles cannot be deleted." });
             }
 
             var success = await _roleService.SoftDeleteRoleAsync(id);

@@ -34,6 +34,10 @@ public sealed class RoleDto
 
     public string? ParentRoleName { get; set; }
 
+    public bool IsSuperAdmin { get; set; }
+
+    public bool IsSystemRole { get; set; }
+
     public int DeletedFlag { get; set; } = 1;
 
     public DateTime CreatedAt { get; set; }

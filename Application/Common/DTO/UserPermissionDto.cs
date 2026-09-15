@@ -18,6 +18,7 @@ namespace MyBackend.Application.Common.DTO
         public int RolePermissionsCount { get; set; }
         public int DepartmentPermissionsCount { get; set; }
         public int TotalEffectivePermissionsCount { get; set; }
+        public bool IsSuperAdmin { get; set; }
     }
 
     public class UserPermissionDetailDto
@@ -54,6 +55,7 @@ namespace MyBackend.Application.Common.DTO
         public int RoleCount { get; set; }
         public int DepartmentCount { get; set; }
         public int TotalCount { get; set; }
+        public bool IsSuperAdmin { get; set; }
         public List<UserPermissionDetailDto> Permissions { get; set; } = new();
     }
 

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
+using IAppAuthorizationService = MyBackend.Application.Interfaces.IAuthorizationService;
 
 namespace MyBackend.Api.Controllers
 {
@@ -19,15 +20,18 @@ namespace MyBackend.Api.Controllers
         private readonly IPurchaseService _purchaseService;
         private readonly IUserService _userService;
         private readonly IDesignationService _designationService;
+        private readonly IAppAuthorizationService _authorizationService;
 
         public PurchasesController(
             IPurchaseService purchaseService,
             IUserService userService,
-            IDesignationService designationService)
+            IDesignationService designationService,
+            IAppAuthorizationService authorizationService)
         {
             _purchaseService = purchaseService;
             _userService = userService;
             _designationService = designationService;
+            _authorizationService = authorizationService;
         }
 
         [HttpGet]
@@ -229,7 +233,18 @@ namespace MyBackend.Api.Controllers
             var dbUser = await _userService.GetUserByIdAsync(userId);
             if (dbUser == null) return (userId, false, string.Empty);
 
-            var roleId = dbUser.RoleId ?? 0;
+            if (await _authorizationService.IsSuperAdminAsync(userId))
+            {
+                return (userId, true, dbUser.Name);
+            }
+
+            if (await _authorizationService.HasPermissionAsync(userId, "purchases.view") ||
+                await _authorizationService.HasPermissionAsync(userId, "purchases.manage") ||
+                await _authorizationService.HasPermissionAsync(userId, "purchases.create"))
+            {
+                return (userId, true, dbUser.Name);
+            }
+
             var roleName = (dbUser.RoleName ?? "").Trim().ToLowerInvariant();
             var designationTitle = (dbUser.DesignationName ?? "").Trim().ToLowerInvariant();
             string departmentName = string.Empty;
@@ -243,15 +258,10 @@ namespace MyBackend.Api.Controllers
                 }
             }
 
-            // Authorization criteria:
-            // 1. Super Admin (RoleId 2 or role title contains 'super admin' or 'admin')
-            // 2. Manager (RoleId 3 or role/designation title contains 'manager' or 'lead')
-            // 3. HR Department (Department title contains 'hr' or 'human resources' or designation contains 'hr')
-            bool isSuperAdmin = roleId == 2 || roleName.Contains("super admin") || roleName == "admin";
-            bool isManager = roleId == 3 || roleName.Contains("manager") || designationTitle.Contains("manager") || roleName.Contains("lead");
+            bool isManager = roleName.Contains("manager") || designationTitle.Contains("manager") || roleName.Contains("lead");
             bool isHrDepartment = departmentName.Contains("hr") || departmentName.Contains("human resources") || designationTitle.Contains("hr");
 
-            bool isAuthorized = isSuperAdmin || isManager || isHrDepartment;
+            bool isAuthorized = isManager || isHrDepartment;
 
             return (userId, isAuthorized, dbUser.Name);
         }

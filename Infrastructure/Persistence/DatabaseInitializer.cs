@@ -27,7 +27,15 @@ namespace MyBackend.Infrastructure.Persistence
                     ALTER TABLE IF EXISTS ""roles"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                        ADD COLUMN IF NOT EXISTS ""ParentRoleId"" INTEGER NULL;
+                        ADD COLUMN IF NOT EXISTS ""ParentRoleId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsSuperAdmin"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS ""IsSystemRole"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                    UPDATE ""roles"" SET ""IsSuperAdmin"" = TRUE, ""IsSystemRole"" = TRUE
+                    WHERE LOWER(""Name"") = 'super admin';
+
+                    UPDATE ""roles"" SET ""IsSystemRole"" = TRUE
+                    WHERE LOWER(""Name"") IN ('super admin', 'admin', 'manager', 'hr', 'employee');
 
                     ALTER TABLE IF EXISTS ""departments"" 
                         ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -179,7 +187,8 @@ namespace MyBackend.Infrastructure.Persistence
                     ("invoices.edit", "Edit Invoice", "Modify existing invoice records and line items."),
                     ("invoices.delete", "Delete Invoice", "Remove or cancel customer invoice records."),
                     ("invoices.manage", "Manage Invoices & GST", "Full administrative authority over invoices, tax settings, and GST number configuration."),
-                    ("settings.maintenance", "Maintenance Mode", "Configure and toggle system-wide maintenance mode access.")
+                    ("settings.maintenance", "Maintenance Mode", "Configure and toggle system-wide maintenance mode access."),
+                    ("manage_all_permissions", "Full System Governance", "Unrestricted administrative authority across all workspace operations and resources.")
                 };
 
                 foreach (var perm in standardPermissions)
@@ -292,13 +301,13 @@ namespace MyBackend.Infrastructure.Persistence
                 await context.SaveChangesAsync();
 
                 // Seed standard roles with hierarchy (Super Admin -> Admin -> Manager -> Employee, plus HR)
-                var standardRoles = new (string Name, string Desc, string? ParentRoleName)[]
+                var standardRoles = new (string Name, string Desc, string? ParentRoleName, bool IsSuperAdmin, bool IsSystemRole)[]
                 {
-                    ("Super Admin", "Full workspace administrative access.", null),
-                    ("Admin", "Workspace administrator with delegated authority.", "Super Admin"),
-                    ("Manager", "Workspace manager with elevated operational permissions.", "Admin"),
-                    ("HR", "Human resources operations and employee management.", "Admin"),
-                    ("Employee", "Standard employee workspace account.", "Manager")
+                    ("Super Admin", "Full workspace administrative access.", null, true, true),
+                    ("Admin", "Workspace administrator with delegated authority.", "Super Admin", false, true),
+                    ("Manager", "Workspace manager with elevated operational permissions.", "Admin", false, true),
+                    ("HR", "Human resources operations and employee management.", "Admin", false, true),
+                    ("Employee", "Standard employee workspace account.", "Manager", false, true)
                 };
 
                 foreach (var r in standardRoles)
@@ -310,8 +319,21 @@ namespace MyBackend.Infrastructure.Persistence
                         {
                             Name = r.Name,
                             Description = r.Desc,
+                            IsSuperAdmin = r.IsSuperAdmin,
+                            IsSystemRole = r.IsSystemRole,
                             DeletedFlag = 1
                         });
+                    }
+                    else
+                    {
+                        if (r.IsSuperAdmin && !existingRole.IsSuperAdmin)
+                        {
+                            existingRole.IsSuperAdmin = true;
+                        }
+                        if (r.IsSystemRole && !existingRole.IsSystemRole)
+                        {
+                            existingRole.IsSystemRole = true;
+                        }
                     }
                 }
                 await context.SaveChangesAsync();
@@ -332,6 +354,9 @@ namespace MyBackend.Infrastructure.Persistence
                 }
                 await context.SaveChangesAsync();
 
+                var superAdminRole = allRoles.FirstOrDefault(r => r.IsSuperAdmin || r.Name.Equals("Super Admin", StringComparison.OrdinalIgnoreCase));
+                var superAdminRoleId = superAdminRole?.Id;
+
                 // Seed default Super Admin user account if missing
                 var adminExists = await context.Users.AnyAsync(u => u.Email.ToLower() == "admin@example.com");
                 if (!adminExists)
@@ -341,7 +366,7 @@ namespace MyBackend.Infrastructure.Persistence
                     {
                         Name = "Super Admin",
                         Email = "admin@example.com",
-                        RoleId = 2,
+                        RoleId = superAdminRoleId,
                         DesignationId = 1,
                         Phone = "9876543210",
                         Age = 35,
@@ -368,7 +393,7 @@ namespace MyBackend.Infrastructure.Persistence
                     {
                         Name = "Workspace Administrator",
                         Email = devEmail,
-                        RoleId = 2,
+                        RoleId = superAdminRoleId,
                         DesignationId = 1,
                         Phone = "9876543210",
                         Age = 30,
@@ -384,19 +409,26 @@ namespace MyBackend.Infrastructure.Persistence
                     logger.LogInformation("Seeded default administrator user: {Email} / Admin@123", devEmail);
                 }
 
-                // Ensure all roles have their baseline permissions assigned
+                // Ensure all roles have their baseline permissions assigned dynamically
                 var allPermissions = await context.Permissions.ToListAsync();
-                var rolePermissionsMap = new Dictionary<int, string[]>
-                {
-                    // Role 1 (Employee): Standard workspace view capabilities + approvals create
-                    [1] = new[] { "dashboard.view", "users.view", "departments.view", "projects.view", "calendar.view", "reports.view", "user_activity.view", "approvals.view", "approvals.create" },
-                    // Role 2 (Super Admin): All system permissions
-                    [2] = standardPermissions.Select(p => p.Key).ToArray(),
-                    // Role 3 (Manager): Workspace management capabilities + approvals management + purchases + invoices
-                    [3] = new[] { "dashboard.view", "users.view", "roles.view", "departments.view", "departments.edit", "departments.manage", "reports.view", "projects.view", "calendar.view", "settings.view", "audit.view", "user_activity.view", "user_activity.force_logout", "user_activity.manage", "approvals.view", "approvals.create", "approvals.manage", "purchases.view", "purchases.create", "purchases.manage", "invoices.view", "invoices.create", "invoices.edit", "invoices.delete", "invoices.manage" }
-                };
+                var employeeRole = allRoles.FirstOrDefault(r => r.Name.Equals("Employee", StringComparison.OrdinalIgnoreCase));
+                var managerRole = allRoles.FirstOrDefault(r => r.Name.Equals("Manager", StringComparison.OrdinalIgnoreCase));
 
-                foreach (var (roleId, permKeys) in rolePermissionsMap)
+                var rolePermissionsList = new List<(int RoleId, string[] PermKeys)>();
+                if (employeeRole != null)
+                {
+                    rolePermissionsList.Add((employeeRole.Id, new[] { "dashboard.view", "users.view", "departments.view", "projects.view", "calendar.view", "reports.view", "user_activity.view", "approvals.view", "approvals.create" }));
+                }
+                if (superAdminRole != null)
+                {
+                    rolePermissionsList.Add((superAdminRole.Id, standardPermissions.Select(p => p.Key).ToArray()));
+                }
+                if (managerRole != null)
+                {
+                    rolePermissionsList.Add((managerRole.Id, new[] { "dashboard.view", "users.view", "roles.view", "departments.view", "departments.edit", "departments.manage", "reports.view", "projects.view", "calendar.view", "settings.view", "audit.view", "user_activity.view", "user_activity.force_logout", "user_activity.manage", "approvals.view", "approvals.create", "approvals.manage", "purchases.view", "purchases.create", "purchases.manage", "invoices.view", "invoices.create", "invoices.edit", "invoices.delete", "invoices.manage" }));
+                }
+
+                foreach (var (roleId, permKeys) in rolePermissionsList)
                 {
                     foreach (var permKey in permKeys)
                     {

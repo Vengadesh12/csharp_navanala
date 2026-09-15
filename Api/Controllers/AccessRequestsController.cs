@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
+using IAppAuthorizationService = MyBackend.Application.Interfaces.IAuthorizationService;
 
 namespace MyBackend.Api.Controllers
 {
@@ -18,13 +19,16 @@ namespace MyBackend.Api.Controllers
     {
         private readonly IAccessRequestService _accessRequestService;
         private readonly IUserService _userService;
+        private readonly IAppAuthorizationService _authorizationService;
 
         public AccessRequestsController(
             IAccessRequestService accessRequestService,
-            IUserService userService)
+            IUserService userService,
+            IAppAuthorizationService authorizationService)
         {
             _accessRequestService = accessRequestService;
             _userService = userService;
+            _authorizationService = authorizationService;
         }
 
         [HttpGet("available-permissions")]
@@ -222,11 +226,9 @@ namespace MyBackend.Api.Controllers
             var dbUser = await _userService.GetUserByIdAsync(userId);
             if (dbUser == null) return (userId, string.Empty, false);
 
-            var roleId = dbUser.RoleId ?? 0;
-            var roleName = (dbUser.RoleName ?? "").Trim().ToLowerInvariant();
-
-            // Super Admin role ID = 2 or matching role title has full permission management
-            bool isSuperAdmin = roleId == 2 || roleName.Contains("super admin") || roleName == "admin";
+            bool isSuperAdmin = await _authorizationService.IsSuperAdminAsync(userId) ||
+                                await _authorizationService.HasPermissionAsync(userId, "user_permissions.manage") ||
+                                await _authorizationService.HasPermissionAsync(userId, "permissions.manage");
 
             return (userId, dbUser.Name, isSuperAdmin);
         }

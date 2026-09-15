@@ -13,26 +13,17 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<List<RoleModel>> GetActiveRolesAsync()
         {
             return await _context.Roles
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Description", "ParentRoleId", "DeletedFlag", "CreatedAt", "UpdatedAt"
-                    FROM roles
-                    WHERE "DeletedFlag" = 1
-                    ORDER BY "Id"
-                    """)
                 .AsNoTracking()
+                .Where(r => r.DeletedFlag == 1)
+                .OrderBy(r => r.Id)
                 .ToListAsync();
         }
 
         public async Task<RoleModel?> GetActiveRoleByIdAsync(int id)
         {
             return await _context.Roles
-                .FromSqlInterpolated($"""
-                    SELECT "Id", "Name", "Description", "ParentRoleId", "DeletedFlag", "CreatedAt", "UpdatedAt"
-                    FROM roles
-                    WHERE "Id" = {id} AND "DeletedFlag" = 1
-                    """)
                 .AsNoTracking()
-                .SingleOrDefaultAsync();
+                .FirstOrDefaultAsync(r => r.Id == id && r.DeletedFlag == 1);
         }
 
         public async Task<bool> SetDeletedFlagAsync(int id, int deletedFlag)

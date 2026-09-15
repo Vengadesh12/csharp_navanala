@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
+using IAppAuthorizationService = MyBackend.Application.Interfaces.IAuthorizationService;
 
 namespace MyBackend.Api.Controllers
 {
@@ -19,15 +20,18 @@ namespace MyBackend.Api.Controllers
         private readonly IApprovalService _approvalService;
         private readonly IUserService _userService;
         private readonly IDepartmentService _departmentService;
+        private readonly IAppAuthorizationService _authorizationService;
 
         public ApprovalsController(
             IApprovalService approvalService,
             IUserService userService,
-            IDepartmentService departmentService)
+            IDepartmentService departmentService,
+            IAppAuthorizationService authorizationService)
         {
             _approvalService = approvalService;
             _userService = userService;
             _departmentService = departmentService;
+            _authorizationService = authorizationService;
         }
 
         [HttpGet]
@@ -182,15 +186,23 @@ namespace MyBackend.Api.Controllers
                 return (0, false);
             }
 
-            // Look up actual user record from database
+            var isSuperAdmin = await _authorizationService.IsSuperAdminAsync(userId);
+            if (isSuperAdmin)
+            {
+                return (userId, true);
+            }
+
+            var hasManagePermission = await _authorizationService.HasPermissionAsync(userId, "approvals.manage");
+            if (hasManagePermission)
+            {
+                return (userId, true);
+            }
+
             var dbUser = await _userService.GetUserByIdAsync(userId);
             if (dbUser == null) return (userId, false);
 
-            var roleId = dbUser.RoleId ?? 0;
             var roleName = (dbUser.RoleName ?? "").Trim().ToLowerInvariant();
-
-            // ONLY Super Admin (RoleId 2) and Manager (RoleId 3) or matching role title can view all & manage approvals
-            bool isManagerOrAdmin = roleId == 2 || roleId == 3 || roleName.Contains("manager") || roleName.Contains("super admin") || roleName == "admin";
+            bool isManagerOrAdmin = roleName.Contains("manager") || roleName.Contains("admin");
 
             return (userId, isManagerOrAdmin);
         }

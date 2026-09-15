@@ -595,11 +595,16 @@ namespace MyBackend.Application.Services
             List<string>? initialPermissions = null,
             List<string>? initialMenuNames = null)
         {
-            if (string.IsNullOrWhiteSpace(roleName) && user.RoleId.HasValue)
+            RoleModel? userRole = null;
+            if (user.RoleId.HasValue)
             {
-                var role = await _unitOfWork.Roles.GetByIdAsync(user.RoleId.Value);
-                roleName = role?.Name;
+                userRole = await _unitOfWork.Roles.GetByIdAsync(user.RoleId.Value);
+                if (string.IsNullOrWhiteSpace(roleName))
+                {
+                    roleName = userRole?.Name;
+                }
             }
+            bool isSuperAdmin = userRole != null && (userRole.IsSuperAdmin || userRole.Name.Equals("Super Admin", StringComparison.OrdinalIgnoreCase));
 
             if (string.IsNullOrWhiteSpace(designationName) && user.DesignationId.HasValue)
             {
@@ -644,7 +649,7 @@ namespace MyBackend.Application.Services
             List<MenuModel> menus = [];
             try
             {
-                if (user.RoleId == 2)
+                if (isSuperAdmin)
                 {
                     menus = await _unitOfWork.Menus.GetAllActiveMenusAsync();
                 }
@@ -680,7 +685,8 @@ namespace MyBackend.Application.Services
                 Phone = user.Phone,
                 Age = user.Age,
                 Address = user.Address,
-                IsFirstLogin = user.IsFirstLogin
+                IsFirstLogin = user.IsFirstLogin,
+                IsSuperAdmin = isSuperAdmin
             };
         }
 
@@ -715,11 +721,10 @@ namespace MyBackend.Application.Services
 
         private async Task<bool> IsAdminUserAsync(UserModel user)
         {
-            if (user.RoleId == 2) return true;
             if (user.RoleId.HasValue)
             {
                 var role = await _unitOfWork.Roles.GetByIdAsync(user.RoleId.Value);
-                if (role != null && (role.Id == 2 || role.Name.Contains("admin", StringComparison.OrdinalIgnoreCase)))
+                if (role != null && (role.IsSuperAdmin || role.IsSystemRole || role.Name.Contains("admin", StringComparison.OrdinalIgnoreCase)))
                 {
                     return true;
                 }

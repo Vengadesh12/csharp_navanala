@@ -59,8 +59,8 @@ namespace MyBackend.Application.Services
                 return [];
             }
 
-            // Super Admin (Id 2 or Super Admin name) has full system capabilities
-            if (targetRole.Id == 2 || string.Equals(targetRole.Name, "Super Admin", StringComparison.OrdinalIgnoreCase))
+            // Super Admin (IsSuperAdmin flag or Super Admin name) has full system capabilities
+            if (targetRole.IsSuperAdmin || string.Equals(targetRole.Name, "Super Admin", StringComparison.OrdinalIgnoreCase))
             {
                 return allPermissions.Select(p =>
                 {
@@ -142,7 +142,7 @@ namespace MyBackend.Application.Services
                     {
                         var ancestor = roleChain[i];
                         // Super Admin full capability does not blanket-propagate down to child roles
-                        if (ancestor.Id == 2 || string.Equals(ancestor.Name, "Super Admin", StringComparison.OrdinalIgnoreCase))
+                        if (ancestor.IsSuperAdmin || string.Equals(ancestor.Name, "Super Admin", StringComparison.OrdinalIgnoreCase))
                         {
                             continue;
                         }
@@ -183,8 +183,15 @@ namespace MyBackend.Application.Services
             var allPermissions = await _unitOfWork.Permissions.GetAllActivePermissionsAsync();
             var allPermissionsList = await _unitOfWork.Permissions.ListAllAsync();
 
-            // 1. Super Admin check
-            if (user.RoleId == 2)
+            // 1. Dynamic Super Admin check from database
+            RoleModel? userRole = null;
+            if (user.RoleId.HasValue)
+            {
+                userRole = await _unitOfWork.Roles.GetByIdAsync(user.RoleId.Value);
+            }
+
+            var isSuperAdminUser = userRole != null && (userRole.IsSuperAdmin || string.Equals(userRole.Name, "Super Admin", StringComparison.OrdinalIgnoreCase));
+            if (isSuperAdminUser)
             {
                 return allPermissions.Select(p =>
                 {
@@ -372,7 +379,7 @@ namespace MyBackend.Application.Services
             var allRoles = await _unitOfWork.Roles.ListAllAsync();
             var activeRoles = allRoles.Where(r => r.DeletedFlag == 1).ToList();
 
-            var rootRole = activeRoles.FirstOrDefault(r => r.ParentRoleId == null || r.Id == 2)
+            var rootRole = activeRoles.FirstOrDefault(r => r.ParentRoleId == null || r.IsSuperAdmin)
                 ?? activeRoles.FirstOrDefault();
 
             if (rootRole == null)
@@ -426,8 +433,15 @@ namespace MyBackend.Application.Services
                 throw new UnauthorizedException("Valid user session required.");
             }
 
-            // Super Admin (RoleId 2) can grant any permission
-            if (granterUser.RoleId == 2) return;
+            // Dynamic Super Admin check from database
+            if (granterUser.RoleId.HasValue)
+            {
+                var granterRole = await _unitOfWork.Roles.GetByIdAsync(granterUser.RoleId.Value);
+                if (granterRole != null && (granterRole.IsSuperAdmin || string.Equals(granterRole.Name, "Super Admin", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return;
+                }
+            }
 
             var granterEffective = await GetEffectivePermissionsForUserAsync(granterUserId);
             var allowedKeys = granterEffective

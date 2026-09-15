@@ -31,6 +31,14 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
             builder.Property(e => e.ParentRoleId)
                 .HasColumnName("ParentRoleId");
 
+            builder.Property(e => e.IsSuperAdmin)
+                .HasColumnName("IsSuperAdmin")
+                .HasDefaultValue(false);
+
+            builder.Property(e => e.IsSystemRole)
+                .HasColumnName("IsSystemRole")
+                .HasDefaultValue(false);
+
             builder.HasOne(e => e.ParentRole)
                 .WithMany()
                 .HasForeignKey(e => e.ParentRoleId)

@@ -29,8 +29,14 @@ namespace MyBackend.Infrastructure.Services
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Name),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.RoleId?.ToString() ?? string.Empty)
+                new Claim(ClaimTypes.Role, roleName ?? user.RoleId?.ToString() ?? string.Empty)
             };
+
+            if (user.RoleId.HasValue)
+            {
+                claims.Add(new Claim("roleId", user.RoleId.Value.ToString()));
+                claims.Add(new Claim("RoleId", user.RoleId.Value.ToString()));
+            }
 
             if (!string.IsNullOrWhiteSpace(roleName))
             {

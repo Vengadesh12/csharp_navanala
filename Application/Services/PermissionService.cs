@@ -75,7 +75,7 @@ namespace MyBackend.Application.Services
             var activeUsers = users.Where(u => u.DeletedFlag == 1).ToList();
 
             var roles = await _unitOfWork.Roles.ListAllAsync();
-            var roleMap = roles.ToDictionary(r => r.Id, r => r.Name);
+            var roleMap = roles.ToDictionary(r => r.Id, r => r);
 
             var departments = await _unitOfWork.Departments.ListAllAsync();
             var deptMap = departments.ToDictionary(d => d.Id, d => d.Name);
@@ -101,7 +101,8 @@ namespace MyBackend.Application.Services
 
             foreach (var u in activeUsers)
             {
-                var roleName = u.RoleId.HasValue && roleMap.TryGetValue(u.RoleId.Value, out var rName) ? rName : "Unassigned";
+                var roleObj = u.RoleId.HasValue && roleMap.TryGetValue(u.RoleId.Value, out var rObj) ? rObj : null;
+                var roleName = roleObj?.Name ?? "Unassigned";
                 int? deptId = null;
                 string deptName = "";
                 string desName = "";
@@ -120,7 +121,7 @@ namespace MyBackend.Application.Services
                 var effective = await _permissionHierarchyService.GetEffectivePermissionsForUserAsync(u.Id);
                 var effectiveCount = effective.Count(p => p.IsAllowed);
 
-                bool isSuperAdmin = u.RoleId == 2 || string.Equals(roleName, "Super Admin", StringComparison.OrdinalIgnoreCase);
+                bool isSuperAdmin = roleObj?.IsSuperAdmin == true || string.Equals(roleName, "Super Admin", StringComparison.OrdinalIgnoreCase);
 
                 var roleCount = isSuperAdmin
                     ? effectiveCount
@@ -144,7 +145,8 @@ namespace MyBackend.Application.Services
                     DirectPermissionsCount = directCount,
                     RolePermissionsCount = roleCount,
                     DepartmentPermissionsCount = deptCount,
-                    TotalEffectivePermissionsCount = effectiveCount
+                    TotalEffectivePermissionsCount = effectiveCount,
+                    IsSuperAdmin = isSuperAdmin
                 });
             }
 
@@ -159,7 +161,7 @@ namespace MyBackend.Application.Services
             var roles = await _unitOfWork.Roles.ListAllAsync();
             var role = user.RoleId.HasValue ? roles.FirstOrDefault(r => r.Id == user.RoleId.Value) : null;
             var roleName = role?.Name ?? "Unassigned";
-            bool isSuperAdmin = user.RoleId == 2 || string.Equals(roleName, "Super Admin", StringComparison.OrdinalIgnoreCase);
+            bool isSuperAdmin = role?.IsSuperAdmin == true || string.Equals(roleName, "Super Admin", StringComparison.OrdinalIgnoreCase);
 
             var designations = await _unitOfWork.Designations.ListAllAsync();
             var designation = user.DesignationId.HasValue ? designations.FirstOrDefault(d => d.Id == user.DesignationId.Value) : null;
@@ -276,6 +278,7 @@ namespace MyBackend.Application.Services
                 RoleCount = roleCount,
                 DepartmentCount = deptCount,
                 TotalCount = totalCount,
+                IsSuperAdmin = isSuperAdmin,
                 Permissions = detailList.OrderByDescending(p => p.IsDirect)
                                         .ThenByDescending(p => p.IsFromDepartment)
                                         .ThenByDescending(p => p.IsFromRole)

@@ -21,6 +21,12 @@ namespace MyBackend.Domain.Models
 
         public RoleModel? ParentRole { get; set; }
 
+        // Dynamic RBAC: Identifies highest privileged system roles dynamically from database
+        public bool IsSuperAdmin { get; set; } = false;
+
+        // Dynamic RBAC: Protects core system roles from deletion
+        public bool IsSystemRole { get; set; } = false;
+
         public int DeletedFlag { get; set; } = 1;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

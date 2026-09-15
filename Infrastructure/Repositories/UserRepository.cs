@@ -142,8 +142,11 @@ namespace MyBackend.Infrastructure.Repositories
 
             if (userRecord is null) return false;
 
-            // Super Admin role ID = 2 has all permissions
-            if (userRecord.RoleId == 2) return true;
+            // Dynamically check if the user's role is a Super Admin in database
+            if (userRecord.RoleId.HasValue && await _context.Roles.AnyAsync(r => r.Id == userRecord.RoleId.Value && r.DeletedFlag == 1 && (r.IsSuperAdmin || r.Name.ToLower() == "super admin")))
+            {
+                return true;
+            }
 
             var roleId = userRecord.RoleId ?? 0;
             var designationId = userRecord.DesignationId ?? 0;
@@ -198,8 +201,8 @@ namespace MyBackend.Infrastructure.Repositories
                 }
             }
 
-            // Super Admin role ID = 2 has all active permissions
-            if (rId == 2)
+            // Dynamically check if the role has Super Admin permissions in database
+            if (rId > 0 && await _context.Roles.AnyAsync(r => r.Id == rId && r.DeletedFlag == 1 && (r.IsSuperAdmin || r.Name.ToLower() == "super admin")))
             {
                 return await _context.Database.SqlQueryRaw<string>("""
                     SELECT DISTINCT p."PermissionKey" AS "Value"
@@ -248,43 +251,37 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<Dictionary<int, string>> GetActiveRolesLookupAsync()
         {
             return await _context.Roles
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Description", "ParentRoleId", "DeletedFlag", "CreatedAt", "UpdatedAt"
-                    FROM roles
-                    WHERE "DeletedFlag" = 1
-                """)
                 .AsNoTracking()
+                .Where(r => r.DeletedFlag == 1)
+                .Select(r => new { r.Id, r.Name })
                 .ToDictionaryAsync(r => r.Id, r => r.Name);
         }
 
         public async Task<Dictionary<int, string>> GetActiveDesignationsLookupAsync()
         {
             return await _context.Designations
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Description", "DepartmentId", "DeletedFlag", "CreatedAt", "UpdatedAt"
-                    FROM designations
-                    WHERE "DeletedFlag" = 1
-                """)
                 .AsNoTracking()
+                .Where(d => d.DeletedFlag == 1)
+                .Select(d => new { d.Id, d.Name })
                 .ToDictionaryAsync(d => d.Id, d => d.Name);
         }
 
         public async Task<string?> GetRoleNameByIdAsync(int roleId)
         {
-            return await _context.Database.SqlQueryRaw<string>("""
-                SELECT "Name" AS "Value"
-                FROM roles
-                WHERE "Id" = {0} AND "DeletedFlag" = 1
-            """, roleId).FirstOrDefaultAsync();
+            return await _context.Roles
+                .AsNoTracking()
+                .Where(r => r.Id == roleId && r.DeletedFlag == 1)
+                .Select(r => r.Name)
+                .FirstOrDefaultAsync();
         }
 
         public async Task<string?> GetDesignationNameByIdAsync(int designationId)
         {
-            return await _context.Database.SqlQueryRaw<string>("""
-                SELECT "Name" AS "Value"
-                FROM designations
-                WHERE "Id" = {0} AND "DeletedFlag" = 1
-            """, designationId).FirstOrDefaultAsync();
+            return await _context.Designations
+                .AsNoTracking()
+                .Where(d => d.Id == designationId && d.DeletedFlag == 1)
+                .Select(d => d.Name)
+                .FirstOrDefaultAsync();
         }
 
         public async Task<bool> EmailExistsAsync(string email, int? excludeUserId = null)
@@ -351,7 +348,7 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<string>> GetUserPermissionKeysForProfileAsync(int roleId, int designationId)
         {
-            if (roleId == 2)
+            if (roleId > 0 && await _context.Roles.AnyAsync(r => r.Id == roleId && r.DeletedFlag == 1 && (r.IsSuperAdmin || r.Name.ToLower() == "super admin")))
             {
                 return await _context.Database.SqlQueryRaw<string>("""
                     SELECT "PermissionKey" AS "Value"
@@ -388,21 +385,14 @@ namespace MyBackend.Infrastructure.Repositories
             try
             {
                 var roles = await _context.Roles
-                    .FromSqlRaw("""
-                        SELECT "Id", "Name", "Description", "ParentRoleId", "DeletedFlag", "CreatedAt", "UpdatedAt"
-                        FROM roles
-                        WHERE "DeletedFlag" = 1
-                    """)
                     .AsNoTracking()
+                    .Where(r => r.DeletedFlag == 1)
+                    .Select(r => new { r.Id, r.Name })
                     .ToDictionaryAsync(r => r.Id, r => r.Name);
 
                 var userRoles = await _context.Users
-                    .FromSqlRaw("""
-                        SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                        FROM users
-                        WHERE "DeletedFlag" = 1 AND "RoleId" IS NOT NULL
-                    """)
                     .AsNoTracking()
+                    .Where(u => u.DeletedFlag == 1 && u.RoleId != null)
                     .Select(u => new { u.Id, RoleId = u.RoleId!.Value })
                     .ToListAsync();
 

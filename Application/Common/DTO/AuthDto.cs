@@ -80,6 +80,8 @@ public sealed class AuthUserData
     public string? Address { get; set; }
 
     public bool IsFirstLogin { get; set; }
+
+    public bool IsSuperAdmin { get; set; }
 }
 
 public sealed class CurrentUserPermissionsResponse

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
+using IAppAuthorizationService = MyBackend.Application.Interfaces.IAuthorizationService;
 
 namespace MyBackend.Api.Controllers
 {
@@ -19,12 +20,18 @@ namespace MyBackend.Api.Controllers
         private readonly IInvoiceService _invoiceService;
         private readonly IUserService _userService;
         private readonly IAuthService _authService;
+        private readonly IAppAuthorizationService _authorizationService;
 
-        public InvoicesController(IInvoiceService invoiceService, IUserService userService, IAuthService authService)
+        public InvoicesController(
+            IInvoiceService invoiceService,
+            IUserService userService,
+            IAuthService authService,
+            IAppAuthorizationService authorizationService)
         {
             _invoiceService = invoiceService;
             _userService = userService;
             _authService = authService;
+            _authorizationService = authorizationService;
         }
 
         [HttpGet]
@@ -266,15 +273,18 @@ namespace MyBackend.Api.Controllers
                 return (0, false, "Unknown", false);
             }
 
-            var roleId = user.RoleId;
-            var isSuperAdmin = roleId == 2;
-            var isManager = roleId == 3;
+            var isSuperAdmin = await _authorizationService.IsSuperAdminAsync(userId);
+            var roleName = (user.RoleName ?? "").Trim().ToLowerInvariant();
+            var isManager = roleName.Contains("manager");
 
-            // Check permissions
-            var permResp = await _authService.GetUserPermissionsAsync(userId);
-            var userPerms = permResp?.Permissions ?? new List<string>();
-            var hasInvoiceView = isSuperAdmin || isManager || userPerms.Contains("invoices.view") || userPerms.Contains("invoices.manage");
-            var canManageGst = isSuperAdmin || userPerms.Contains("invoices.manage") || userPerms.Contains("permissions.manage");
+            // Check permissions dynamically
+            var hasInvoiceView = isSuperAdmin || isManager ||
+                await _authorizationService.HasPermissionAsync(userId, "invoices.view") ||
+                await _authorizationService.HasPermissionAsync(userId, "invoices.manage");
+
+            var canManageGst = isSuperAdmin ||
+                await _authorizationService.HasPermissionAsync(userId, "invoices.manage") ||
+                await _authorizationService.HasPermissionAsync(userId, "permissions.manage");
 
             return (userId, hasInvoiceView, user.Name, canManageGst);
         }

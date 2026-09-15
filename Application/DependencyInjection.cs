@@ -18,6 +18,7 @@ namespace MyBackend.Application
             services.AddScoped<IDesignationService, DesignationService>();
             services.AddScoped<IPermissionService, PermissionService>();
             services.AddScoped<IPermissionHierarchyService, PermissionHierarchyService>();
+            services.AddScoped<IAuthorizationService, AuthorizationService>();
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<IAuditLogService, AuditLogService>();
             services.AddScoped<IMenuService, MenuService>();

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
+using IAppAuthorizationService = MyBackend.Application.Interfaces.IAuthorizationService;
 
 namespace MyBackend.Api.Controllers
 {
@@ -18,11 +19,16 @@ namespace MyBackend.Api.Controllers
     {
         private readonly ISettingService _settingService;
         private readonly IUserService _userService;
+        private readonly IAppAuthorizationService _authorizationService;
 
-        public SettingsController(ISettingService settingService, IUserService userService)
+        public SettingsController(
+            ISettingService settingService,
+            IUserService userService,
+            IAppAuthorizationService authorizationService)
         {
             _settingService = settingService;
             _userService = userService;
+            _authorizationService = authorizationService;
         }
 
         [HttpGet]
@@ -189,10 +195,8 @@ namespace MyBackend.Api.Controllers
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out var userId)) return false;
 
-            var roleClaim = User.FindFirstValue(ClaimTypes.Role)?.ToLowerInvariant() ?? "";
-            if (roleClaim.Contains("super admin") || roleClaim == "admin") return true;
-
-            return await _userService.HasPermissionAsync(userId, "settings.maintenance");
+            return await _authorizationService.IsSuperAdminAsync(userId) ||
+                   await _authorizationService.HasPermissionAsync(userId, "settings.maintenance");
         }
 
         [HttpDelete("{id:int}")]

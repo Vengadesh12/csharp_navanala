@@ -58,8 +58,7 @@ namespace MyBackend.Application.Common.Validators
 
         public static void ValidateManagerDepartmentRequirement(int? roleId, string? roleName, int? departmentId)
         {
-            var isManager = roleId == 3 ||
-                (roleName != null && roleName.Contains("manager", StringComparison.OrdinalIgnoreCase));
+            var isManager = roleName != null && roleName.Contains("manager", StringComparison.OrdinalIgnoreCase);
 
             if (isManager && (!departmentId.HasValue || departmentId.Value <= 0))
             {

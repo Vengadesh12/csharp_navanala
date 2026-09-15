@@ -106,7 +106,7 @@ namespace MyBackend.Api.Attributes
             Roles = roles ?? [];
         }
 
-        public Task OnAuthorizationAsync(AuthorizationFilterContext context)
+        public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
             var user = context.HttpContext.User;
             if (user?.Identity?.IsAuthenticated != true)
@@ -116,17 +116,28 @@ namespace MyBackend.Api.Attributes
                     Success = false,
                     Message = "Authentication required. Please provide a valid token."
                 });
-                return Task.CompletedTask;
+                return;
             }
 
             var userRole = user.FindFirst(ClaimTypes.Role)?.Value ?? user.FindFirst("role")?.Value;
             var roleIdClaim = user.FindFirst("roleId")?.Value ?? user.FindFirst("RoleId")?.Value;
             int.TryParse(roleIdClaim, out var roleId);
 
-            // Super Admin (roleId 2 or Super Admin role name) always passes
-            if (roleId == 2 || string.Equals(userRole, "Super Admin", StringComparison.OrdinalIgnoreCase))
+            var authService = context.HttpContext.RequestServices.GetService<IAuthorizationService>();
+            bool isSuperAdmin = false;
+            if (authService != null && roleId > 0)
             {
-                return Task.CompletedTask;
+                isSuperAdmin = await authService.IsSuperAdminRoleAsync(roleId);
+            }
+            if (!isSuperAdmin && !string.IsNullOrWhiteSpace(userRole))
+            {
+                isSuperAdmin = userRole.Equals("Super Admin", StringComparison.OrdinalIgnoreCase);
+            }
+
+            // Super Admin dynamically verified always passes
+            if (isSuperAdmin)
+            {
+                return;
             }
 
             var hasRole = Roles.Any(r =>
@@ -145,8 +156,6 @@ namespace MyBackend.Api.Attributes
                     StatusCode = StatusCodes.Status403Forbidden
                 };
             }
-
-            return Task.CompletedTask;
         }
     }
 }

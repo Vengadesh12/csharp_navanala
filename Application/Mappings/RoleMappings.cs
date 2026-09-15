@@ -16,6 +16,8 @@ namespace MyBackend.Application.Mappings
                 Description = entity.Description ?? string.Empty,
                 ParentRoleId = entity.ParentRoleId,
                 ParentRoleName = parentRoleName ?? entity.ParentRole?.Name,
+                IsSuperAdmin = entity.IsSuperAdmin,
+                IsSystemRole = entity.IsSystemRole,
                 DeletedFlag = entity.DeletedFlag,
                 CreatedAt = entity.CreatedAt
             };

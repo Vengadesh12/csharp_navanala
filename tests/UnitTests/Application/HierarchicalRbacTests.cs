@@ -188,7 +188,7 @@ namespace UnitTests.Application
         public async Task SuperAdmin_Role_HasFullCapabilities_Automatically()
         {
             var (service, uow) = CreateTestSetup();
-            uow.RolesRepo.Items.Add(new RoleModel { Id = 2, Name = "Super Admin", DeletedFlag = 1 });
+            uow.RolesRepo.Items.Add(new RoleModel { Id = 2, Name = "Super Admin", DeletedFlag = 1, IsSuperAdmin = true });
             uow.PermsRepo.Items.Add(new PermissionModel { Id = 1, PermissionKey = "users.view", DeletedFlag = 1 });
             uow.PermsRepo.Items.Add(new PermissionModel { Id = 2, PermissionKey = "users.delete", DeletedFlag = 1 });
 
@@ -201,6 +201,41 @@ namespace UnitTests.Application
                 Assert.Equal("Allow", p.Access);
                 Assert.Equal("SuperAdmin", p.Source);
             });
+        }
+
+        [Fact]
+        public async Task ArbitraryId_Role_With_IsSuperAdmin_HasFullCapabilities_Automatically()
+        {
+            var (service, uow) = CreateTestSetup();
+            uow.RolesRepo.Items.Add(new RoleModel { Id = 99, Name = "Custom Super Role", DeletedFlag = 1, IsSuperAdmin = true });
+            uow.PermsRepo.Items.Add(new PermissionModel { Id = 1, PermissionKey = "users.view", DeletedFlag = 1 });
+            uow.PermsRepo.Items.Add(new PermissionModel { Id = 2, PermissionKey = "users.delete", DeletedFlag = 1 });
+
+            var effective = await service.GetEffectivePermissionsForRoleAsync(99);
+
+            Assert.Equal(2, effective.Count);
+            Assert.All(effective, p =>
+            {
+                Assert.True(p.IsAllowed);
+                Assert.Equal("Allow", p.Access);
+                Assert.Equal("SuperAdmin", p.Source);
+            });
+        }
+
+        [Fact]
+        public async Task DynamicAuthorizationService_ValidatesPermissionsWithoutHardcodedRoleIds()
+        {
+            var (hierService, uow) = CreateTestSetup();
+            uow.RolesRepo.Items.Add(new RoleModel { Id = 88, Name = "Dynamic Super Role", DeletedFlag = 1, IsSuperAdmin = true });
+            uow.UsersRepo.Items.Add(new UserModel { Id = 50, RoleId = 88, Name = "Dynamic Super User", Email = "dyn@test.com", DeletedFlag = 1 });
+            uow.PermsRepo.Items.Add(new PermissionModel { Id = 1, PermissionKey = "invoices.manage", DeletedFlag = 1 });
+
+            var authService = new AuthorizationService(uow, hierService, NullLogger<AuthorizationService>.Instance);
+
+            Assert.True(await authService.IsSuperAdminAsync(50));
+            Assert.True(await authService.IsSuperAdminRoleAsync(88));
+            Assert.True(await authService.HasPermissionAsync(50, "invoices.manage"));
+            Assert.True(await authService.HasPermissionAsync(50, "any.arbitrary.permission"));
         }
 
         [Fact]

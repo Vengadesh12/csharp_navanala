@@ -40,7 +40,7 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<MenuModel>> GetUserMenusAsync(int roleId, int designationId, int? userId = null)
         {
-            if (roleId == 2)
+            if (roleId > 0 && await _context.Roles.AnyAsync(r => r.Id == roleId && r.DeletedFlag == 1 && (r.IsSuperAdmin || r.Name.ToLower() == "super admin")))
             {
                 return await GetAllActiveMenusAsync();
             }
@@ -88,7 +88,7 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<string>> GetUserMenuNamesAsync(int roleId, int designationId, int? userId = null)
         {
-            if (roleId == 2)
+            if (roleId > 0 && await _context.Roles.AnyAsync(r => r.Id == roleId && r.DeletedFlag == 1 && (r.IsSuperAdmin || r.Name.ToLower() == "super admin")))
             {
                 return await GetAllActiveMenuNamesAsync();
             }
