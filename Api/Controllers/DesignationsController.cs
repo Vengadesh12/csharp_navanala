@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MyBackend.Api.Attributes;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
 
@@ -20,6 +21,7 @@ namespace MyBackend.Api.Controllers
         }
 
         [HttpGet]
+        [RequirePermission("designations.view", "designations.manage", "users.view", "users.create", "departments.view")]
         [ProducesResponseType(typeof(List<DesignationDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetDesignations()
@@ -29,6 +31,7 @@ namespace MyBackend.Api.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [RequirePermission("designations.view", "designations.manage")]
         [ProducesResponseType(typeof(DesignationDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetDesignation(int id)
@@ -42,6 +45,7 @@ namespace MyBackend.Api.Controllers
         }
 
         [HttpPost]
+        [RequirePermission("designations.create", "designations.manage")]
         [ProducesResponseType(typeof(ApiResponse<DesignationDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -76,6 +80,7 @@ namespace MyBackend.Api.Controllers
         }
 
         [HttpPut("{id:int}")]
+        [RequirePermission("designations.edit", "designations.manage")]
         [ProducesResponseType(typeof(ApiResponse<DesignationDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -112,6 +117,7 @@ namespace MyBackend.Api.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [RequirePermission("designations.delete", "designations.manage")]
         [ProducesResponseType(typeof(DeleteResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteDesignation(int id)
