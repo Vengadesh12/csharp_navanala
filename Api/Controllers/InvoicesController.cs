@@ -278,15 +278,17 @@ namespace MyBackend.Api.Controllers
             var isManager = roleName.Contains("manager");
 
             // Check permissions dynamically
-            var hasInvoiceView = isSuperAdmin || isManager ||
+            var hasInvoiceAccess = isSuperAdmin || isManager ||
                 await _authorizationService.HasPermissionAsync(userId, "invoices.view") ||
-                await _authorizationService.HasPermissionAsync(userId, "invoices.manage");
+                await _authorizationService.HasPermissionAsync(userId, "invoices.manage") ||
+                await _authorizationService.HasPermissionAsync(userId, "invoices.edit") ||
+                await _authorizationService.HasPermissionAsync(userId, "invoices.create");
 
             var canManageGst = isSuperAdmin ||
                 await _authorizationService.HasPermissionAsync(userId, "invoices.manage") ||
                 await _authorizationService.HasPermissionAsync(userId, "permissions.manage");
 
-            return (userId, hasInvoiceView, user.Name, canManageGst);
+            return (userId, hasInvoiceAccess, user.Name, canManageGst);
         }
     }
 }

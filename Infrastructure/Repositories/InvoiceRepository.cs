@@ -120,17 +120,22 @@ namespace MyBackend.Infrastructure.Repositories
                 .Where(i => i.DeletedFlag == 1)
                 .ToListAsync();
 
-            var totalInvoices = activeInvoices.Count;
-            var totalInvoicedAmount = activeInvoices.Sum(i => i.TotalAmount);
-            var totalPaidAmount = activeInvoices.Where(i => i.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase)).Sum(i => i.TotalAmount);
-            var totalPendingAmount = activeInvoices.Where(i => i.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase)).Sum(i => i.TotalAmount);
-            var totalOverdueAmount = activeInvoices.Where(i => i.Status.Equals("Overdue", StringComparison.OrdinalIgnoreCase)).Sum(i => i.TotalAmount);
-            var totalGstCollected = activeInvoices.Sum(i => i.TaxAmount);
+            // Cancelled invoices are voided/cancelled, so exclude them from invoiced amount, total active invoices, and GST
+            var validInvoices = activeInvoices
+                .Where(i => !i.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-            var paidCount = activeInvoices.Count(i => i.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase));
-            var pendingCount = activeInvoices.Count(i => i.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase));
-            var draftCount = activeInvoices.Count(i => i.Status.Equals("Draft", StringComparison.OrdinalIgnoreCase));
-            var overdueCount = activeInvoices.Count(i => i.Status.Equals("Overdue", StringComparison.OrdinalIgnoreCase));
+            var totalInvoices = validInvoices.Count;
+            var totalInvoicedAmount = validInvoices.Sum(i => i.TotalAmount);
+            var totalPaidAmount = validInvoices.Where(i => i.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase)).Sum(i => i.TotalAmount);
+            var totalPendingAmount = validInvoices.Where(i => i.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase)).Sum(i => i.TotalAmount);
+            var totalOverdueAmount = validInvoices.Where(i => i.Status.Equals("Overdue", StringComparison.OrdinalIgnoreCase)).Sum(i => i.TotalAmount);
+            var totalGstCollected = validInvoices.Sum(i => i.TaxAmount);
+
+            var paidCount = validInvoices.Count(i => i.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase));
+            var pendingCount = validInvoices.Count(i => i.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase));
+            var draftCount = validInvoices.Count(i => i.Status.Equals("Draft", StringComparison.OrdinalIgnoreCase));
+            var overdueCount = validInvoices.Count(i => i.Status.Equals("Overdue", StringComparison.OrdinalIgnoreCase));
 
             return (totalInvoices, totalInvoicedAmount, totalPaidAmount, totalPendingAmount, totalOverdueAmount, totalGstCollected, paidCount, pendingCount, draftCount, overdueCount);
         }
@@ -184,7 +189,21 @@ namespace MyBackend.Infrastructure.Repositories
             if (invoiceDate.HasValue) invoice.InvoiceDate = invoiceDate.Value;
             if (dueDate.HasValue) invoice.DueDate = dueDate.Value;
             invoice.DiscountAmount = Math.Max(0, discountAmount);
-            if (!string.IsNullOrWhiteSpace(status)) invoice.Status = status.Trim();
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var normalizedStatus = status.Trim();
+                invoice.Status = normalizedStatus;
+
+                // When user explicitly sets status to Pending, make sure DueDate isn't in the past
+                if (normalizedStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    var todayUtc = DateTime.UtcNow.Date;
+                    if (!invoice.DueDate.HasValue || invoice.DueDate.Value.Date < todayUtc)
+                    {
+                        invoice.DueDate = todayUtc.AddDays(15);
+                    }
+                }
+            }
             if (paymentMethod != null) invoice.PaymentMethod = paymentMethod.Trim();
             if (notes != null) invoice.Notes = notes.Trim();
             if (termsAndConditions != null) invoice.TermsAndConditions = termsAndConditions.Trim();
@@ -242,8 +261,29 @@ namespace MyBackend.Infrastructure.Repositories
             var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == id && i.DeletedFlag == 1);
             if (invoice == null) return false;
 
-            invoice.Status = status.Trim();
+            var normalizedStatus = status.Trim();
+            invoice.Status = normalizedStatus;
             invoice.UpdatedAt = DateTime.UtcNow;
+
+            // When user explicitly sets status to Pending, make sure DueDate is in the future
+            // so UpdateOverdueInvoicesAsync does not immediately revert it to Overdue on the next read!
+            if (normalizedStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                var todayUtc = DateTime.UtcNow.Date;
+                if (!invoice.DueDate.HasValue || invoice.DueDate.Value.Date < todayUtc)
+                {
+                    invoice.DueDate = todayUtc.AddDays(15);
+                }
+            }
+            else if (normalizedStatus.Equals("Overdue", StringComparison.OrdinalIgnoreCase))
+            {
+                var todayUtc = DateTime.UtcNow.Date;
+                if (!invoice.DueDate.HasValue || invoice.DueDate.Value.Date >= todayUtc)
+                {
+                    invoice.DueDate = todayUtc.AddDays(-1);
+                }
+            }
+
             await _context.SaveChangesAsync();
             return true;
         }
