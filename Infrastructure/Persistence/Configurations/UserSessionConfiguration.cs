@@ -37,10 +37,12 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
 
             builder.Property(e => e.LoginTime)
                 .HasColumnName("login_time")
+                .HasColumnType("timestamp with time zone")
                 .IsRequired();
 
             builder.Property(e => e.LogoutTime)
-                .HasColumnName("logout_time");
+                .HasColumnName("logout_time")
+                .HasColumnType("timestamp with time zone");
 
             builder.Property(e => e.SessionToken)
                 .HasColumnName("session_token")
@@ -55,10 +57,12 @@ namespace MyBackend.Infrastructure.Persistence.Configurations
                 .HasDefaultValue(1);
 
             builder.Property(e => e.CreatedAt)
-                .HasColumnName("created_at");
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone");
 
             builder.Property(e => e.UpdatedAt)
-                .HasColumnName("updated_at");
+                .HasColumnName("updated_at")
+                .HasColumnType("timestamp with time zone");
 
             builder.HasIndex(e => e.UserId);
         }
