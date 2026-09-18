@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
@@ -12,33 +13,58 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<RoleModel>> GetActiveRolesAsync()
         {
+            var sql = new StringBuilder("""
+                SELECT "Id", "Name", "Description", "DeletedFlag", "ParentRoleId", "IsSuperAdmin", "IsSystemRole", "CreatedAt", "UpdatedAt"
+                FROM roles
+                WHERE "DeletedFlag" = 1
+                ORDER BY "Id"
+            """);
+
             return await _context.Roles
+                .FromSqlRaw(sql.ToString())
                 .AsNoTracking()
-                .Where(r => r.DeletedFlag == 1)
-                .OrderBy(r => r.Id)
                 .ToListAsync();
         }
 
         public async Task<RoleModel?> GetActiveRoleByIdAsync(int id)
         {
+            var sql = new StringBuilder("""
+                SELECT "Id", "Name", "Description", "DeletedFlag", "ParentRoleId", "IsSuperAdmin", "IsSystemRole", "CreatedAt", "UpdatedAt"
+                FROM roles
+                WHERE "Id" = {0} AND "DeletedFlag" = 1
+                LIMIT 1
+            """);
+
             return await _context.Roles
+                .FromSqlRaw(sql.ToString(), id)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.Id == id && r.DeletedFlag == 1);
+                .FirstOrDefaultAsync();
         }
 
         public async Task<bool> SetDeletedFlagAsync(int id, int deletedFlag)
         {
-            var rows = await _context.Database.ExecuteSqlInterpolatedAsync($"""
-                UPDATE roles SET "DeletedFlag" = {deletedFlag} WHERE "Id" = {id}
-                """);
+            var sql = new StringBuilder("""
+                UPDATE roles SET "DeletedFlag" = {0} WHERE "Id" = {1}
+            """);
+
+            var rows = await _context.Database.ExecuteSqlRawAsync(sql.ToString(), deletedFlag, id);
             return rows > 0;
         }
 
         public async Task<Dictionary<int, string>> GetRoleNameDictionaryAsync()
         {
-            return await _context.Roles
+            var sql = new StringBuilder("""
+                SELECT "Id", "Name", "Description", "DeletedFlag", "ParentRoleId", "IsSuperAdmin", "IsSystemRole", "CreatedAt", "UpdatedAt"
+                FROM roles
+                WHERE "DeletedFlag" = 1
+            """);
+
+            var roles = await _context.Roles
+                .FromSqlRaw(sql.ToString())
                 .AsNoTracking()
-                .ToDictionaryAsync(r => r.Id, r => r.Name);
+                .ToListAsync();
+
+            return roles.ToDictionary(r => r.Id, r => r.Name);
         }
     }
 }

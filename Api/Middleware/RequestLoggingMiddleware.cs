@@ -99,19 +99,6 @@ namespace MyBackend.Api.Middleware
                         userId
                     );
                 }
-                else
-                {
-                    _logger.LogInformation(
-                        "HTTP {Method} {Path}{Query} returned {StatusCode} in {ElapsedMs} ms [CorrelationId: {CorrelationId}, UserId: {UserId}]",
-                        request.Method,
-                        request.Path.Value,
-                        safeQuery,
-                        statusCode,
-                        elapsedMs,
-                        correlationId,
-                        userId
-                    );
-                }
             }
         }
 

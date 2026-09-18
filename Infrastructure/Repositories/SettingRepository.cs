@@ -53,72 +53,88 @@ namespace MyBackend.Infrastructure.Repositories
                 .AsNoTracking()
                 .ToListAsync();
 
+            var categoriesSql = new StringBuilder("""
+                SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
+                FROM setting_categories
+                WHERE deleted_flag = 1 AND LOWER(name) IN ('general', 'security')
+                ORDER BY id ASC
+            """);
+
             var categoriesList = await _context.SettingCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
-                    FROM setting_categories
-                    WHERE deleted_flag = 1 AND LOWER(name) IN ('general', 'security')
-                    ORDER BY id ASC
-                """)
+                .FromSqlRaw(categoriesSql.ToString())
                 .AsNoTracking()
                 .ToListAsync();
 
+            var settingCountsSql = new StringBuilder("""
+                SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
+                FROM system_settings
+                WHERE LOWER(category) IN ('general', 'security')
+            """);
+
             var settingCounts = (await _context.SystemSettings
-                .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
-                    FROM system_settings
-                    WHERE LOWER(category) IN ('general', 'security')
-                """)
+                .FromSqlRaw(settingCountsSql.ToString())
                 .AsNoTracking()
                 .ToListAsync())
                 .GroupBy(s => s.Category)
                 .ToDictionary(g => g.Key.ToLower(), g => g.Count());
 
-            var totalSettings = await _context.Database.SqlQueryRaw<int>("""
+            var totalSettingsSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM system_settings
                 WHERE LOWER(category) IN ('general', 'security')
-            """).SingleOrDefaultAsync();
+            """);
 
-            var twoFactorVal = await _context.Database.SqlQueryRaw<string>("""
+            var totalSettings = await _context.Database.SqlQueryRaw<int>(totalSettingsSql.ToString()).SingleOrDefaultAsync();
+
+            var twoFactorSql = new StringBuilder("""
                 SELECT setting_value AS "Value"
                 FROM system_settings
                 WHERE setting_key = 'two_factor_auth'
-            """).FirstOrDefaultAsync();
+            """);
 
-            var alertChannels = await _context.Database.SqlQueryRaw<int>("""
+            var twoFactorVal = await _context.Database.SqlQueryRaw<string>(twoFactorSql.ToString()).FirstOrDefaultAsync();
+
+            var alertChannelsSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM setting_categories
                 WHERE deleted_flag = 1 AND LOWER(name) = 'security'
-            """).SingleOrDefaultAsync();
+            """);
 
-            var sessionTimeoutVal = await _context.Database.SqlQueryRaw<string>("""
+            var alertChannels = await _context.Database.SqlQueryRaw<int>(alertChannelsSql.ToString()).SingleOrDefaultAsync();
+
+            var sessionTimeoutSql = new StringBuilder("""
                 SELECT setting_value AS "Value"
                 FROM system_settings
                 WHERE setting_key = 'session_timeout'
-            """).FirstOrDefaultAsync();
+            """);
+
+            var sessionTimeoutVal = await _context.Database.SqlQueryRaw<string>(sessionTimeoutSql.ToString()).FirstOrDefaultAsync();
 
             return (rawSettings, categoriesList, settingCounts, totalSettings, twoFactorVal, alertChannels, sessionTimeoutVal);
         }
 
         public async Task<(List<SettingCategoryModel> Categories, Dictionary<string, int> SettingCounts)> GetCategoriesWithCountsAsync()
         {
+            var categoriesSql = new StringBuilder("""
+                SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
+                FROM setting_categories
+                WHERE deleted_flag = 1 AND LOWER(name) IN ('general', 'security')
+                ORDER BY id ASC
+            """);
+
             var categories = await _context.SettingCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
-                    FROM setting_categories
-                    WHERE deleted_flag = 1 AND LOWER(name) IN ('general', 'security')
-                    ORDER BY id ASC
-                """)
+                .FromSqlRaw(categoriesSql.ToString())
                 .AsNoTracking()
                 .ToListAsync();
 
+            var settingCountsSql = new StringBuilder("""
+                SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
+                FROM system_settings
+                WHERE LOWER(category) IN ('general', 'security')
+            """);
+
             var settingCounts = (await _context.SystemSettings
-                .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
-                    FROM system_settings
-                    WHERE LOWER(category) IN ('general', 'security')
-                """)
+                .FromSqlRaw(settingCountsSql.ToString())
                 .AsNoTracking()
                 .ToListAsync())
                 .GroupBy(s => s.Category)
@@ -132,20 +148,24 @@ namespace MyBackend.Infrastructure.Repositories
             var trimmed = name.Trim();
             if (excludeId.HasValue)
             {
-                var count = await _context.Database.SqlQueryRaw<int>("""
+                var sql = new StringBuilder("""
                     SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                     FROM setting_categories
                     WHERE id <> {0} AND deleted_flag = 1 AND LOWER(name) = LOWER({1})
-                """, excludeId.Value, trimmed).SingleOrDefaultAsync();
+                """);
+
+                var count = await _context.Database.SqlQueryRaw<int>(sql.ToString(), excludeId.Value, trimmed).SingleOrDefaultAsync();
                 return count > 0;
             }
             else
             {
-                var count = await _context.Database.SqlQueryRaw<int>("""
+                var sql = new StringBuilder("""
                     SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                     FROM setting_categories
                     WHERE deleted_flag = 1 AND LOWER(name) = LOWER({0})
-                """, trimmed).SingleOrDefaultAsync();
+                """);
+
+                var count = await _context.Database.SqlQueryRaw<int>(sql.ToString(), trimmed).SingleOrDefaultAsync();
                 return count > 0;
             }
         }
@@ -153,45 +173,58 @@ namespace MyBackend.Infrastructure.Repositories
         public Task<int> CreateCategoryAsync(string name, string description, string icon, string createdBy)
         {
             var now = DateTime.UtcNow;
-            var id = _context.Database.SqlQueryRaw<int>("""
+            var insertSql = new StringBuilder("""
                 INSERT INTO setting_categories (name, description, icon, created_at, updated_at, created_by, deleted_flag)
                 VALUES ({0}, {1}, {2}, {3}, {3}, {4}, 1)
                 RETURNING id AS "Value"
-            """, name, description, icon, now, createdBy)
+            """);
+
+            var id = _context.Database.SqlQueryRaw<int>(
+                insertSql.ToString(),
+                name, description, icon, now, createdBy)
             .AsEnumerable()
             .Single();
+
             return Task.FromResult(id);
         }
 
         public async Task<SettingCategoryModel?> GetCategoryByIdAsync(int id)
         {
+            var sql = new StringBuilder("""
+                SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
+                FROM setting_categories
+                WHERE id = {0} AND deleted_flag = 1
+            """);
+
             return await _context.SettingCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, icon, created_at, updated_at, created_by, deleted_flag
-                    FROM setting_categories
-                    WHERE id = {0} AND deleted_flag = 1
-                """, id)
+                .FromSqlRaw(sql.ToString(), id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
         }
 
         public async Task<int> GetCategorySettingCountAsync(string categoryName)
         {
-            return await _context.Database.SqlQueryRaw<int>("""
+            var sql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM system_settings
                 WHERE LOWER(category) = LOWER({0})
-            """, categoryName).SingleOrDefaultAsync();
+            """);
+
+            return await _context.Database.SqlQueryRaw<int>(sql.ToString(), categoryName).SingleOrDefaultAsync();
         }
 
         public async Task<bool> UpdateCategoryAsync(int id, string name, string description, string icon)
         {
             var now = DateTime.UtcNow;
-            var rows = await _context.Database.ExecuteSqlRawAsync("""
+            var updateSql = new StringBuilder("""
                 UPDATE setting_categories
                 SET name = {0}, description = {1}, icon = {2}, updated_at = {3}
                 WHERE id = {4} AND deleted_flag = 1
-            """, name, description, icon, now, id);
+            """);
+
+            var rows = await _context.Database.ExecuteSqlRawAsync(
+                updateSql.ToString(),
+                name, description, icon, now, id);
 
             return rows > 0;
         }
@@ -199,11 +232,13 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<bool> SoftDeleteCategoryAsync(int id)
         {
             var now = DateTime.UtcNow;
-            var rows = await _context.Database.ExecuteSqlRawAsync("""
+            var deleteSql = new StringBuilder("""
                 UPDATE setting_categories
                 SET deleted_flag = 0, updated_at = {0}
                 WHERE id = {1} AND deleted_flag = 1
-            """, now, id);
+            """);
+
+            var rows = await _context.Database.ExecuteSqlRawAsync(deleteSql.ToString(), now, id);
 
             return rows > 0;
         }
@@ -212,20 +247,28 @@ namespace MyBackend.Infrastructure.Repositories
         {
             var now = DateTime.UtcNow;
 
+            var updateSql = new StringBuilder("""
+                UPDATE system_settings
+                SET setting_value = {0}, updated_at = {1}, updated_by = {2}
+                WHERE setting_key = {3}
+            """);
+
+            var insertSql = new StringBuilder("""
+                INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by)
+                VALUES ({0}, {1}, 'General', {2}, 'string', {3}, {3}, {4})
+            """);
+
             foreach (var kvp in settings)
             {
-                var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
-                    UPDATE system_settings
-                    SET setting_value = {0}, updated_at = {1}, updated_by = {2}
-                    WHERE setting_key = {3}
-                """, kvp.Value, now, updatedBy, kvp.Key);
+                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
+                    updateSql.ToString(),
+                    kvp.Value, now, updatedBy, kvp.Key);
 
                 if (rowsAffected == 0)
                 {
-                    await _context.Database.ExecuteSqlRawAsync("""
-                        INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by)
-                        VALUES ({0}, {1}, 'General', {2}, 'string', {3}, {3}, {4})
-                    """, kvp.Key, kvp.Value, kvp.Key, now, updatedBy);
+                    await _context.Database.ExecuteSqlRawAsync(
+                        insertSql.ToString(),
+                        kvp.Key, kvp.Value, kvp.Key, now, updatedBy);
                 }
             }
 
@@ -234,11 +277,13 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<bool> SettingExistsByKeyAsync(string key)
         {
-            var count = await _context.Database.SqlQueryRaw<int>("""
+            var sql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM system_settings
                 WHERE setting_key = {0}
-            """, key).SingleOrDefaultAsync();
+            """);
+
+            var count = await _context.Database.SqlQueryRaw<int>(sql.ToString(), key).SingleOrDefaultAsync();
 
             return count > 0;
         }
@@ -246,24 +291,31 @@ namespace MyBackend.Infrastructure.Repositories
         public Task<int> CreateSettingAsync(string key, string value, string category, string description, string dataType, string createdBy)
         {
             var now = DateTime.UtcNow;
-            var id = _context.Database.SqlQueryRaw<int>("""
+            var insertSql = new StringBuilder("""
                 INSERT INTO system_settings (setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by)
                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {5}, {6})
                 RETURNING id AS "Value"
-            """, key, value, category, description, dataType, now, createdBy)
+            """);
+
+            var id = _context.Database.SqlQueryRaw<int>(
+                insertSql.ToString(),
+                key, value, category, description, dataType, now, createdBy)
             .AsEnumerable()
             .Single();
+
             return Task.FromResult(id);
         }
 
         public async Task<SystemSettingModel?> GetSettingByIdAsync(int id)
         {
+            var sql = new StringBuilder("""
+                SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
+                FROM system_settings
+                WHERE id = {0}
+            """);
+
             return await _context.SystemSettings
-                .FromSqlRaw("""
-                    SELECT id, setting_key, setting_value, category, description, data_type, created_at, updated_at, updated_by
-                    FROM system_settings
-                    WHERE id = {0}
-                """, id)
+                .FromSqlRaw(sql.ToString(), id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
         }
@@ -271,32 +323,40 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<bool> UpdateSettingAsync(int id, string key, string value, string category, string description, string dataType, string updatedBy)
         {
             var now = DateTime.UtcNow;
-            var rows = await _context.Database.ExecuteSqlRawAsync("""
+            var updateSql = new StringBuilder("""
                 UPDATE system_settings
                 SET setting_key = {0}, setting_value = {1}, category = {2}, description = {3}, data_type = {4}, updated_at = {5}, updated_by = {6}
                 WHERE id = {7}
-            """, key, value, category, description, dataType, now, updatedBy, id);
+            """);
+
+            var rows = await _context.Database.ExecuteSqlRawAsync(
+                updateSql.ToString(),
+                key, value, category, description, dataType, now, updatedBy, id);
 
             return rows > 0;
         }
 
         public async Task<bool> DeleteSettingAsync(int id)
         {
-            var rows = await _context.Database.ExecuteSqlRawAsync("""
+            var deleteSql = new StringBuilder("""
                 DELETE FROM system_settings
                 WHERE id = {0}
-            """, id);
+            """);
+
+            var rows = await _context.Database.ExecuteSqlRawAsync(deleteSql.ToString(), id);
 
             return rows > 0;
         }
 
         public async Task<string?> GetSettingValueAsync(string key)
         {
-            return await _context.Database.SqlQueryRaw<string>("""
+            var sql = new StringBuilder("""
                 SELECT setting_value AS "Value"
                 FROM system_settings
                 WHERE setting_key = {0}
-            """, key).FirstOrDefaultAsync();
+            """);
+
+            return await _context.Database.SqlQueryRaw<string>(sql.ToString(), key).FirstOrDefaultAsync();
         }
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Domain.Models;
@@ -18,36 +19,43 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<ProjectCategoryModel>> GetAllCategoriesAsync()
         {
+            var sql = new StringBuilder("""
+                SELECT id, name, description, deleted_flag, created_at, updated_at
+                FROM project_categories
+                WHERE deleted_flag = 1
+                ORDER BY name ASC
+            """);
+
             return await _context.ProjectCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, deleted_flag, created_at, updated_at
-                    FROM project_categories
-                    WHERE deleted_flag = 1
-                    ORDER BY name ASC
-                """)
+                .FromSqlRaw(sql.ToString())
                 .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<ProjectCategoryModel?> GetCategoryByIdAsync(int id)
         {
+            var sql = new StringBuilder("""
+                SELECT id, name, description, deleted_flag, created_at, updated_at
+                FROM project_categories
+                WHERE id = {0} AND deleted_flag = 1
+                LIMIT 1
+            """);
+
             return await _context.ProjectCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, deleted_flag, created_at, updated_at
-                    FROM project_categories
-                    WHERE id = {0} AND deleted_flag = 1
-                """, id)
+                .FromSqlRaw(sql.ToString(), id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
         }
 
         public async Task<bool> CategoryExistsByNameAsync(string name)
         {
-            var count = await _context.Database.SqlQueryRaw<int>("""
+            var sql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM project_categories
                 WHERE deleted_flag = 1 AND LOWER(name) = LOWER({0})
-            """, name.Trim()).SingleOrDefaultAsync();
+            """);
+
+            var count = await _context.Database.SqlQueryRaw<int>(sql.ToString(), name.Trim()).SingleOrDefaultAsync();
 
             return count > 0;
         }

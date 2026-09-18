@@ -1,3 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Configuration;
 using MyBackend.Domain.Models;
@@ -16,8 +21,14 @@ namespace MyBackend.Infrastructure.Repositories
             var now = DateTime.UtcNow;
 
             // Clean up: terminate any prior open active sessions for this user
+            var cleanupSql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE deleted_flag = 1 AND is_active = true AND logout_time IS NULL AND user_id = {0}
+            """);
+
             var sessionsToDeactivate = await _context.UserSessions
-                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && s.UserId == userId)
+                .FromSqlRaw(cleanupSql.ToString(), userId)
                 .ToListAsync();
 
             foreach (var oldSession in sessionsToDeactivate)
@@ -55,28 +66,40 @@ namespace MyBackend.Infrastructure.Repositories
             List<UserSessionModel> activeSessions = new();
             if (!string.IsNullOrWhiteSpace(sessionToken))
             {
+                var tokenSql = new StringBuilder("""
+                    SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                    FROM user_sessions
+                    WHERE deleted_flag = 1 AND session_token = {0} AND (logout_time IS NULL OR is_active = true)
+                """);
+
                 activeSessions = await _context.UserSessions
-                    .Where(s => s.DeletedFlag == 1 && s.SessionToken == sessionToken && (s.LogoutTime == null || s.IsActive))
+                    .FromSqlRaw(tokenSql.ToString(), sessionToken)
                     .ToListAsync();
             }
 
             // 2. If no session was found by token, look up active sessions by userId or email
             if (activeSessions.Count == 0)
             {
-                var query = _context.UserSessions
-                    .Where(s => s.DeletedFlag == 1 && (s.LogoutTime == null || s.IsActive));
+                var sessionSql = new StringBuilder("""
+                    SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                    FROM user_sessions
+                    WHERE deleted_flag = 1 AND (logout_time IS NULL OR is_active = true)
+                """);
 
                 if (userId > 0)
                 {
-                    query = query.Where(s => s.UserId == userId);
+                    sessionSql.Append(" AND user_id = {0}");
+                    activeSessions = await _context.UserSessions
+                        .FromSqlRaw(sessionSql.ToString(), userId)
+                        .ToListAsync();
                 }
                 else if (!string.IsNullOrWhiteSpace(email))
                 {
-                    var normalizedEmail = email.Trim().ToLower();
-                    query = query.Where(s => s.Email.ToLower() == normalizedEmail);
+                    sessionSql.Append(" AND LOWER(email) = LOWER({0})");
+                    activeSessions = await _context.UserSessions
+                        .FromSqlRaw(sessionSql.ToString(), email.Trim())
+                        .ToListAsync();
                 }
-
-                activeSessions = await query.ToListAsync();
             }
 
             if (activeSessions.Count > 0)
@@ -98,11 +121,27 @@ namespace MyBackend.Infrastructure.Repositories
             UserModel? user = null;
             if (userId > 0)
             {
-                user = await _context.Users.FindAsync(userId);
+                var userSql = new StringBuilder("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """);
+
+                user = await _context.Users
+                    .FromSqlRaw(userSql.ToString(), userId)
+                    .FirstOrDefaultAsync();
             }
             if (user == null && !string.IsNullOrWhiteSpace(email))
             {
-                user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
+                var userEmailSql = new StringBuilder("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE LOWER("Email") = LOWER({0}) AND "DeletedFlag" = 1
+                """);
+
+                user = await _context.Users
+                    .FromSqlRaw(userEmailSql.ToString(), email.Trim())
+                    .FirstOrDefaultAsync();
             }
 
             if (user is not null)
@@ -129,24 +168,35 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<UserSessionModel>> GetUserSessionsAsync(int userId, int limit = 50)
         {
+            var sql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE user_id = {0} AND deleted_flag = 1
+                ORDER BY login_time DESC
+                LIMIT {1}
+            """);
+
             return await _context.UserSessions
-                .Where(s => s.UserId == userId && s.DeletedFlag == 1)
-                .OrderByDescending(s => s.LoginTime)
-                .Take(limit)
+                .FromSqlRaw(sql.ToString(), userId, limit)
                 .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<List<UserSessionModel>> GetAllRecentSessionsAsync(int limit = 100)
         {
+            var sql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE deleted_flag = 1
+                ORDER BY login_time DESC
+                LIMIT {0}
+            """);
+
             return await _context.UserSessions
-                .Where(s => s.DeletedFlag == 1)
-                .OrderByDescending(s => s.LoginTime)
-                .Take(limit)
+                .FromSqlRaw(sql.ToString(), limit)
                 .AsNoTracking()
                 .ToListAsync();
         }
-
 
         public async Task<List<UserSessionModel>> GetActiveSessionsAsync()
         {
@@ -156,8 +206,14 @@ namespace MyBackend.Infrastructure.Repositories
             // Auto-deactivate any orphaned active sessions that exceeded the 5-hour limit
             try
             {
+                var expiredSql = new StringBuilder("""
+                    SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                    FROM user_sessions
+                    WHERE deleted_flag = 1 AND is_active = true AND logout_time IS NULL AND login_time < {0}
+                """);
+
                 var expiredSessions = await _context.UserSessions
-                    .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && s.LoginTime < cutoff)
+                    .FromSqlRaw(expiredSql.ToString(), cutoff)
                     .ToListAsync();
 
                 if (expiredSessions.Count > 0)
@@ -176,23 +232,38 @@ namespace MyBackend.Infrastructure.Repositories
                 // Non-blocking in case of concurrent updates
             }
 
+            var activeSql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE deleted_flag = 1 AND is_active = true AND logout_time IS NULL AND login_time >= {0}
+                ORDER BY login_time DESC
+            """);
+
             return await _context.UserSessions
-                .Where(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && s.LoginTime >= cutoff)
-                .OrderByDescending(s => s.LoginTime)
+                .FromSqlRaw(activeSql.ToString(), cutoff)
                 .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<(List<UserSessionModel> Items, int TotalCount)> GetPagedSessionsAsync(string? search, string? status, int page, int pageSize)
         {
-            var query = _context.UserSessions.Where(s => s.DeletedFlag == 1);
+            var countSql = new StringBuilder("SELECT CAST(COUNT(*) AS INTEGER) AS \"Value\" FROM user_sessions WHERE deleted_flag = 1");
+            var dataSql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE deleted_flag = 1
+            """);
+
+            var parameters = new List<object>();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var term = search.Trim().ToLower();
-                query = query.Where(s => s.UserName.ToLower().Contains(term)
-                                      || s.Email.ToLower().Contains(term)
-                                      || s.IpAddress.ToLower().Contains(term));
+                var searchParam = $"%{search.Trim().ToLower()}%";
+                var idx = parameters.Count;
+                var searchClause = $" AND (LOWER(user_name) LIKE {{{idx}}} OR LOWER(email) LIKE {{{idx}}} OR LOWER(ip_address) LIKE {{{idx}}})";
+                countSql.Append(searchClause);
+                dataSql.Append(searchClause);
+                parameters.Add(searchParam);
             }
 
             if (!string.IsNullOrWhiteSpace(status))
@@ -200,21 +271,32 @@ namespace MyBackend.Infrastructure.Repositories
                 var statusLower = status.Trim().ToLower();
                 if (statusLower == "active")
                 {
-                    query = query.Where(s => s.IsActive && s.LogoutTime == null);
+                    var statusClause = " AND is_active = true AND logout_time IS NULL";
+                    countSql.Append(statusClause);
+                    dataSql.Append(statusClause);
                 }
                 else if (statusLower == "completed" || statusLower == "inactive" || statusLower == "loggedout")
                 {
-                    query = query.Where(s => !s.IsActive || s.LogoutTime != null);
+                    var statusClause = " AND (is_active = false OR logout_time IS NOT NULL)";
+                    countSql.Append(statusClause);
+                    dataSql.Append(statusClause);
                 }
             }
 
-            var totalCount = await query.CountAsync();
-            var skip = Math.Max(0, (page - 1) * pageSize);
+            var totalCount = await _context.Database
+                .SqlQueryRaw<int>(countSql.ToString(), parameters.ToArray())
+                .SingleOrDefaultAsync();
 
-            var items = await query
-                .OrderByDescending(s => s.LoginTime)
-                .Skip(skip)
-                .Take(pageSize)
+            var skip = Math.Max(0, (page - 1) * pageSize);
+            var limitIdx = parameters.Count;
+            var offsetIdx = parameters.Count + 1;
+
+            dataSql.Append($" ORDER BY login_time DESC LIMIT {{{limitIdx}}} OFFSET {{{offsetIdx}}}");
+            parameters.Add(pageSize);
+            parameters.Add(skip);
+
+            var items = await _context.UserSessions
+                .FromSqlRaw(dataSql.ToString(), parameters.ToArray())
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -223,7 +305,16 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<bool> TerminateSessionAsync(int sessionId)
         {
-            var session = await _context.UserSessions.FirstOrDefaultAsync(s => s.Id == sessionId && s.DeletedFlag == 1);
+            var sql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE id = {0} AND deleted_flag = 1
+            """);
+
+            var session = await _context.UserSessions
+                .FromSqlRaw(sql.ToString(), sessionId)
+                .FirstOrDefaultAsync();
+
             if (session == null) return false;
 
             session.IsActive = false;
@@ -234,8 +325,14 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<int> TerminateAllUserSessionsAsync(int userId)
         {
+            var sql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE user_id = {0} AND deleted_flag = 1 AND (is_active = true OR logout_time IS NULL)
+            """);
+
             var activeSessions = await _context.UserSessions
-                .Where(s => s.UserId == userId && s.DeletedFlag == 1 && (s.IsActive || s.LogoutTime == null))
+                .FromSqlRaw(sql.ToString(), userId)
                 .ToListAsync();
 
             if (activeSessions.Count == 0) return 0;
@@ -257,76 +354,111 @@ namespace MyBackend.Infrastructure.Repositories
             var maxMinutes = Config.SessionTimeoutMinutes > 0 ? Config.SessionTimeoutMinutes : 300;
             var cutoff = DateTime.UtcNow.AddMinutes(-maxMinutes);
 
-            var activeCount = await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null && s.LoginTime >= cutoff);
+            var activeSql = new StringBuilder("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM user_sessions
+                WHERE deleted_flag = 1 AND is_active = true AND logout_time IS NULL AND login_time >= {0}
+            """);
+            var activeCount = await _context.Database.SqlQueryRaw<int>(activeSql.ToString(), cutoff).SingleOrDefaultAsync();
 
-            var todayLogins = await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1 && s.LoginTime >= todayUtc);
+            var todayLoginsSql = new StringBuilder("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM user_sessions
+                WHERE deleted_flag = 1 AND login_time >= {0}
+            """);
+            var todayLogins = await _context.Database.SqlQueryRaw<int>(todayLoginsSql.ToString(), todayUtc).SingleOrDefaultAsync();
 
-            var todayLogouts = await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1 && s.LogoutTime != null && s.LogoutTime >= todayUtc);
+            var todayLogoutsSql = new StringBuilder("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM user_sessions
+                WHERE deleted_flag = 1 AND logout_time IS NOT NULL AND logout_time >= {0}
+            """);
+            var todayLogouts = await _context.Database.SqlQueryRaw<int>(todayLogoutsSql.ToString(), todayUtc).SingleOrDefaultAsync();
 
-            var totalSessions = await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1);
+            var totalSessionsSql = new StringBuilder("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM user_sessions
+                WHERE deleted_flag = 1
+            """);
+            var totalSessions = await _context.Database.SqlQueryRaw<int>(totalSessionsSql.ToString()).SingleOrDefaultAsync();
 
             return (activeCount, todayLogins, todayLogouts, totalSessions);
         }
 
         public async Task<UserSessionModel?> GetSessionByIdAsync(int sessionId)
         {
+            var sql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE id = {0} AND deleted_flag = 1
+            """);
+
             return await _context.UserSessions
-                .FromSqlRaw("""
-                    SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
-                    FROM user_sessions
-                    WHERE id = {0} AND deleted_flag = 1
-                """, sessionId)
+                .FromSqlRaw(sql.ToString(), sessionId)
                 .FirstOrDefaultAsync();
         }
 
         public async Task<List<UserSessionModel>> GetActiveSessionsForUserAsync(int userId, int? excludeSessionId = null)
         {
+            var sql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE user_id = {0} AND (is_active = true OR logout_time IS NULL)
+            """);
+
             if (excludeSessionId.HasValue)
             {
+                sql.Append(" AND id != {1}");
                 return await _context.UserSessions
-                    .FromSqlRaw("""
-                        SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
-                        FROM user_sessions
-                        WHERE user_id = {0} AND id != {1} AND (is_active = true OR logout_time IS NULL)
-                    """, userId, excludeSessionId.Value)
+                    .FromSqlRaw(sql.ToString(), userId, excludeSessionId.Value)
                     .ToListAsync();
             }
 
             return await _context.UserSessions
-                .FromSqlRaw("""
-                    SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
-                    FROM user_sessions
-                    WHERE user_id = {0} AND (is_active = true OR logout_time IS NULL)
-                """, userId)
+                .FromSqlRaw(sql.ToString(), userId)
                 .ToListAsync();
         }
 
         public async Task<List<UserSessionModel>> GetActiveSessionsForEmailAsync(string email)
         {
+            var sql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE LOWER(email) = LOWER({0}) AND (is_active = true OR logout_time IS NULL)
+            """);
+
             return await _context.UserSessions
-                .FromSqlRaw("""
-                    SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
-                    FROM user_sessions
-                    WHERE LOWER(email) = LOWER({0}) AND (is_active = true OR logout_time IS NULL)
-                """, email)
+                .FromSqlRaw(sql.ToString(), email)
                 .ToListAsync();
         }
 
         public async Task<UserSessionModel?> FindActiveSessionByTokenAsync(int userId, string token)
         {
+            var sql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE user_id = {0} AND session_token = {1} AND deleted_flag = 1
+                ORDER BY login_time DESC
+                LIMIT 1
+            """);
+
             return await _context.UserSessions
-                .Where(s => s.UserId == userId && s.SessionToken == token && s.DeletedFlag == 1)
-                .OrderByDescending(s => s.LoginTime)
+                .FromSqlRaw(sql.ToString(), userId, token)
                 .FirstOrDefaultAsync();
         }
 
         public async Task TouchSessionAsync(int sessionId, string clientIp)
         {
-            var session = await _context.UserSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
+            var sql = new StringBuilder("""
+                SELECT id, user_id, email, user_name, ip_address, user_agent, login_time, logout_time, session_token, is_active, deleted_flag, created_at, updated_at
+                FROM user_sessions
+                WHERE id = {0}
+            """);
+
+            var session = await _context.UserSessions
+                .FromSqlRaw(sql.ToString(), sessionId)
+                .FirstOrDefaultAsync();
+
             if (session != null)
             {
                 session.UpdatedAt = DateTime.UtcNow;
@@ -340,8 +472,13 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<int> GetActiveSessionsCountAsync()
         {
-            return await _context.UserSessions
-                .CountAsync(s => s.DeletedFlag == 1 && s.IsActive && s.LogoutTime == null);
+            var sql = new StringBuilder("""
+                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
+                FROM user_sessions
+                WHERE deleted_flag = 1 AND is_active = true AND logout_time IS NULL
+            """);
+
+            return await _context.Database.SqlQueryRaw<int>(sql.ToString()).SingleOrDefaultAsync();
         }
 
         public async Task<bool> TerminateSessionWithAuditAsync(int sessionId, int adminUserId)
@@ -367,12 +504,14 @@ namespace MyBackend.Infrastructure.Repositories
 
             try
             {
+                var adminSql = new StringBuilder("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """);
+
                 var adminUser = await _context.Users
-                    .FromSqlRaw("""
-                        SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                        FROM users
-                        WHERE "Id" = {0} AND "DeletedFlag" = 1
-                    """, adminUserId)
+                    .FromSqlRaw(adminSql.ToString(), adminUserId)
                     .FirstOrDefaultAsync();
 
                 var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";
@@ -401,12 +540,14 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<int> ForceLogoutUserWithAuditAsync(int targetUserId, int adminUserId)
         {
+            var userSql = new StringBuilder("""
+                SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                FROM users
+                WHERE "Id" = {0} AND "DeletedFlag" = 1
+            """);
+
             var user = await _context.Users
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                    FROM users
-                    WHERE "Id" = {0} AND "DeletedFlag" = 1
-                """, targetUserId)
+                .FromSqlRaw(userSql.ToString(), targetUserId)
                 .FirstOrDefaultAsync();
 
             var now = DateTime.UtcNow;
@@ -434,12 +575,14 @@ namespace MyBackend.Infrastructure.Repositories
 
             try
             {
+                var adminSql = new StringBuilder("""
+                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                    FROM users
+                    WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """);
+
                 var adminUser = await _context.Users
-                    .FromSqlRaw("""
-                        SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                        FROM users
-                        WHERE "Id" = {0} AND "DeletedFlag" = 1
-                    """, adminUserId)
+                    .FromSqlRaw(adminSql.ToString(), adminUserId)
                     .FirstOrDefaultAsync();
 
                 var adminName = adminUser?.Name ?? $"Admin #{adminUserId}";

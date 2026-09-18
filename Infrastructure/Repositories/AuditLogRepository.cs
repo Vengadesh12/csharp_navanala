@@ -49,23 +49,26 @@ namespace MyBackend.Infrastructure.Repositories
                 .AsNoTracking()
                 .ToListAsync();
 
-            var totalEvents = await _context.Database.SqlQueryRaw<int>("""
+            var totalEventsSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM audit_logs
                 WHERE deleted_flag = 1
-            """).SingleOrDefaultAsync();
+            """);
+            var totalEvents = await _context.Database.SqlQueryRaw<int>(totalEventsSql.ToString()).SingleOrDefaultAsync();
 
-            var successfulLogins = await _context.Database.SqlQueryRaw<int>("""
+            var successfulLoginsSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM audit_logs
                 WHERE deleted_flag = 1 AND module = 'Auth'
-            """).SingleOrDefaultAsync();
+            """);
+            var successfulLogins = await _context.Database.SqlQueryRaw<int>(successfulLoginsSql.ToString()).SingleOrDefaultAsync();
 
-            var privilegeChanges = await _context.Database.SqlQueryRaw<int>("""
+            var privilegeChangesSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM audit_logs
                 WHERE deleted_flag = 1 AND (module = 'Permissions' OR module = 'Roles')
-            """).SingleOrDefaultAsync();
+            """);
+            var privilegeChanges = await _context.Database.SqlQueryRaw<int>(privilegeChangesSql.ToString()).SingleOrDefaultAsync();
 
             return (rawLogs, totalEvents, successfulLogins, privilegeChanges);
         }
@@ -73,20 +76,26 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<AuditLogModel> CreateAuditLogAsync(string action, string module, string performedBy, string details, string ipAddress, string status)
         {
             var now = DateTime.UtcNow;
-            var newId = _context.Database.SqlQueryRaw<int>("""
+            var insertSql = new StringBuilder("""
                 INSERT INTO audit_logs (action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag)
                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {6}, 1)
                 RETURNING id AS "Value"
-            """, action, module, performedBy, details, ipAddress, status, now)
+            """);
+
+            var newId = _context.Database.SqlQueryRaw<int>(
+                insertSql.ToString(),
+                action, module, performedBy, details, ipAddress, status, now)
             .AsEnumerable()
             .Single();
 
+            var getSql = new StringBuilder("""
+                SELECT id, action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag
+                FROM audit_logs
+                WHERE id = {0} AND deleted_flag = 1
+            """);
+
             var log = await _context.AuditLogs
-                .FromSqlRaw("""
-                    SELECT id, action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag
-                    FROM audit_logs
-                    WHERE id = {0} AND deleted_flag = 1
-                """, newId)
+                .FromSqlRaw(getSql.ToString(), newId)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
@@ -96,12 +105,13 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<bool> SoftDeleteAuditLogAsync(int id)
         {
             var now = DateTime.UtcNow;
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
+            var updateSql = new StringBuilder("""
                 UPDATE audit_logs
                 SET deleted_flag = 0, updated_at = {0}
                 WHERE id = {1} AND deleted_flag = 1
-            """, now, id);
+            """);
 
+            var rowsAffected = await _context.Database.ExecuteSqlRawAsync(updateSql.ToString(), now, id);
             return rowsAffected > 0;
         }
 
@@ -113,27 +123,31 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<AuditLogModel>> GetRecentAuditLogsAsync(int count)
         {
+            var sql = new StringBuilder("""
+                SELECT id, action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag
+                FROM audit_logs
+                WHERE deleted_flag = 1
+                ORDER BY created_at DESC
+                LIMIT {0}
+            """);
+
             return await _context.AuditLogs
-                .FromSqlRaw("""
-                    SELECT id, action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag
-                    FROM audit_logs
-                    WHERE deleted_flag = 1
-                    ORDER BY created_at DESC
-                    LIMIT {0}
-                """, count)
+                .FromSqlRaw(sql.ToString(), count)
                 .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<List<AuditLogModel>> GetAuditLogsInDateRangeAsync(DateTime startDate, DateTime endDate)
         {
+            var sql = new StringBuilder("""
+                SELECT id, action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag
+                FROM audit_logs
+                WHERE deleted_flag = 1 AND created_at >= {0} AND created_at <= {1}
+                ORDER BY created_at ASC
+            """);
+
             return await _context.AuditLogs
-                .FromSqlRaw("""
-                    SELECT id, action, module, performed_by, details, ip_address, status, created_at, updated_at, deleted_flag
-                    FROM audit_logs
-                    WHERE deleted_flag = 1 AND created_at >= {0} AND created_at <= {1}
-                    ORDER BY created_at ASC
-                """, startDate, endDate)
+                .FromSqlRaw(sql.ToString(), startDate, endDate)
                 .AsNoTracking()
                 .ToListAsync();
         }

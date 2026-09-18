@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Domain.Models;
@@ -31,23 +32,14 @@ namespace MyBackend.Infrastructure.Repositories
 
             if (!string.IsNullOrWhiteSpace(category) && category != "ALL")
             {
-                if (int.TryParse(category, out int catId))
-                {
-                    sql.Append($" AND (category_id = {{{paramIndex++}}} OR LOWER(category) = LOWER({{{paramIndex++}}}))");
-                    parameters.Add(catId);
-                    parameters.Add(category.Trim());
-                }
-                else
-                {
-                    sql.Append($" AND LOWER(category) = LOWER({{{paramIndex++}}})");
-                    parameters.Add(category.Trim());
-                }
+                sql.Append($" AND LOWER(category) = LOWER({{{paramIndex++}}})");
+                parameters.Add(category.Trim());
             }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var pattern = $"%{search.Trim().ToLower()}%";
-                sql.Append($" AND (LOWER(title) LIKE {{{paramIndex}}} OR LOWER(description) LIKE {{{paramIndex}}} OR LOWER(category) LIKE {{{paramIndex++}}})");
+                sql.Append($" AND (LOWER(title) LIKE {{{paramIndex}}} OR LOWER(description) LIKE {{{paramIndex}}} OR LOWER(created_by) LIKE {{{paramIndex++}}})");
                 parameters.Add(pattern);
             }
 
@@ -58,33 +50,43 @@ namespace MyBackend.Infrastructure.Repositories
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            var totalReports = await _context.Database.SqlQueryRaw<int>("""
+            var totalReportsSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM reports
                 WHERE deleted_flag = 1
-            """).SingleOrDefaultAsync(cancellationToken);
+            """);
+            var totalReports = await _context.Database.SqlQueryRaw<int>(totalReportsSql.ToString()).SingleOrDefaultAsync(cancellationToken);
 
-            var readyReports = await _context.Database.SqlQueryRaw<int>("""
+            var readyReportsSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM reports
                 WHERE deleted_flag = 1 AND (status = 'Ready' OR status = 'Generated')
-            """).SingleOrDefaultAsync(cancellationToken);
+            """);
+            var readyReports = await _context.Database.SqlQueryRaw<int>(readyReportsSql.ToString()).SingleOrDefaultAsync(cancellationToken);
 
-            var totalUsers = await _context.Database.SqlQueryRaw<int>("""
+            var totalUsersSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM users
                 WHERE "DeletedFlag" = 1
-            """).SingleOrDefaultAsync(cancellationToken);
+            """);
+            var totalUsers = await _context.Database.SqlQueryRaw<int>(totalUsersSql.ToString()).SingleOrDefaultAsync(cancellationToken);
 
-            var usersWithRole = await _context.Database.SqlQueryRaw<int>("""
+            var usersWithRoleSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM users
                 WHERE "DeletedFlag" = 1 AND "RoleId" IS NOT NULL
-            """).SingleOrDefaultAsync(cancellationToken);
+            """);
+            var usersWithRole = await _context.Database.SqlQueryRaw<int>(usersWithRoleSql.ToString()).SingleOrDefaultAsync(cancellationToken);
+
+            var categoriesSql = new StringBuilder("""
+                SELECT id, name, description, deleted_flag, created_at, updated_at
+                FROM report_categories
+                WHERE deleted_flag = 1
+                ORDER BY name ASC
+            """);
 
             var categories = await _context.ReportCategories
-                .Where(c => c.DeletedFlag == 1)
-                .OrderBy(c => c.Name)
+                .FromSqlRaw(categoriesSql.ToString())
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
@@ -93,11 +95,15 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<string>> GetCategoryNamesAsync(CancellationToken cancellationToken = default)
         {
-            var dbCategories = await _context.ReportCategories
-                .Where(c => c.DeletedFlag == 1)
-                .OrderBy(c => c.Name)
-                .Select(c => c.Name)
-                .AsNoTracking()
+            var catSql = new StringBuilder("""
+                SELECT name AS "Value"
+                FROM report_categories
+                WHERE deleted_flag = 1
+                ORDER BY name ASC
+            """);
+
+            var dbCategories = await _context.Database
+                .SqlQueryRaw<string>(catSql.ToString())
                 .ToListAsync(cancellationToken);
 
             if (dbCategories.Count > 0)
@@ -105,22 +111,26 @@ namespace MyBackend.Infrastructure.Repositories
                 return dbCategories;
             }
 
-            return await _context.Database.SqlQueryRaw<string>("""
+            var distinctSql = new StringBuilder("""
                 SELECT DISTINCT category AS "Value"
                 FROM reports
                 WHERE deleted_flag = 1 AND category IS NOT NULL AND category <> ''
                 ORDER BY "Value" ASC
-            """).ToListAsync(cancellationToken);
+            """);
+
+            return await _context.Database.SqlQueryRaw<string>(distinctSql.ToString()).ToListAsync(cancellationToken);
         }
 
         public async Task<ReportModel?> GetReportByIdAsync(int id, CancellationToken cancellationToken = default)
         {
+            var sql = new StringBuilder("""
+                SELECT id, title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag
+                FROM reports
+                WHERE id = {0} AND deleted_flag = 1
+            """);
+
             return await _context.Reports
-                .FromSqlRaw("""
-                    SELECT id, title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag
-                    FROM reports
-                    WHERE id = {0} AND deleted_flag = 1
-                """, id)
+                .FromSqlRaw(sql.ToString(), id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(cancellationToken);
         }
@@ -136,11 +146,16 @@ namespace MyBackend.Infrastructure.Repositories
         {
             cancellationToken.ThrowIfCancellationRequested();
             var now = DateTime.UtcNow;
-            var newId = _context.Database.SqlQueryRaw<int>("""
+
+            var insertSql = new StringBuilder("""
                 INSERT INTO reports (title, description, category_id, category, format, created_by, status, file_size, file_name, created_at, updated_at, deleted_flag)
                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {9}, 1)
                 RETURNING id AS "Value"
-            """, title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, creatorName, "Ready", fileSize, (object?)storedFileName ?? DBNull.Value, now)
+            """);
+
+            var newId = _context.Database.SqlQueryRaw<int>(
+                insertSql.ToString(),
+                title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, creatorName, "Ready", fileSize, (object?)storedFileName ?? DBNull.Value, now)
             .AsEnumerable()
             .Single();
 
@@ -166,12 +181,18 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<ReportModel?> UpdateReportRecordAsync(int id, string title, string description, int? categoryId, string categoryName, string format, string? status, string? newFileName, string? newFileSize, CancellationToken cancellationToken = default)
         {
             var now = DateTime.UtcNow;
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
+
+            var updateSql = new StringBuilder("""
                 UPDATE reports
                 SET title = {0}, description = {1}, category_id = {2}, category = {3}, format = {4}, status = COALESCE(NULLIF({5}, ''), status),
                     file_name = COALESCE({6}, file_name), file_size = COALESCE({7}, file_size), updated_at = {8}
                 WHERE id = {9} AND deleted_flag = 1
-            """, new object[] { title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, status ?? string.Empty, (object?)newFileName ?? DBNull.Value, (object?)newFileSize ?? DBNull.Value, now, id }, cancellationToken);
+            """);
+
+            var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
+                updateSql.ToString(),
+                new object[] { title, description, (object?)categoryId ?? DBNull.Value, categoryName, format, status ?? string.Empty, (object?)newFileName ?? DBNull.Value, (object?)newFileSize ?? DBNull.Value, now, id },
+                cancellationToken);
 
             if (rowsAffected == 0) return null;
 
@@ -187,53 +208,72 @@ namespace MyBackend.Infrastructure.Repositories
         public async Task<bool> SoftDeleteReportAsync(int id, CancellationToken cancellationToken = default)
         {
             var now = DateTime.UtcNow;
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("""
+
+            var deleteSql = new StringBuilder("""
                 UPDATE reports
                 SET deleted_flag = 0, updated_at = {0}
                 WHERE id = {1} AND deleted_flag = 1
-            """, new object[] { now, id }, cancellationToken);
+            """);
+
+            var rowsAffected = await _context.Database.ExecuteSqlRawAsync(deleteSql.ToString(), new object[] { now, id }, cancellationToken);
 
             return rowsAffected > 0;
         }
 
         public async Task<List<ReportCategoryModel>> GetAllCategoriesAsync(CancellationToken cancellationToken = default)
         {
+            var sql = new StringBuilder("""
+                SELECT id, name, description, deleted_flag, created_at, updated_at
+                FROM report_categories
+                WHERE deleted_flag = 1
+                ORDER BY name ASC
+            """);
+
             return await _context.ReportCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, deleted_flag, created_at, updated_at
-                    FROM report_categories
-                    WHERE deleted_flag = 1
-                    ORDER BY name ASC
-                """)
+                .FromSqlRaw(sql.ToString())
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
         }
 
         public async Task<ReportCategoryModel?> GetCategoryByIdAsync(int id, CancellationToken cancellationToken = default)
         {
+            var sql = new StringBuilder("""
+                SELECT id, name, description, deleted_flag, created_at, updated_at
+                FROM report_categories
+                WHERE id = {0} AND deleted_flag = 1
+                LIMIT 1
+            """);
+
             return await _context.ReportCategories
-                .FromSqlRaw("""
-                    SELECT id, name, description, deleted_flag, created_at, updated_at
-                    FROM report_categories
-                    WHERE id = {0} AND deleted_flag = 1
-                """, id)
+                .FromSqlRaw(sql.ToString(), id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
         public async Task<ReportCategoryModel?> GetCategoryByNameAsync(string name, CancellationToken cancellationToken = default)
         {
+            var sql = new StringBuilder("""
+                SELECT id, name, description, deleted_flag, created_at, updated_at
+                FROM report_categories
+                WHERE deleted_flag = 1 AND LOWER(name) = LOWER({0})
+                LIMIT 1
+            """);
+
             return await _context.ReportCategories
-                .FirstOrDefaultAsync(c => c.DeletedFlag == 1 && c.Name.ToLower() == name.Trim().ToLower(), cancellationToken);
+                .FromSqlRaw(sql.ToString(), name.Trim())
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
         public async Task<bool> CategoryExistsByNameAsync(string name, CancellationToken cancellationToken = default)
         {
-            var count = await _context.Database.SqlQueryRaw<int>("""
+            var sql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM report_categories
                 WHERE deleted_flag = 1 AND LOWER(name) = LOWER({0})
-            """, name.Trim()).SingleOrDefaultAsync(cancellationToken);
+            """);
+
+            var count = await _context.Database.SqlQueryRaw<int>(sql.ToString(), name.Trim()).SingleOrDefaultAsync(cancellationToken);
 
             return count > 0;
         }
@@ -247,7 +287,16 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<bool> SoftDeleteCategoryAsync(int id, CancellationToken cancellationToken = default)
         {
-            var category = await _context.ReportCategories.FirstOrDefaultAsync(c => c.Id == id && c.DeletedFlag == 1, cancellationToken);
+            var catSql = new StringBuilder("""
+                SELECT id, name, description, deleted_flag, created_at, updated_at
+                FROM report_categories
+                WHERE id = {0} AND deleted_flag = 1
+            """);
+
+            var category = await _context.ReportCategories
+                .FromSqlRaw(catSql.ToString(), id)
+                .FirstOrDefaultAsync(cancellationToken);
+
             if (category == null) return false;
 
             category.DeletedFlag = 0;

@@ -41,10 +41,6 @@ namespace MyBackend.Application.Services
 
             _otpStore[normalizedEmail] = record;
 
-            _logger?.LogInformation("==========================================================================");
-            _logger?.LogInformation("[OTP SERVICE] Generated OTP for {Email}: {OtpCode} (Valid for {Minutes} min)", normalizedEmail, otpCode, expiryMinutes);
-            _logger?.LogInformation("==========================================================================");
-
             return otpCode;
         }
 

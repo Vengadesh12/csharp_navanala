@@ -67,7 +67,6 @@ namespace MyBackend.Infrastructure.Services
                 mailMessage.To.Add(toEmail.Trim());
 
                 await client.SendMailAsync(mailMessage);
-                _logger.LogInformation("Email '{Subject}' sent successfully to {Email}", subject, toEmail.Trim());
             }
             catch (Exception ex)
             {

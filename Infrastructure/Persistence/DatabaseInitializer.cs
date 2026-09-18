@@ -255,7 +255,6 @@ namespace MyBackend.Infrastructure.Persistence
                     adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin@123");
                     context.Users.Add(adminUser);
                     await context.SaveChangesAsync();
-                    logger.LogInformation("Seeded default Super Admin user: admin@example.com / Admin@123");
                 }
 
                 var config = scope.ServiceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
@@ -282,7 +281,6 @@ namespace MyBackend.Infrastructure.Persistence
                     devUser.PasswordHash = hasher.HashPassword(devUser, "Admin@123");
                     context.Users.Add(devUser);
                     await context.SaveChangesAsync();
-                    logger.LogInformation("Seeded default administrator user: {Email} / Admin@123", devEmail);
                 }
 
                 // Ensure all roles have their baseline permissions assigned dynamically
@@ -927,7 +925,6 @@ namespace MyBackend.Infrastructure.Persistence
                 }
 
                 await context.SaveChangesAsync();
-                logger.LogInformation("Database tables and system schema initialized successfully.");
             }
             catch (Exception ex)
             {

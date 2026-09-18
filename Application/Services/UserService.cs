@@ -202,7 +202,6 @@ namespace MyBackend.Application.Services
             try
             {
                 await _emailService.SendWelcomeUserEmailAsync(user.Email, user.Name, plainPassword);
-                _logger.LogInformation("Welcome credentials email dispatched successfully to {Email}", user.Email);
             }
             catch (Exception ex)
             {

@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Application.Common.DTO;
 using MyBackend.Application.Interfaces;
@@ -14,16 +15,18 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<PermissionsMatrixResponse> GetPermissionsMatrixAsync()
         {
-            var permissions = await _context.Database.SqlQueryRaw<PermissionDto>("""
+            var permSql = new StringBuilder("""
                   SELECT p."PermissionKey", p."Name", p."Description",
                       CASE WHEN rp."RoleId" IS NULL THEN 0 ELSE 1 END AS "IsAssigned"
                   FROM permissions p
                   LEFT JOIN rolepermissions rp ON rp."PermissionId" = p."Id" AND rp."RoleId" = 2
                   WHERE p."DeletedFlag" = 1
                   ORDER BY p."Id"
-                """).ToListAsync();
+                """);
 
-            var roles = await _context.Database.SqlQueryRaw<RolePermissionDto>("""
+            var permissions = await _context.Database.SqlQueryRaw<PermissionDto>(permSql.ToString()).ToListAsync();
+
+            var rolesSql = new StringBuilder("""
                   SELECT r."Id" AS "RoleId", r."Name" AS "RoleName",
                       COALESCE(STRING_AGG(p."PermissionKey", ',' ORDER BY p."Id"), '') AS "PermissionKeys"
                   FROM roles r
@@ -32,7 +35,9 @@ namespace MyBackend.Infrastructure.Repositories
                   WHERE r."DeletedFlag" = 1
                   GROUP BY r."Id", r."Name"
                   ORDER BY r."Id"
-                """).ToListAsync();
+                """);
+
+            var roles = await _context.Database.SqlQueryRaw<RolePermissionDto>(rolesSql.ToString()).ToListAsync();
 
             var matrixRoles = roles.Select(role => new RolePermissionMatrixItem
             {
@@ -43,7 +48,7 @@ namespace MyBackend.Infrastructure.Repositories
                     : role.PermissionKeys.Split(',', StringSplitOptions.RemoveEmptyEntries)
             }).ToList();
 
-            var departments = await _context.Database.SqlQueryRaw<DepartmentPermissionDto>("""
+            var deptsSql = new StringBuilder("""
                   SELECT d."Id" AS "DepartmentId", d."Name" AS "DepartmentName",
                       COALESCE(STRING_AGG(p."PermissionKey", ',' ORDER BY p."Id"), '') AS "PermissionKeys"
                   FROM departments d
@@ -52,7 +57,9 @@ namespace MyBackend.Infrastructure.Repositories
                   WHERE d."DeletedFlag" = 1
                   GROUP BY d."Id", d."Name"
                   ORDER BY d."Id"
-                """).ToListAsync();
+                """);
+
+            var departments = await _context.Database.SqlQueryRaw<DepartmentPermissionDto>(deptsSql.ToString()).ToListAsync();
 
             var matrixDepts = departments.Select(dept => new DepartmentPermissionMatrixItem
             {
@@ -73,23 +80,27 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<PermissionDto>> GetAllActivePermissionsAsync()
         {
-            return await _context.Database.SqlQueryRaw<PermissionDto>("""
+            var sql = new StringBuilder("""
                 SELECT p."PermissionKey", p."Name", p."Description", 0 AS "IsAssigned"
                 FROM permissions p
                 WHERE p."DeletedFlag" = 1
                 ORDER BY p."Id"
-                """).ToListAsync();
+                """);
+
+            return await _context.Database.SqlQueryRaw<PermissionDto>(sql.ToString()).ToListAsync();
         }
 
         public async Task<List<string>> GetPermissionKeysByRoleIdAsync(int roleId)
         {
-            return await _context.Database.SqlQueryRaw<string>("""
+            var sql = new StringBuilder("""
                 SELECT p."PermissionKey" AS "Value"
                 FROM permissions p
                 INNER JOIN rolepermissions rp ON rp."PermissionId" = p."Id"
                 WHERE rp."RoleId" = {0} AND p."DeletedFlag" = 1
                 ORDER BY p."Id"
-                """, roleId).ToListAsync();
+                """);
+
+            return await _context.Database.SqlQueryRaw<string>(sql.ToString(), roleId).ToListAsync();
         }
 
         public async Task<bool> UpdateRolePermissionsAsync(int roleId, IEnumerable<string> permissionKeys)
@@ -137,13 +148,15 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<string>> GetPermissionKeysByDepartmentIdAsync(int departmentId)
         {
-            return await _context.Database.SqlQueryRaw<string>("""
+            var sql = new StringBuilder("""
                 SELECT p."PermissionKey" AS "Value"
                 FROM permissions p
                 INNER JOIN departmentpermissions dp ON dp."PermissionId" = p."Id"
                 WHERE dp."DepartmentId" = {0} AND p."DeletedFlag" = 1
                 ORDER BY p."Id"
-                """, departmentId).ToListAsync();
+                """);
+
+            return await _context.Database.SqlQueryRaw<string>(sql.ToString(), departmentId).ToListAsync();
         }
 
         public async Task<bool> UpdateDepartmentPermissionsAsync(int departmentId, IEnumerable<string> permissionKeys)

@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using MyBackend.Domain.Models;
 using MyBackend.Infrastructure.Persistence;
@@ -15,13 +16,15 @@ namespace MyBackend.Infrastructure.Repositories
             if (string.IsNullOrWhiteSpace(email)) return null;
             var normalizedEmail = email.Trim().ToLowerInvariant();
 
+            var sql = new StringBuilder("""
+                SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                FROM users
+                WHERE LOWER("Email") = {0}
+                LIMIT 1
+                """);
+
             return await _context.Users
-                .FromSqlInterpolated($"""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                    FROM users
-                    WHERE LOWER("Email") = {normalizedEmail}
-                    LIMIT 1
-                    """)
+                .FromSqlRaw(sql.ToString(), normalizedEmail)
                 .AsNoTracking()
                 .SingleOrDefaultAsync();
         }
@@ -31,7 +34,7 @@ namespace MyBackend.Infrastructure.Repositories
             if (string.IsNullOrWhiteSpace(email)) return null;
             var normalizedEmail = email.Trim().ToLowerInvariant();
 
-            return await _context.Database.SqlQueryRaw<UserLoginDetailsModel>("""
+            var sql = new StringBuilder("""
                 SELECT 
                     u."Id",
                     u."Name",
@@ -94,39 +97,46 @@ namespace MyBackend.Infrastructure.Repositories
                 LEFT JOIN departments dept ON dept."Id" = des."DepartmentId" AND dept."DeletedFlag" = 1
                 WHERE LOWER(u."Email") = {0}
                 LIMIT 1
-                """, normalizedEmail)
+                """);
+
+            return await _context.Database.SqlQueryRaw<UserLoginDetailsModel>(sql.ToString(), normalizedEmail)
                 .SingleOrDefaultAsync();
         }
 
         public async Task<List<UserModel>> GetAllUsersAsync()
         {
+            var sql = new StringBuilder("""
+                SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                FROM users
+                ORDER BY "Id"
+                """);
+
             return await _context.Users
-                .FromSqlRaw("""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                    FROM users
-                    ORDER BY "Id"
-                    """)
+                .FromSqlRaw(sql.ToString())
                 .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<UserModel?> GetUserByIdAsync(int id)
         {
+            var sql = new StringBuilder("""
+                SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
+                FROM users
+                WHERE "Id" = {0}
+                """);
+
             return await _context.Users
-                .FromSqlInterpolated($"""
-                    SELECT "Id", "Name", "Email", "Password", "Phone", "Age", "Address", "RoleId", "DesignationId", "ProfileImage", COALESCE("DeletedFlag", 1) AS "DeletedFlag", COALESCE("IsFirstLogin", false) AS "IsFirstLogin", "CreatedAt", "UpdatedAt"
-                    FROM users
-                    WHERE "Id" = {id}
-                    """)
+                .FromSqlRaw(sql.ToString(), id)
                 .AsNoTracking()
                 .SingleOrDefaultAsync();
         }
 
         public async Task<bool> SetDeletedFlagAsync(int id, int deletedFlag)
         {
-            var rows = await _context.Database.ExecuteSqlInterpolatedAsync($"""
-                UPDATE users SET "DeletedFlag" = {deletedFlag} WHERE "Id" = {id}
+            var sql = new StringBuilder("""
+                UPDATE users SET "DeletedFlag" = {0} WHERE "Id" = {1}
                 """);
+            var rows = await _context.Database.ExecuteSqlRawAsync(sql.ToString(), deletedFlag, id);
             return rows > 0;
         }
 
@@ -151,7 +161,7 @@ namespace MyBackend.Infrastructure.Repositories
             var roleId = userRecord.RoleId ?? 0;
             var designationId = userRecord.DesignationId ?? 0;
 
-            var permissions = await _context.Database.SqlQueryRaw<string>("""
+            var sql = new StringBuilder("""
                 SELECT DISTINCT p."PermissionKey" AS "Value"
                 FROM permissions p
                 WHERE p."DeletedFlag" = 1
@@ -175,7 +185,9 @@ namespace MyBackend.Infrastructure.Repositories
                           WHERE up."UserId" = {2}
                       ))
                   )
-                """, roleId, designationId, userId).ToListAsync();
+                """);
+
+            var permissions = await _context.Database.SqlQueryRaw<string>(sql.ToString(), roleId, designationId, userId).ToListAsync();
 
             return permissionKeys.Any(k => permissions.Contains(k, StringComparer.OrdinalIgnoreCase));
         }
@@ -204,15 +216,17 @@ namespace MyBackend.Infrastructure.Repositories
             // Dynamically check if the role has Super Admin permissions in database
             if (rId > 0 && await _context.Roles.AnyAsync(r => r.Id == rId && r.DeletedFlag == 1 && (r.IsSuperAdmin || r.Name.ToLower() == "super admin")))
             {
-                return await _context.Database.SqlQueryRaw<string>("""
+                var superAdminSql = new StringBuilder("""
                     SELECT DISTINCT p."PermissionKey" AS "Value"
                     FROM permissions p
                     WHERE p."DeletedFlag" = 1
                     ORDER BY "Value" ASC
-                """).ToListAsync();
+                """);
+
+                return await _context.Database.SqlQueryRaw<string>(superAdminSql.ToString()).ToListAsync();
             }
 
-            return await _context.Database.SqlQueryRaw<string>("""
+            var sql = new StringBuilder("""
                 SELECT DISTINCT p."PermissionKey" AS "Value"
                 FROM permissions p
                 WHERE p."DeletedFlag" = 1
@@ -237,128 +251,165 @@ namespace MyBackend.Infrastructure.Repositories
                       ))
                   )
                 ORDER BY "Value"
-                """, rId, dId, userId).ToListAsync();
+                """);
+
+            return await _context.Database.SqlQueryRaw<string>(sql.ToString(), rId, dId, userId).ToListAsync();
         }
 
         public async Task<bool> UpdatePasswordHashAsync(int userId, string newPasswordHash)
         {
-            var rows = await _context.Database.ExecuteSqlInterpolatedAsync($"""
-                UPDATE users SET "Password" = {newPasswordHash}, "IsFirstLogin" = false WHERE "Id" = {userId}
+            var sql = new StringBuilder("""
+                UPDATE users SET "Password" = {0}, "IsFirstLogin" = false WHERE "Id" = {1}
                 """);
+            var rows = await _context.Database.ExecuteSqlRawAsync(sql.ToString(), newPasswordHash, userId);
             return rows > 0;
         }
 
         public async Task<Dictionary<int, string>> GetActiveRolesLookupAsync()
         {
-            return await _context.Roles
+            var sql = new StringBuilder("""
+                SELECT "Id", "Name", "Description", "DeletedFlag", "ParentRoleId", "IsSuperAdmin", "IsSystemRole", "CreatedAt", "UpdatedAt"
+                FROM roles
+                WHERE "DeletedFlag" = 1
+                ORDER BY "Id"
+                """);
+
+            var roles = await _context.Roles
+                .FromSqlRaw(sql.ToString())
                 .AsNoTracking()
-                .Where(r => r.DeletedFlag == 1)
                 .Select(r => new { r.Id, r.Name })
                 .ToDictionaryAsync(r => r.Id, r => r.Name);
+
+            return roles;
         }
 
         public async Task<Dictionary<int, string>> GetActiveDesignationsLookupAsync()
         {
-            return await _context.Designations
+            var sql = new StringBuilder("""
+                SELECT "Id", "Name", "DepartmentId", "Description", "DeletedFlag", "CreatedAt", "UpdatedAt"
+                FROM designations
+                WHERE "DeletedFlag" = 1
+                ORDER BY "Name"
+                """);
+
+            var designations = await _context.Designations
+                .FromSqlRaw(sql.ToString())
                 .AsNoTracking()
-                .Where(d => d.DeletedFlag == 1)
                 .Select(d => new { d.Id, d.Name })
                 .ToDictionaryAsync(d => d.Id, d => d.Name);
+
+            return designations;
         }
 
         public async Task<string?> GetRoleNameByIdAsync(int roleId)
         {
-            return await _context.Roles
-                .AsNoTracking()
-                .Where(r => r.Id == roleId && r.DeletedFlag == 1)
-                .Select(r => r.Name)
-                .FirstOrDefaultAsync();
+            var sql = new StringBuilder("""
+                SELECT "Name" AS "Value"
+                FROM roles
+                WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """);
+
+            return await _context.Database.SqlQueryRaw<string>(sql.ToString(), roleId).FirstOrDefaultAsync();
         }
 
         public async Task<string?> GetDesignationNameByIdAsync(int designationId)
         {
-            return await _context.Designations
-                .AsNoTracking()
-                .Where(d => d.Id == designationId && d.DeletedFlag == 1)
-                .Select(d => d.Name)
-                .FirstOrDefaultAsync();
+            var sql = new StringBuilder("""
+                SELECT "Name" AS "Value"
+                FROM designations
+                WHERE "Id" = {0} AND "DeletedFlag" = 1
+                """);
+
+            return await _context.Database.SqlQueryRaw<string>(sql.ToString(), designationId).FirstOrDefaultAsync();
         }
 
         public async Task<bool> EmailExistsAsync(string email, int? excludeUserId = null)
         {
+            var sql = new StringBuilder();
             if (excludeUserId.HasValue)
             {
-                var count = await _context.Database.SqlQueryRaw<int>("""
+                sql.Append("""
                     SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                     FROM users
                     WHERE LOWER("Email") = LOWER({0}) AND "DeletedFlag" = 1 AND "Id" <> {1}
-                """, email, excludeUserId.Value).SingleOrDefaultAsync();
+                """);
+                var count = await _context.Database.SqlQueryRaw<int>(sql.ToString(), email, excludeUserId.Value).SingleOrDefaultAsync();
                 return count > 0;
             }
             else
             {
-                var count = await _context.Database.SqlQueryRaw<int>("""
+                sql.Append("""
                     SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                     FROM users
                     WHERE LOWER("Email") = LOWER({0}) AND "DeletedFlag" = 1
-                """, email).SingleOrDefaultAsync();
+                """);
+                var count = await _context.Database.SqlQueryRaw<int>(sql.ToString(), email).SingleOrDefaultAsync();
                 return count > 0;
             }
         }
 
         public async Task<bool> PhoneExistsAsync(string phone, int? excludeUserId = null)
         {
+            var sql = new StringBuilder();
             if (excludeUserId.HasValue)
             {
-                var count = await _context.Database.SqlQueryRaw<int>("""
+                sql.Append("""
                     SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                     FROM users
                     WHERE "Phone" = {0} AND "DeletedFlag" = 1 AND "Id" <> {1}
-                """, phone, excludeUserId.Value).SingleOrDefaultAsync();
+                """);
+                var count = await _context.Database.SqlQueryRaw<int>(sql.ToString(), phone, excludeUserId.Value).SingleOrDefaultAsync();
                 return count > 0;
             }
             else
             {
-                var count = await _context.Database.SqlQueryRaw<int>("""
+                sql.Append("""
                     SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                     FROM users
                     WHERE "Phone" = {0} AND "DeletedFlag" = 1
-                """, phone).SingleOrDefaultAsync();
+                """);
+                var count = await _context.Database.SqlQueryRaw<int>(sql.ToString(), phone).SingleOrDefaultAsync();
                 return count > 0;
             }
         }
 
         public async Task<int> GetActiveUsersCountAsync()
         {
-            return await _context.Database.SqlQueryRaw<int>("""
+            var sql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM users
                 WHERE "DeletedFlag" = 1
-            """).SingleOrDefaultAsync();
+            """);
+
+            return await _context.Database.SqlQueryRaw<int>(sql.ToString()).SingleOrDefaultAsync();
         }
 
         public async Task<int> GetUsersWithRoleCountAsync()
         {
-            return await _context.Database.SqlQueryRaw<int>("""
+            var sql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
                 FROM users
                 WHERE "DeletedFlag" = 1 AND "RoleId" IS NOT NULL
-            """).SingleOrDefaultAsync();
+            """);
+
+            return await _context.Database.SqlQueryRaw<int>(sql.ToString()).SingleOrDefaultAsync();
         }
 
         public async Task<List<string>> GetUserPermissionKeysForProfileAsync(int roleId, int designationId)
         {
             if (roleId > 0 && await _context.Roles.AnyAsync(r => r.Id == roleId && r.DeletedFlag == 1 && (r.IsSuperAdmin || r.Name.ToLower() == "super admin")))
             {
-                return await _context.Database.SqlQueryRaw<string>("""
+                var superAdminSql = new StringBuilder("""
                     SELECT "PermissionKey" AS "Value"
                     FROM permissions
                     WHERE "DeletedFlag" = 1
                     ORDER BY "Id"
-                """).ToListAsync();
+                """);
+
+                return await _context.Database.SqlQueryRaw<string>(superAdminSql.ToString()).ToListAsync();
             }
 
-            return await _context.Database.SqlQueryRaw<string>("""
+            var sql = new StringBuilder("""
                 SELECT DISTINCT p."PermissionKey" AS "Value"
                 FROM permissions p
                 WHERE p."DeletedFlag" = 1
@@ -377,22 +428,36 @@ namespace MyBackend.Infrastructure.Repositories
                       ))
                   )
                 ORDER BY "Value"
-                """, roleId, designationId).ToListAsync();
+                """);
+
+            return await _context.Database.SqlQueryRaw<string>(sql.ToString(), roleId, designationId).ToListAsync();
         }
 
         public async Task<Dictionary<int, string>> GetUserRoleMapAsync()
         {
             try
             {
+                var roleSql = new StringBuilder("""
+                    SELECT "Id", "Name", "Description", "DeletedFlag", "ParentRoleId", "IsSuperAdmin", "IsSystemRole", "CreatedAt", "UpdatedAt"
+                    FROM roles
+                    WHERE "DeletedFlag" = 1
+                """);
+
                 var roles = await _context.Roles
+                    .FromSqlRaw(roleSql.ToString())
                     .AsNoTracking()
-                    .Where(r => r.DeletedFlag == 1)
                     .Select(r => new { r.Id, r.Name })
                     .ToDictionaryAsync(r => r.Id, r => r.Name);
 
+                var userRoleSql = new StringBuilder("""
+                    SELECT "Id", "RoleId"
+                    FROM users
+                    WHERE "DeletedFlag" = 1 AND "RoleId" IS NOT NULL
+                """);
+
                 var userRoles = await _context.Users
+                    .FromSqlRaw(userRoleSql.ToString())
                     .AsNoTracking()
-                    .Where(u => u.DeletedFlag == 1 && u.RoleId != null)
                     .Select(u => new { u.Id, RoleId = u.RoleId!.Value })
                     .ToListAsync();
 
