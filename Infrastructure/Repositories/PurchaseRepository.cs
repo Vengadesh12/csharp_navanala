@@ -18,13 +18,15 @@ namespace MyBackend.Infrastructure.Repositories
             _context = context;
         }
 
+        private const string BasePurchasesSelectSql = """
+            SELECT id, approval_request_id, item_name, category, quantity, estimated_amount, employee_name, employee_email, department_name, vendor_name, vendor_contact, vendor_email, quotation_number, quotation_amount, quotation_date, delivery_timeline, payment_terms, notes, status, created_by_user_id, created_by_name, created_at, updated_at, deleted_flag
+            FROM purchases
+        """;
+
         public async Task<(List<PurchaseModel> Items, int TotalCount)> GetPurchasesPagedAsync(string? status, string? category, string? search, int page, int pageSize)
         {
-            var sql = new StringBuilder("""
-                SELECT id, approval_request_id, item_name, category, quantity, estimated_amount, employee_name, employee_email, department_name, vendor_name, vendor_contact, vendor_email, payment_terms, quotation_number, quotation_date, quotation_amount, status, notes, approved_by, approved_at, created_at, updated_at, deleted_flag
-                FROM purchases
-                WHERE deleted_flag = 1
-            """);
+            var sql = new StringBuilder(BasePurchasesSelectSql)
+                .AppendLine(" WHERE deleted_flag = 1");
 
             var countSql = new StringBuilder("""
                 SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
@@ -84,11 +86,8 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<Dictionary<int, (int Count, int FirstPurchaseId)>> GetPurchaseGroupsByApprovalRequestIdAsync()
         {
-            var sql = new StringBuilder("""
-                SELECT id, approval_request_id, item_name, category, quantity, estimated_amount, employee_name, employee_email, department_name, vendor_name, vendor_contact, vendor_email, payment_terms, quotation_number, quotation_date, quotation_amount, status, notes, approved_by, approved_at, created_at, updated_at, deleted_flag
-                FROM purchases
-                WHERE deleted_flag = 1
-            """);
+            var sql = new StringBuilder(BasePurchasesSelectSql)
+                .AppendLine(" WHERE deleted_flag = 1");
 
             var purchases = await _context.Purchases
                 .FromSqlRaw(sql.ToString())
@@ -110,12 +109,8 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<PurchaseModel?> GetPurchaseByIdAsync(int id)
         {
-            var sql = new StringBuilder("""
-                SELECT id, approval_request_id, item_name, category, quantity, estimated_amount, employee_name, employee_email, department_name, vendor_name, vendor_contact, vendor_email, payment_terms, quotation_number, quotation_date, quotation_amount, status, notes, approved_by, approved_at, created_at, updated_at, deleted_flag
-                FROM purchases
-                WHERE id = {0} AND deleted_flag = 1
-                LIMIT 1
-            """);
+            var sql = new StringBuilder(BasePurchasesSelectSql)
+                .AppendLine(" WHERE id = {0} AND deleted_flag = 1 LIMIT 1");
 
             return await _context.Purchases
                 .FromSqlRaw(sql.ToString(), id)
@@ -125,12 +120,8 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<List<PurchaseModel>> GetAllActivePurchasesAsync()
         {
-            var sql = new StringBuilder("""
-                SELECT id, approval_request_id, item_name, category, quantity, estimated_amount, employee_name, employee_email, department_name, vendor_name, vendor_contact, vendor_email, payment_terms, quotation_number, quotation_date, quotation_amount, status, notes, approved_by, approved_at, created_at, updated_at, deleted_flag
-                FROM purchases
-                WHERE deleted_flag = 1
-                ORDER BY created_at DESC
-            """);
+            var sql = new StringBuilder(BasePurchasesSelectSql)
+                .AppendLine(" WHERE deleted_flag = 1 ORDER BY created_at DESC");
 
             return await _context.Purchases
                 .FromSqlRaw(sql.ToString())

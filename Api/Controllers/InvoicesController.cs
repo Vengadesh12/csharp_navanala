@@ -260,6 +260,7 @@ namespace MyBackend.Api.Controllers
         {
             var subClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                         ?? User.FindFirst("sub")?.Value
+                        ?? User.FindFirst("userId")?.Value
                         ?? User.FindFirst("id")?.Value;
 
             if (!int.TryParse(subClaim, out var userId) || userId <= 0)

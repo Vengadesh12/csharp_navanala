@@ -29,71 +29,47 @@ namespace MyBackend.Infrastructure.Repositories
         {
             await UpdateOverdueInvoicesAsync();
 
-            var sql = new StringBuilder("""
-                SELECT id, invoice_number, customer_name, customer_email, customer_phone, customer_address, customer_gstin, company_gstin, invoice_date, due_date, subtotal, discount_amount, tax_amount, total_amount, status, payment_method, notes, terms_and_conditions, created_by, created_at, updated_at, deleted_flag
-                FROM invoices
-                WHERE deleted_flag = 1
-            """);
-
-            var countSql = new StringBuilder("""
-                SELECT CAST(COUNT(*) AS INTEGER) AS "Value"
-                FROM invoices
-                WHERE deleted_flag = 1
-            """);
-
-            var parameters = new List<object>();
-            int paramIndex = 0;
+            var query = _context.Invoices
+                .Where(i => i.DeletedFlag == 1);
 
             if (!string.IsNullOrWhiteSpace(status) && !status.Equals("ALL", StringComparison.OrdinalIgnoreCase))
             {
-                var clause = $" AND LOWER(status) = LOWER({{{paramIndex++}}})";
-                sql.Append(clause);
-                countSql.Append(clause);
-                parameters.Add(status.Trim());
+                var lowerStatus = status.Trim().ToLower();
+                query = query.Where(i => i.Status.ToLower() == lowerStatus);
             }
 
             if (startDate.HasValue)
             {
-                var clause = $" AND invoice_date >= {{{paramIndex++}}}";
-                sql.Append(clause);
-                countSql.Append(clause);
-                parameters.Add(startDate.Value);
+                query = query.Where(i => i.InvoiceDate >= startDate.Value);
             }
 
             if (endDate.HasValue)
             {
-                var clause = $" AND invoice_date <= {{{paramIndex++}}}";
-                sql.Append(clause);
-                countSql.Append(clause);
-                parameters.Add(endDate.Value);
+                query = query.Where(i => i.InvoiceDate <= endDate.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var pattern = $"%{search.Trim().ToLower()}%";
-                var clause = $" AND (LOWER(invoice_number) LIKE {{{paramIndex}}} OR LOWER(customer_name) LIKE {{{paramIndex}}} OR (customer_email IS NOT NULL AND LOWER(customer_email) LIKE {{{paramIndex}}}) OR (customer_phone IS NOT NULL AND LOWER(customer_phone) LIKE {{{paramIndex}}}) OR (customer_gstin IS NOT NULL AND LOWER(customer_gstin) LIKE {{{paramIndex}}}))";
-                sql.Append(clause);
-                countSql.Append(clause);
-                parameters.Add(pattern);
+                var pattern = search.Trim().ToLower();
+                query = query.Where(i =>
+                    i.InvoiceNumber.ToLower().Contains(pattern) ||
+                    i.CustomerName.ToLower().Contains(pattern) ||
+                    (i.CustomerEmail != null && i.CustomerEmail.ToLower().Contains(pattern)) ||
+                    (i.CustomerPhone != null && i.CustomerPhone.ToLower().Contains(pattern)) ||
+                    (i.CustomerGstin != null && i.CustomerGstin.ToLower().Contains(pattern)));
             }
 
-            var totalCount = await _context.Database
-                .SqlQueryRaw<int>(countSql.ToString(), parameters.ToArray())
-                .SingleOrDefaultAsync();
-
-            sql.Append(" ORDER BY created_at DESC");
+            var totalCount = await query.CountAsync();
 
             var pageNum = page > 0 ? page : 1;
             var size = pageSize > 0 ? pageSize : 50;
             var offset = (pageNum - 1) * size;
 
-            sql.Append($" LIMIT {{{paramIndex++}}} OFFSET {{{paramIndex++}}}");
-            parameters.Add(size);
-            parameters.Add(offset);
-
-            var items = await _context.Invoices
-                .FromSqlRaw(sql.ToString(), parameters.ToArray())
-                .Include(i => i.Items.Where(it => it.DeletedFlag == 1))
+            var items = await query
+                .OrderByDescending(i => i.CreatedAt)
+                .Skip(offset)
+                .Take(size)
+                .Include(i => i.Items.Where(it => it.DeletedFlag == 1).OrderBy(it => it.OrderIndex))
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -102,16 +78,9 @@ namespace MyBackend.Infrastructure.Repositories
 
         public async Task<InvoiceModel?> GetInvoiceByIdAsync(int id)
         {
-            var sql = new StringBuilder("""
-                SELECT id, invoice_number, customer_name, customer_email, customer_phone, customer_address, customer_gstin, company_gstin, invoice_date, due_date, subtotal, discount_amount, tax_amount, total_amount, status, payment_method, notes, terms_and_conditions, created_by, created_at, updated_at, deleted_flag
-                FROM invoices
-                WHERE id = {0} AND deleted_flag = 1
-                LIMIT 1
-            """);
-
             return await _context.Invoices
-                .FromSqlRaw(sql.ToString(), id)
-                .Include(i => i.Items.Where(it => it.DeletedFlag == 1))
+                .Where(i => i.Id == id && i.DeletedFlag == 1)
+                .Include(i => i.Items.Where(it => it.DeletedFlag == 1).OrderBy(it => it.OrderIndex))
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
         }
@@ -121,14 +90,8 @@ namespace MyBackend.Infrastructure.Repositories
             try
             {
                 var todayUtc = DateTime.UtcNow.Date;
-                var sql = new StringBuilder("""
-                    SELECT id, invoice_number, customer_name, customer_email, customer_phone, customer_address, customer_gstin, company_gstin, invoice_date, due_date, subtotal, discount_amount, tax_amount, total_amount, status, payment_method, notes, terms_and_conditions, created_by, created_at, updated_at, deleted_flag
-                    FROM invoices
-                    WHERE deleted_flag = 1 AND status = 'Pending' AND due_date IS NOT NULL AND due_date < {0}
-                """);
-
                 var overdueCandidates = await _context.Invoices
-                    .FromSqlRaw(sql.ToString(), todayUtc)
+                    .Where(i => i.DeletedFlag == 1 && i.Status == "Pending" && i.DueDate != null && i.DueDate.Value < todayUtc)
                     .ToListAsync();
 
                 if (overdueCandidates.Count == 0) return 0;
@@ -153,14 +116,8 @@ namespace MyBackend.Infrastructure.Repositories
         {
             await UpdateOverdueInvoicesAsync();
 
-            var sql = new StringBuilder("""
-                SELECT id, invoice_number, customer_name, customer_email, customer_phone, customer_address, customer_gstin, company_gstin, invoice_date, due_date, subtotal, discount_amount, tax_amount, total_amount, status, payment_method, notes, terms_and_conditions, created_by, created_at, updated_at, deleted_flag
-                FROM invoices
-                WHERE deleted_flag = 1
-            """);
-
             var activeInvoices = await _context.Invoices
-                .FromSqlRaw(sql.ToString())
+                .Where(i => i.DeletedFlag == 1)
                 .AsNoTracking()
                 .ToListAsync();
 
